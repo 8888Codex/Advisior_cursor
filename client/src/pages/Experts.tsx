@@ -241,7 +241,7 @@ export default function Experts() {
                 </div>
               )}
               
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 gap-8">
                 {filteredAndSortedExperts.map(({ expert, recommendation }) => (
                   <ExpertCard 
                     key={expert.id} 

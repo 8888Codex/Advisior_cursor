@@ -50,7 +50,7 @@ export default function Home() {
 
       {/* Personalized Insights Section - Premium Disney-Level */}
       {insightsData?.hasProfile && insightsData.insights.length > 0 && (
-        <section className="relative w-full py-16 md:py-20 overflow-hidden">
+        <section className="relative w-full py-20 md:py-24 overflow-hidden">
           {/* Subtle gradient background */}
           <div className="absolute inset-0 bg-gradient-to-b from-background via-background/50 to-background pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-mesh opacity-50" />
@@ -65,11 +65,11 @@ export default function Home() {
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full glass mb-6 shimmer"
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full glass mb-8 shimmer"
               >
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent-cyan to-accent">
+                <span className="text-sm font-medium bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent-cyan to-accent">
                   Personalizado para {insightsData.profileSummary?.companyName}
                 </span>
               </motion.div>
@@ -93,28 +93,28 @@ export default function Home() {
               </motion.p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {insightsData.insights.map((insight, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  whileHover={{ scale: 1.02, y: -4 }}
+                  whileHover={{ scale: 1.01, y: -2 }}
                   transition={{
-                    duration: 0.4,
-                    delay: 0.2 + index * 0.1,
+                    duration: 0.6,
+                    delay: 0.3 + index * 0.15,
                     ease: [0.4, 0, 0.2, 1],
                   }}
                 >
-                  <Card className="p-6 h-full glass-strong hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 group relative overflow-hidden">
-                    {/* Subtle gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <Card className="p-8 h-full rounded-3xl glass-strong hover:shadow-lg hover:shadow-primary/8 transition-all duration-600 group relative overflow-hidden">
+                    {/* Ultra subtle gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-accent/3 opacity-0 group-hover:opacity-100 transition-opacity duration-600" />
                     
                     <div className="flex items-start gap-4 relative z-10">
                       <motion.div
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                        className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center shadow-lg group-hover:shadow-primary/30 transition-shadow"
+                        whileHover={{ scale: 1.05, rotate: 3 }}
+                        transition={{ type: "spring", stiffness: 300, duration: 0.6 }}
+                        className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:shadow-primary/20 transition-shadow duration-600"
                       >
                         <Lightbulb className="h-6 w-6 text-white" />
                       </motion.div>
@@ -122,11 +122,11 @@ export default function Home() {
                       <div className="flex-1 min-w-0">
                         <Badge 
                           variant="secondary" 
-                          className="mb-3 shimmer hover:bg-primary/10 hover:text-primary transition-colors"
+                          className="mb-3 rounded-full px-3 py-0.5 text-xs shimmer hover:bg-primary/8 hover:text-primary transition-colors duration-300"
                         >
                           {insight.category}
                         </Badge>
-                        <p className="text-sm leading-relaxed text-foreground/90">
+                        <p className="text-sm leading-relaxed text-foreground/80 font-normal">
                           {insight.content}
                         </p>
                       </div>

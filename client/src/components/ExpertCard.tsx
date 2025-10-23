@@ -47,24 +47,24 @@ export function ExpertCard({
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ scale: 1.02, y: -6 }}
+      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ scale: 1.01, y: -2 }}
       className="relative group"
     >
       <Card 
         className={`
-          flex flex-col p-6 gap-4 relative overflow-hidden
-          transition-all duration-300
+          flex flex-col p-8 gap-6 relative overflow-hidden rounded-3xl
+          transition-all duration-600
           ${isHighlyRecommended ? 'gradient-border glow-subtle' : ''}
-          hover:shadow-xl
+          hover:shadow-lg
         `}
         data-testid={`card-expert-${expert.id}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Subtle gradient overlay on hover */}
+        {/* Ultra subtle gradient overlay on hover */}
         <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-accent/3 opacity-0 group-hover:opacity-100 transition-opacity duration-600 pointer-events-none"
           initial={false}
         />
 
@@ -74,9 +74,9 @@ export function ExpertCard({
             initial={{ opacity: 0, scale: 0, rotate: -10 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-            className="absolute -top-3 -right-3 z-10"
+            className="absolute -top-2 -right-2 z-10"
           >
-            <Badge className="gap-1 bg-gradient-to-r from-primary to-accent-cyan text-white shadow-lg pulse-glow" data-testid={`badge-recommended-${expert.id}`}>
+            <Badge className="gap-1 rounded-full px-3 py-1 bg-gradient-to-r from-primary/90 to-accent-cyan/90 text-white shadow-md pulse-glow text-xs" data-testid={`badge-recommended-${expert.id}`}>
               <Sparkles className="h-3 w-3" />
               Recomendado
             </Badge>
@@ -87,15 +87,15 @@ export function ExpertCard({
           {/* Avatar with Premium Hover Effect */}
           <motion.div
             animate={{
-              scale: isHovered ? 1.08 : 1,
+              scale: isHovered ? 1.05 : 1,
             }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
             className="relative"
           >
-            <Avatar className={`h-20 w-20 ring-2 transition-all duration-300 ${
+            <Avatar className={`h-24 w-24 ring-2 transition-all duration-600 ${
               isHovered 
-                ? 'ring-primary/60 shadow-lg shadow-primary/30' 
-                : 'ring-primary/20'
+                ? 'ring-primary/40 shadow-md shadow-primary/15' 
+                : 'ring-primary/15'
             }`}>
               <AvatarImage src={expert.avatar} alt={expert.name} />
               <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-primary to-accent-cyan text-white">
@@ -112,10 +112,10 @@ export function ExpertCard({
           </motion.div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-semibold" data-testid={`text-expert-name-${expert.id}`}>
+            <h3 className="text-xl font-semibold tracking-tight" data-testid={`text-expert-name-${expert.id}`}>
               {expert.name}
             </h3>
-            <p className="text-sm text-muted-foreground">{expert.title}</p>
+            <p className="text-sm text-muted-foreground font-normal">{expert.title}</p>
             
             {/* Star Rating */}
             {showRecommendation && recommendationStars && (
@@ -162,11 +162,11 @@ export function ExpertCard({
                 delay: 0.1 + index * 0.05,
                 ease: [0.4, 0, 0.2, 1]
               }}
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.03 }}
             >
               <Badge 
                 variant="secondary" 
-                className="text-xs shimmer hover:bg-primary/10 hover:text-primary transition-colors duration-200" 
+                className="text-xs rounded-full px-3 py-0.5 shimmer hover:bg-primary/8 hover:text-primary transition-colors duration-300" 
                 data-testid={`badge-expertise-${expert.id}-${index}`}
               >
                 {skill}
@@ -176,7 +176,7 @@ export function ExpertCard({
         </div>
 
         {/* Bio */}
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 relative z-10">
+        <p className="text-sm text-muted-foreground/80 leading-relaxed line-clamp-3 relative z-10 font-normal">
           {expert.bio}
         </p>
 
@@ -186,10 +186,10 @@ export function ExpertCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="glass rounded-lg p-3 border border-primary/20 relative z-10"
+            className="glass rounded-xl p-4 border border-primary/15 relative z-10"
           >
             <p className="text-xs leading-relaxed">
-              <span className="font-semibold text-primary flex items-center gap-1 mb-1">
+              <span className="font-medium text-primary flex items-center gap-1 mb-1">
                 <Sparkles className="h-3 w-3" />
                 Por que recomendamos
               </span>
@@ -207,7 +207,7 @@ export function ExpertCard({
           className="relative z-10"
         >
           <Button 
-            className="w-full gap-2 mt-2 shadow-md hover:shadow-lg hover:shadow-primary/20 transition-all duration-300" 
+            className="w-full gap-2 mt-2 rounded-xl shadow-sm hover:shadow-md hover:shadow-primary/10 transition-all duration-600" 
             onClick={() => onConsult?.(expert)}
             data-testid={`button-consult-${expert.id}`}
           >

@@ -21,8 +21,8 @@ export function Hero() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 glass rounded-full px-5 py-2 text-sm shimmer"
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 glass rounded-full px-6 py-2.5 text-sm shimmer"
           >
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent-cyan">
@@ -61,7 +61,7 @@ export function Hero() {
             <Link href="/experts">
               <Button 
                 size="lg" 
-                className="gap-2 glow-subtle hover:glow-primary transition-all duration-300" 
+                className="gap-2 rounded-xl glow-subtle transition-all duration-600" 
                 data-testid="button-explore-experts"
               >
                 <Zap className="h-5 w-5" />
@@ -73,7 +73,7 @@ export function Hero() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="gap-2 glass-strong hover:border-primary/50 transition-all duration-300" 
+                className="gap-2 rounded-xl glass-strong hover:border-primary/30 transition-all duration-600" 
                 data-testid="button-create-expert"
               >
                 <Brain className="h-4 w-4" />
@@ -115,13 +115,13 @@ export function Hero() {
                   delay: feature.delay,
                   ease: [0.4, 0, 0.2, 1]
                 }}
-                className="flex flex-col items-center gap-3 p-6 glass rounded-2xl hover:glass-strong transition-all duration-300 card-3d-hover group"
+                className="flex flex-col items-center gap-4 p-8 glass rounded-3xl hover:glass-strong transition-all duration-600 card-3d-hover group"
               >
-                <div className={`rounded-full bg-gradient-to-br ${feature.gradient} p-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300`}>
+                <div className={`rounded-full bg-gradient-to-br ${feature.gradient} p-4 shadow-md group-hover:shadow-lg transition-shadow duration-600`}>
                   <feature.icon className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-lg">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <h3 className="font-semibold text-lg tracking-tight">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground/80 leading-relaxed font-normal">
                   {feature.description}
                 </p>
               </motion.div>
