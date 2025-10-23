@@ -19,6 +19,11 @@ export function Header() {
               Especialistas
             </span>
           </Link>
+          <Link href="/test-council">
+            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-test-council">
+              🧪 Test Council
+            </span>
+          </Link>
           <Link href="/create">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-create">
               Criar Especialista

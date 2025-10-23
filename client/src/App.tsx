@@ -12,6 +12,7 @@ import Chat from "@/pages/Chat";
 import Create from "@/pages/Create";
 import AdminExperts from "@/pages/AdminExperts";
 import Onboarding from "@/pages/Onboarding";
+import TestCouncil from "@/pages/TestCouncil";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/chat/:id" component={Chat} />
       <Route path="/create" component={Create} />
       <Route path="/admin/experts" component={AdminExperts} />
+      <Route path="/test-council" component={TestCouncil} />
       <Route component={NotFound} />
     </Switch>
   );
