@@ -45,102 +45,169 @@ export function ExpertCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ scale: 1.02, y: -6 }}
+      className="relative group"
     >
       <Card 
-        className="flex flex-col p-6 gap-4 hover-elevate transition-all duration-200 relative" 
+        className={`
+          flex flex-col p-6 gap-4 relative overflow-hidden
+          transition-all duration-300
+          ${isHighlyRecommended ? 'gradient-border glow-subtle' : ''}
+          hover:shadow-xl
+        `}
         data-testid={`card-expert-${expert.id}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        {/* Subtle gradient overlay on hover */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          initial={false}
+        />
+
+        {/* Highly Recommended Badge */}
         {isHighlyRecommended && (
-          <div className="absolute -top-2 -right-2 z-10">
-            <Badge className="gap-1 bg-primary text-primary-foreground shadow-lg" data-testid={`badge-recommended-${expert.id}`}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0, rotate: -10 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+            className="absolute -top-3 -right-3 z-10"
+          >
+            <Badge className="gap-1 bg-gradient-to-r from-primary to-accent-cyan text-white shadow-lg pulse-glow" data-testid={`badge-recommended-${expert.id}`}>
               <Sparkles className="h-3 w-3" />
               Recomendado
             </Badge>
-          </div>
+          </motion.div>
         )}
         
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 relative z-10">
+          {/* Avatar with Premium Hover Effect */}
           <motion.div
             animate={{
-              scale: isHovered ? 1.05 : 1,
-              rotate: isHovered ? [0, -2, 2, 0] : 0
+              scale: isHovered ? 1.08 : 1,
             }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="relative"
           >
-            <Avatar className="h-20 w-20 ring-2 ring-primary/20">
+            <Avatar className={`h-20 w-20 ring-2 transition-all duration-300 ${
+              isHovered 
+                ? 'ring-primary/60 shadow-lg shadow-primary/30' 
+                : 'ring-primary/20'
+            }`}>
               <AvatarImage src={expert.avatar} alt={expert.name} />
-              <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-primary to-accent-cyan text-white">
+                {initials}
+              </AvatarFallback>
             </Avatar>
+            {isHovered && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute inset-0 rounded-full border-2 border-primary/40 blur-sm"
+              />
+            )}
           </motion.div>
+
           <div className="flex-1 min-w-0">
             <h3 className="text-xl font-semibold" data-testid={`text-expert-name-${expert.id}`}>
               {expert.name}
             </h3>
             <p className="text-sm text-muted-foreground">{expert.title}</p>
+            
+            {/* Star Rating */}
             {showRecommendation && recommendationStars && (
-              <div className="flex items-center gap-1 mt-1">
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center gap-1 mt-2"
+              >
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
+                  <motion.div
                     key={i}
-                    className={`h-3 w-3 ${
-                      i < recommendationStars
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700'
-                    }`}
-                    data-testid={`star-${expert.id}-${i}`}
-                  />
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 + i * 0.05 }}
+                  >
+                    <Star
+                      className={`h-4 w-4 transition-all ${
+                        i < recommendationStars
+                          ? 'fill-accent text-accent drop-shadow-sm'
+                          : 'fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700'
+                      }`}
+                      data-testid={`star-${expert.id}-${i}`}
+                    />
+                  </motion.div>
                 ))}
-                <span className="text-xs text-muted-foreground ml-1">
+                <span className="text-xs text-muted-foreground ml-1 font-medium">
                   ({recommendationScore}/100)
                 </span>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
 
-      <div className="flex flex-wrap gap-2">
-        {expert.expertise.map((skill, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ 
-              duration: 0.2, 
-              delay: 0.1 + index * 0.05,
-              ease: [0.4, 0, 0.2, 1]
-            }}
-          >
-            <Badge variant="secondary" className="text-xs" data-testid={`badge-expertise-${expert.id}-${index}`}>
-              {skill}
-            </Badge>
-          </motion.div>
-        ))}
-      </div>
-
-      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-        {expert.bio}
-      </p>
-
-      {showRecommendation && recommendationJustification && (
-        <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-medium text-foreground">Por que recomendamos: </span>
-            {recommendationJustification}
-          </p>
+        {/* Expertise Tags with Stagger Animation */}
+        <div className="flex flex-wrap gap-2 relative z-10">
+          {expert.expertise.map((skill, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ 
+                duration: 0.3, 
+                delay: 0.1 + index * 0.05,
+                ease: [0.4, 0, 0.2, 1]
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Badge 
+                variant="secondary" 
+                className="text-xs shimmer hover:bg-primary/10 hover:text-primary transition-colors duration-200" 
+                data-testid={`badge-expertise-${expert.id}-${index}`}
+              >
+                {skill}
+              </Badge>
+            </motion.div>
+          ))}
         </div>
-      )}
 
+        {/* Bio */}
+        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 relative z-10">
+          {expert.bio}
+        </p>
+
+        {/* Recommendation Justification */}
+        {showRecommendation && recommendationJustification && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass rounded-lg p-3 border border-primary/20 relative z-10"
+          >
+            <p className="text-xs leading-relaxed">
+              <span className="font-semibold text-primary flex items-center gap-1 mb-1">
+                <Sparkles className="h-3 w-3" />
+                Por que recomendamos
+              </span>
+              <span className="text-muted-foreground">
+                {recommendationJustification}
+              </span>
+            </p>
+          </motion.div>
+        )}
+
+        {/* CTA Button with Enhanced Hover */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          className="relative z-10"
         >
           <Button 
-            className="w-full gap-2 mt-2" 
+            className="w-full gap-2 mt-2 shadow-md hover:shadow-lg hover:shadow-primary/20 transition-all duration-300" 
             onClick={() => onConsult?.(expert)}
             data-testid={`button-consult-${expert.id}`}
           >

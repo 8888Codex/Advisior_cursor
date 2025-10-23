@@ -9,27 +9,36 @@
 
 ## Core Design Elements
 
-### A. Color Palette
+### A. Color Palette - Premium Disney-Level
 
-**Dark Mode (Primary)**
-- Background Deep: 220 25% 8%
-- Background Elevated: 220 20% 12%
-- Background Surface: 220 18% 15%
-- Text Primary: 220 10% 95%
-- Text Secondary: 220 8% 70%
-- Text Muted: 220 6% 50%
-- Primary Brand: 210 100% 56% (Professional blue conveying trust)
-- Primary Hover: 210 100% 48%
-- Accent Subtle: 280 45% 58% (Purple for premium features)
-- Border Default: 220 15% 22%
-- Border Focus: 210 100% 56%
+**Dark Mode (Primary)** - Profundo e Vibrante
+- Background Deep: 250 40% 6% (Roxo escuro profundo)
+- Background Elevated: 248 35% 10% (Elevação sutil)
+- Background Surface: 246 30% 14% (Superfícies)
+- Text Primary: 250 10% 98% (Texto ultra claro)
+- Text Secondary: 248 8% 75% (Texto secundário)
+- Text Muted: 246 6% 55% (Texto muted)
+- **Primary Brand: 270 100% 65%** (Roxo vibrante premium)
+- **Primary Hover: 270 100% 58%** (Hover mais intenso)
+- **Accent Gold: 45 100% 58%** (Dourado/Âmbar para destaque)
+- **Accent Cyan: 190 100% 55%** (Cyan vibrante para contraste)
+- Border Default: 250 20% 22%
+- Border Focus: 270 100% 65%
+- **Glow Primary: 270 100% 65% / 0.4** (Efeito glow)
+- **Glow Accent: 45 100% 58% / 0.3** (Glow dourado)
 
-**Light Mode**
-- Background: 220 10% 98%
-- Background Elevated: 0 0% 100%
-- Text Primary: 220 20% 15%
-- Text Secondary: 220 12% 40%
-- Primary remains consistent for brand recognition
+**Light Mode** - Limpo e Premium
+- Background: 250 20% 98% (Levemente roxo)
+- Background Elevated: 0 0% 100% (Branco puro)
+- Text Primary: 250 30% 12%
+- Text Secondary: 248 15% 40%
+- Primary/Accent mantém cores vibrantes para impacto
+
+**Gradient Presets** - Para Efeitos Premium
+- **Hero Mesh**: linear-gradient(135deg, hsl(270 100% 65%), hsl(190 100% 55%), hsl(45 100% 58%))
+- **Card Subtle**: linear-gradient(145deg, hsl(248 35% 10%), hsl(246 30% 14%))
+- **Accent Glow**: radial-gradient(circle at 50% 0%, hsl(270 100% 65% / 0.15), transparent 70%)
+- **Gold Shimmer**: linear-gradient(90deg, transparent, hsl(45 100% 58% / 0.3), transparent)
 
 ### B. Typography
 
@@ -110,13 +119,48 @@
 - Stats/metrics: Large numbers (text-4xl font-bold) with labels (text-sm text-muted)
 - Empty states: Centered content with icon, heading, description, CTA
 
-### E. Animations
-Use sparingly and purposefully:
-- Page transitions: Subtle fade-in (200ms)
-- Card hover: Transform scale(1.02) with shadow transition (150ms)
-- Button interactions: Built-in states only
-- Chat messages: Gentle slide-in from appropriate side (300ms)
-- Loading states: Subtle pulse on skeleton screens
+### E. Animations - Disney-Level Premium
+
+**Princípios de Animação Premium:**
+- **Antecipação**: Elementos "preparam" antes de agir (micro-bounce antes de slide)
+- **Sobreposição**: Múltiplos elementos animam com delays sutis (stagger)
+- **Seguimento**: Movimento continua levemente após parar (easing suave)
+- **Exageração Sutil**: Transformações visíveis mas elegantes
+
+**Timing & Easing:**
+- Micro-interações: 150-250ms, cubic-bezier(0.4, 0, 0.2, 1)
+- Transições médias: 300-400ms, cubic-bezier(0.4, 0, 0.2, 1)
+- Page transitions: 500ms, cubic-bezier(0.4, 0, 0.2, 1)
+- Elementos pesados: 600-800ms, ease-in-out
+
+**Biblioteca de Animações:**
+- **card-3d-hover**: Transform Y + Scale + Glow shadow
+- **shimmer**: Gold shimmer sweep (loading/success states)
+- **pulse-glow**: Glow pulsante para CTAs importantes
+- **float-animation**: Flutuação suave 3s loop
+- **gradient-border**: Borda com gradient animado
+- **Stagger animations**: 0.1s delay entre cards (Framer Motion)
+
+**Page Transitions:**
+- Fade + Scale coordenados (95% → 100%)
+- Exit: fade-out + scale-down (100% → 98%)
+- Duration: 500ms
+
+**Expert Cards:**
+- Hover: translateY(-4px) + scale(1.02) + glow shadow
+- Avatar: ring com pulse-glow ao hover
+- Badges: shimmer effect ao aparecer
+
+**Chat Messages:**
+- User messages: slide-in-right + fade (300ms)
+- AI messages: slide-in-left + fade com typing indicator (400ms)
+- Stagger: 100ms entre mensagens múltiplas
+
+**Micro-interações:**
+- Button click: ripple effect from click point
+- Input focus: border glow + label float
+- Success states: checkmark com scale bounce
+- Toast notifications: slide-up + fade com auto-dismiss
 
 ---
 

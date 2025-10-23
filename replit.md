@@ -32,7 +32,18 @@ Preferred communication style: Simple, everyday language.
 - **Proxy Configuration**: Proxy middleware configured before `express.json()` to preserve request bodies.
 - **Development Workflow**: `npm run dev` starts Express, which spawns the auto-reloading Python backend.
 - **Production Readiness**: AsyncAnthropic prevents event loop blocking. Auto-clone feature complete. In-memory storage is a known limitation for production persistence.
-- **UX/UI Decisions**: Disney-level animations for onboarding, chat interactions, expert cards, suggested questions, and page transitions. Consistent timing (0.3s for micro, 0.5s for macro) and easing function (cubic-bezier(0.4, 0, 0.2, 1)).
+- **UX/UI Decisions - Disney-Level Premium**: 
+  - **Color Palette**: Vibrante roxo 270°100%65% (primary) + dourado 45°100%58% (accent) + cyan 190°100%55% (accent-cyan), dark mode profundo 250°40%6%
+  - **Glassmorphism System**: backdrop-blur-xl/2xl nos cards, glass e glass-strong utilities
+  - **Glow Effects**: glow-primary, glow-accent, glow-subtle com multi-layered box-shadows
+  - **Text Gradients**: text-gradient-primary, text-gradient-gold, text-gradient-premium para headlines impactantes
+  - **Background Gradients**: bg-gradient-mesh (hero), bg-gradient-card, bg-gradient-hero com mesh animado
+  - **Premium Animations**: shimmer (2s loop), card-3d-hover (translateY + scale + glow), pulse-glow, gradient-border animado
+  - **Timing**: Micro 150-250ms, médio 300-400ms, page transitions 500ms, easing cubic-bezier(0.4, 0, 0.2, 1)
+  - **Stagger Animations**: 0.1s delay entre cards, entry animations coordenadas
+  - **Hero Section**: Mesh gradient animado com 3 blobs pulsantes, glassmorphism badges, text gradients, glow CTAs
+  - **Expert Cards**: 3D hover transform, avatar ring glow, gradient borders para recomendados, shimmer badges
+  - **Page Transitions**: Fade + scale coordenados (0.98→1) entry/exit 500ms
 - **Personalization System (Fase 4 - Completa)**:
   - Expert recommendation engine scores 8 experts (0-100) based on user profile alignment, displays 5-star badges for top matches (stars >= 4)
   - Contextual AI prompt enrichment injects business profile into system prompts for all chat interactions
