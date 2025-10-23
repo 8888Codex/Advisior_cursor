@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -9,237 +9,451 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Sparkles, X, Plus, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Brain, Search, Wand2, Check, MessageSquare, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Expert } from "@shared/schema";
+
+type CloneStep = "idle" | "researching" | "analyzing" | "synthesizing" | "complete";
+
+interface TestMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function Create() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [title, setTitle] = useState("");
-  const [bio, setBio] = useState("");
-  const [expertiseInput, setExpertiseInput] = useState("");
-  const [expertise, setExpertise] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+  
+  // Auto-clone form state
+  const [targetName, setTargetName] = useState("");
+  const [context, setContext] = useState("");
+  const [cloneStep, setCloneStep] = useState<CloneStep>("idle");
+  const [generatedExpert, setGeneratedExpert] = useState<any | null>(null); // ExpertCreate data, not persisted yet
+  
+  // Test chat state
+  const [showTestChat, setShowTestChat] = useState(false);
+  const [testMessages, setTestMessages] = useState<TestMessage[]>([]);
+  const [testInput, setTestInput] = useState("");
 
-  const createExpertMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      title: string;
-      bio: string;
-      expertise: string[];
-    }) => {
-      const systemPrompt = `Você é ${data.name}, ${data.title}.
-
-${data.bio}
-
-Suas áreas de expertise incluem: ${data.expertise.join(", ")}.
-
-Forneça consultoria estratégica profunda e insights acionáveis. Mantenha um tom profissional e consultivo.`;
-
-      return await apiRequestJson<Expert>("/api/experts", {
+  const autoCloneMutation = useMutation({
+    mutationFn: async (data: { targetName: string; context?: string }) => {
+      // Simulate step progression
+      setCloneStep("researching");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      setCloneStep("analyzing");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      setCloneStep("synthesizing");
+      
+      return await apiRequestJson<any>("/api/experts/auto-clone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          systemPrompt,
-          avatar: null,
-        }),
+        body: JSON.stringify(data),
       });
     },
-    onSuccess: (expert) => {
+    onSuccess: (expertData) => {
+      setCloneStep("complete");
+      setGeneratedExpert(expertData);
+      
       toast({
-        title: "Especialista criado!",
-        description: `${expert.name} foi criado com sucesso.`,
+        title: "Clone Cognitivo Criado",
+        description: `${expertData.name} foi sintetizado com sucesso.`,
       });
-      setLocation(`/chat/${expert.id}`);
     },
-    onError: () => {
+    onError: (error: any) => {
+      setCloneStep("idle");
+      
+      const errorMessage = error?.message || "Tente novamente mais tarde.";
+      
       toast({
-        title: "Erro ao criar especialista",
-        description: "Tente novamente mais tarde.",
+        title: "Erro ao criar clone",
+        description: errorMessage,
         variant: "destructive",
       });
     },
   });
 
-  const addExpertise = () => {
-    if (expertiseInput.trim() && !expertise.includes(expertiseInput.trim())) {
-      setExpertise([...expertise, expertiseInput.trim()]);
-      setExpertiseInput("");
-    }
-  };
-
-  const removeExpertise = (item: string) => {
-    setExpertise(expertise.filter((e) => e !== item));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAutoClone = (e: React.FormEvent) => {
     e.preventDefault();
-    if (expertise.length === 0) {
+    autoCloneMutation.mutate({ 
+      targetName, 
+      context: context.trim() || undefined 
+    });
+  };
+
+  const saveExpertMutation = useMutation({
+    mutationFn: async (expertData: any) => {
+      return await apiRequestJson<Expert>("/api/experts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expertData),
+      });
+    },
+    onSuccess: (expert) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/experts"] });
+      setLocation("/");
       toast({
-        title: "Expertise necessária",
-        description: "Adicione pelo menos uma área de expertise.",
+        title: "Especialista Salvo",
+        description: `${expert.name} está pronto para consultas.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o especialista.",
         variant: "destructive",
       });
-      return;
+    },
+  });
+
+  const handleSaveExpert = () => {
+    if (generatedExpert) {
+      saveExpertMutation.mutate(generatedExpert);
     }
-    createExpertMutation.mutate({ name, title, bio, expertise });
   };
 
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "??";
+  const handleRegenerate = () => {
+    setGeneratedExpert(null);
+    setCloneStep("idle");
+    setShowTestChat(false);
+    setTestMessages([]);
+    autoCloneMutation.reset();
+  };
+
+  const testChatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      if (!generatedExpert) throw new Error("No expert to test");
+      
+      // For testing, we'll use Claude directly with the generated system prompt
+      // This avoids persisting temporary conversations
+      const response = await apiRequestJson<{ response: string }>("/api/experts/test-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt: generatedExpert.systemPrompt,
+          message: message,
+          history: testMessages
+        }),
+      });
+      
+      return response.response;
+    },
+    onSuccess: (response) => {
+      setTestMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: response }
+      ]);
+    },
+    onError: () => {
+      toast({
+        title: "Erro no chat de teste",
+        description: "Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTestSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testInput.trim()) return;
+    
+    const userMessage = testInput.trim();
+    setTestMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setTestInput("");
+    testChatMutation.mutate(userMessage);
+  };
+
+  const initials = generatedExpert
+    ? generatedExpert.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??";
+
+  const getStepIcon = (step: CloneStep) => {
+    switch (step) {
+      case "researching":
+        return <Search className="h-5 w-5 animate-pulse" />;
+      case "analyzing":
+        return <Brain className="h-5 w-5 animate-pulse" />;
+      case "synthesizing":
+        return <Wand2 className="h-5 w-5 animate-pulse" />;
+      case "complete":
+        return <Check className="h-5 w-5" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStepText = (step: CloneStep) => {
+    switch (step) {
+      case "researching":
+        return "Pesquisando biografia, filosofia e métodos...";
+      case "analyzing":
+        return "Analisando padrões cognitivos e expertise...";
+      case "synthesizing":
+        return "Sintetizando clone de alta fidelidade...";
+      case "complete":
+        return "Clone cognitivo pronto!";
+      default:
+        return "";
+    }
+  };
+
+  const isProcessing = ["researching", "analyzing", "synthesizing"].includes(cloneStep);
 
   return (
     <div className="min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm mb-4">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">Personalização Total</span>
+              <span className="text-muted-foreground">Clonagem Cognitiva Automática</span>
             </div>
             <h1 className="text-4xl font-bold mb-4">Criar Seu Especialista</h1>
             <p className="text-muted-foreground max-w-2xl">
-              Defina as características, expertise e personalidade do seu consultor de IA personalizado.
-              Quanto mais detalhes você fornecer, mais preciso e útil será o especialista.
+              Digite o nome de quem você quer clonar. Nosso sistema pesquisa automaticamente 
+              e cria um clone cognitivo de alta fidelidade usando Framework EXTRACT.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <form onSubmit={handleSubmit} className="space-y-6">
+          {!generatedExpert && (
+            <Card className="p-6">
+              <form onSubmit={handleAutoClone} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Especialista</Label>
+                  <Label htmlFor="targetName">Quem você quer clonar?</Label>
                   <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ex: Dr. Carlos Silva"
+                    id="targetName"
+                    value={targetName}
+                    onChange={(e) => setTargetName(e.target.value)}
+                    placeholder="Ex: Steve Jobs, Elon Musk, Warren Buffett..."
                     required
-                    data-testid="input-expert-name"
+                    disabled={isProcessing}
+                    data-testid="input-target-name"
+                    className="text-lg"
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Pode ser qualquer pessoa pública com informação disponível online
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="title">Título Profissional</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Ex: Especialista em Transformação Digital"
-                    required
-                    data-testid="input-expert-title"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Biografia / Contexto</Label>
+                  <Label htmlFor="context">Contexto Adicional (Opcional)</Label>
                   <Textarea
-                    id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Descreva o background, experiência e estilo de consultoria deste especialista..."
-                    rows={5}
-                    required
-                    data-testid="input-expert-bio"
+                    id="context"
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    placeholder="Ex: fundador da Apple, foco em design e inovação..."
+                    rows={3}
+                    disabled={isProcessing}
+                    data-testid="input-context"
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Adicione contexto para refinar a pesquisa
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="expertise">Áreas de Expertise</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="expertise"
-                      value={expertiseInput}
-                      onChange={(e) => setExpertiseInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addExpertise())}
-                      placeholder="Ex: Estratégia, Inovação, Marketing"
-                      data-testid="input-expertise"
-                    />
-                    <Button type="button" onClick={addExpertise} size="icon" data-testid="button-add-expertise">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {expertise.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {expertise.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="gap-1 py-1.5" data-testid={`badge-expertise-${index}`}>
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => removeExpertise(item)}
-                            className="hover-elevate rounded-full p-0.5"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
+                {isProcessing && (
+                  <Card className="p-4 bg-primary/5 border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <div className="text-primary">
+                        {getStepIcon(cloneStep)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{getStepText(cloneStep)}</p>
+                        <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                          <div 
+                            className="bg-primary h-1.5 rounded-full transition-all duration-1000"
+                            style={{
+                              width: cloneStep === "researching" ? "33%" :
+                                     cloneStep === "analyzing" ? "66%" :
+                                     cloneStep === "synthesizing" ? "90%" : "0%"
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </Card>
+                )}
 
                 <Button 
                   type="submit" 
                   className="w-full gap-2" 
                   size="lg" 
-                  disabled={createExpertMutation.isPending}
-                  data-testid="button-create-expert"
+                  disabled={isProcessing}
+                  data-testid="button-auto-clone"
                 >
-                  {createExpertMutation.isPending ? (
+                  {isProcessing ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Criando...
+                      Criando Clone Cognitivo...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4" />
-                      Criar Especialista
+                      <Brain className="h-4 w-4" />
+                      Criar Clone Automático
                     </>
                   )}
                 </Button>
               </form>
-            </div>
+            </Card>
+          )}
 
-            <div>
-              <div className="sticky top-24">
-                <h3 className="text-lg font-semibold mb-4">Preview do Especialista</h3>
-                <Card className="p-6 space-y-4">
+          {generatedExpert && cloneStep === "complete" && (
+            <div className="space-y-6">
+              <Card className="p-6">
+                <div className="flex items-center gap-2 text-primary mb-4">
+                  <Check className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">Clone Cognitivo Gerado com Sucesso!</h3>
+                </div>
+
+                <div className="space-y-4">
                   <div className="flex items-start gap-4">
-                    <Avatar className="h-20 w-20 ring-2 ring-primary/20">
-                      <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+                    <Avatar className="h-24 w-24 ring-2 ring-primary/20">
+                      <AvatarFallback className="text-xl font-semibold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-semibold">
-                        {name || "Nome do Especialista"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {title || "Título Profissional"}
-                      </p>
+                      <h3 className="text-2xl font-bold mb-1">{generatedExpert.name}</h3>
+                      <p className="text-muted-foreground mb-3">{generatedExpert.title}</p>
+                      
+                      {generatedExpert.expertise && generatedExpert.expertise.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {generatedExpert.expertise.map((skill: string, index: number) => (
+                            <Badge key={index} variant="secondary">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {expertise.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {expertise.map((skill, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    {bio || "A biografia do especialista aparecerá aqui..."}
+                    {generatedExpert.bio}
                   </p>
-                </Card>
+
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-medium text-primary hover-elevate p-3 rounded-md">
+                      Ver System Prompt EXTRACT Completo
+                    </summary>
+                    <Card className="mt-2 p-4 bg-muted/50">
+                      <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto">
+                        {generatedExpert.systemPrompt}
+                      </pre>
+                    </Card>
+                  </details>
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Testar Clone</h3>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowTestChat(!showTestChat)}
+                    data-testid="button-toggle-test-chat"
+                  >
+                    {showTestChat ? "Ocultar" : "Mostrar"} Chat
+                  </Button>
+                </div>
+
+                {showTestChat && (
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4 space-y-3 min-h-[200px] max-h-[400px] overflow-y-auto">
+                      {testMessages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          Faça uma pergunta para testar a personalidade do clone
+                        </p>
+                      ) : (
+                        testMessages.map((msg, index) => (
+                          <div
+                            key={index}
+                            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 ${
+                                msg.role === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {testChatMutation.isPending && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted rounded-lg p-3">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <form onSubmit={handleTestSend} className="flex gap-2">
+                      <Input
+                        value={testInput}
+                        onChange={(e) => setTestInput(e.target.value)}
+                        placeholder="Digite sua pergunta..."
+                        disabled={testChatMutation.isPending}
+                        data-testid="input-test-message"
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        disabled={testChatMutation.isPending || !testInput.trim()}
+                        data-testid="button-send-test-message"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </div>
+                )}
+              </Card>
+
+              <div className="flex gap-4">
+                <Button 
+                  onClick={handleSaveExpert}
+                  size="lg"
+                  className="flex-1 gap-2"
+                  disabled={saveExpertMutation.isPending}
+                  data-testid="button-save-expert"
+                >
+                  {saveExpertMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Salvar Especialista
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={handleRegenerate}
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                  data-testid="button-regenerate"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Regenerar
+                </Button>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

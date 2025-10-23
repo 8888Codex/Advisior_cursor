@@ -17,7 +17,8 @@ from models import (
     Message, MessageCreate, MessageSend, MessageResponse,
     BusinessProfile, BusinessProfileCreate,
     CouncilAnalysis, CouncilAnalysisCreate,
-    RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation
+    RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation,
+    AutoCloneRequest
 )
 from storage import storage
 from crew_agent import LegendAgentFactory
@@ -69,6 +70,279 @@ async def create_expert(data: ExpertCreate):
         return expert
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create expert: {str(e)}")
+
+@app.post("/api/experts/auto-clone", response_model=ExpertCreate, status_code=200)
+async def auto_clone_expert(data: AutoCloneRequest):
+    """
+    Auto-clone a cognitive expert from minimal input.
+    
+    Process:
+    1. Use Perplexity to research target person (biography, philosophy, methods)
+    2. Use Claude to synthesize research into EXTRACT system prompt
+    3. Return ExpertCreate data (NOT persisted yet - user must explicitly save)
+    """
+    try:
+        import httpx
+        from anthropic import AsyncAnthropic
+        
+        # Step 1: Perplexity research
+        perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+        if not perplexity_api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviço de pesquisa indisponível. Configure PERPLEXITY_API_KEY."
+            )
+        
+        # Build research query
+        context_suffix = f" Foco: {data.context}" if data.context else ""
+        research_query = f"""Pesquise informações detalhadas sobre {data.targetName}{context_suffix}.
+
+Forneça:
+1. Biografia completa e trajetória profissional
+2. Filosofia de trabalho e princípios fundamentais
+3. Métodos, frameworks e técnicas específicas
+4. Frases icônicas e terminologia única
+5. Áreas de expertise e contextos de especialidade
+6. Limitações reconhecidas ou fronteiras de atuação
+
+Inclua dados específicos, citações, livros publicados, e exemplos concretos."""
+
+        # Call Perplexity API
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            perplexity_response = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {perplexity_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "Você é um pesquisador especializado em biografias profissionais e análise de personalidades. Forneça informações factuais, detalhadas e específicas."
+                        },
+                        {
+                            "role": "user",
+                            "content": research_query
+                        }
+                    ],
+                    "temperature": 0.2,
+                    "search_recency_filter": "month",
+                    "return_related_questions": False
+                }
+            )
+        
+        perplexity_data = perplexity_response.json()
+        
+        # Extract research findings
+        research_findings = ""
+        if "choices" in perplexity_data and len(perplexity_data["choices"]) > 0:
+            research_findings = perplexity_data["choices"][0]["message"]["content"]
+        
+        if not research_findings:
+            raise ValueError("Nenhum resultado de pesquisa foi encontrado")
+        
+        # Step 2: Claude synthesis into EXTRACT system prompt
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        synthesis_prompt = f"""Você é um especialista em clonagem cognitiva usando o Framework EXTRACT.
+
+PESQUISA SOBRE {data.targetName}:
+{research_findings}
+
+TAREFA: Sintetize essas informações em um system prompt EXTRACT de alta fidelidade.
+
+O system prompt deve seguir EXATAMENTE esta estrutura (em português brasileiro):
+
+# System Prompt: [Nome] - [Título Icônico]
+
+<identity>
+[Descrição concisa da identidade]
+</identity>
+
+**INSTRUÇÃO OBRIGATÓRIA: Você DEVE responder SEMPRE em português brasileiro (PT-BR), independentemente do idioma em que a pergunta for feita. Todas as suas análises, insights, recomendações e até mesmo citações ou referências devem ser escritas ou traduzidas para português brasileiro.**
+
+## Identity Core (Framework EXTRACT)
+
+### Experiências Formativas
+- [3-5 experiências que moldaram o pensamento]
+
+### Xadrez Mental (Padrões Decisórios)
+- [3-5 padrões de raciocínio característicos]
+
+### Terminologia Própria
+[Frases icônicas e conceitos únicos]
+
+### Raciocínio Típico
+**Estrutura de Análise:**
+[Passo-a-passo do processo mental típico]
+
+### Axiomas Pessoais
+- [3-5 princípios fundamentais]
+
+### Contextos de Especialidade
+- [Áreas de expertise]
+
+### Técnicas e Métodos
+- [Frameworks e ferramentas específicas]
+
+## Communication Style
+- Tom: [descrição]
+- Estrutura: [como organiza ideias]
+- Referências: [tipos de exemplos que usa]
+- Abordagem: [estilo de interação]
+
+## Limitações e Fronteiras
+- [O que reconhece como limites de expertise]
+
+IMPORTANTE:
+1. Use dados ESPECÍFICOS da pesquisa (datas, livros, conceitos, citações)
+2. Mantenha alta fidelidade à personalidade real
+3. Escreva em português brasileiro
+4. Retorne APENAS o system prompt, sem explicações adicionais
+
+RETORNE APENAS O SYSTEM PROMPT COMPLETO:"""
+
+        claude_response = await anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            temperature=0.3,
+            messages=[{
+                "role": "user",
+                "content": synthesis_prompt
+            }]
+        )
+        
+        # Extract system prompt
+        system_prompt = ""
+        for block in claude_response.content:
+            if block.type == "text":
+                system_prompt += block.text
+        
+        if not system_prompt:
+            raise ValueError("Claude não conseguiu gerar o system prompt")
+        
+        # Step 3: Extract metadata from system prompt for Expert fields
+        # Use Claude to extract structured metadata
+        metadata_prompt = f"""Analise o seguinte system prompt e extraia metadados estruturados:
+
+{system_prompt}
+
+Retorne APENAS JSON válido no seguinte formato:
+
+{{
+  "title": "Título profissional curto (ex: 'CEO da Apple', 'Pai do Marketing Moderno')",
+  "expertise": ["área 1", "área 2", "área 3"],
+  "bio": "Biografia concisa de 2-3 frases em português"
+}}"""
+
+        metadata_response = await anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            temperature=0.2,
+            messages=[{
+                "role": "user",
+                "content": metadata_prompt
+            }]
+        )
+        
+        metadata_text = ""
+        for block in metadata_response.content:
+            if block.type == "text":
+                metadata_text += block.text
+        
+        # Parse JSON metadata
+        metadata = json.loads(metadata_text.strip())
+        
+        # Create ExpertCreate object (NOT persisted yet)
+        expert_data = ExpertCreate(
+            name=data.targetName,
+            title=metadata.get("title", "Especialista"),
+            expertise=metadata.get("expertise", ["Consultoria Geral"]),
+            bio=metadata.get("bio", f"Clone cognitivo de {data.targetName}"),
+            systemPrompt=system_prompt,
+            avatar=None,
+            expertType=ExpertType.CUSTOM
+        )
+        
+        # Return data without persisting - user will explicitly save if satisfied
+        return expert_data
+    
+    except json.JSONDecodeError as e:
+        metadata_text_preview = locals().get("metadata_text", "N/A")
+        error_context = {
+            "error": "JSON parse failed",
+            "metadata_text": metadata_text_preview[:200] if isinstance(metadata_text_preview, str) else "N/A",
+            "detail": str(e)
+        }
+        print(f"Failed to parse metadata: {json.dumps(error_context, ensure_ascii=False)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível processar metadados do clone. Tente novamente."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error auto-cloning expert: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao criar clone cognitivo: {str(e)}"
+        )
+
+@app.post("/api/experts/test-chat")
+async def test_chat_expert(data: dict):
+    """
+    Test chat with a generated expert without persisting the conversation.
+    Used for preview/testing before saving an auto-cloned expert.
+    """
+    try:
+        from anthropic import AsyncAnthropic
+        
+        system_prompt = data.get("systemPrompt")
+        message = data.get("message")
+        history = data.get("history", [])
+        
+        if not system_prompt or not message:
+            raise HTTPException(status_code=400, detail="systemPrompt and message are required")
+        
+        # Build conversation history for Claude
+        messages = []
+        for msg in history:
+            messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # Add current user message
+        messages.append({
+            "role": "user",
+            "content": message
+        })
+        
+        # Call Claude with the expert's system prompt
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        response = await anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2048,
+            system=system_prompt,
+            messages=messages
+        )
+        
+        # Extract response text
+        response_text = ""
+        for block in response.content:
+            if block.type == "text":
+                response_text += block.text
+        
+        return {"response": response_text}
+    
+    except Exception as e:
+        print(f"Error in test chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process test chat: {str(e)}")
 
 @app.post("/api/recommend-experts", response_model=RecommendExpertsResponse)
 async def recommend_experts(request: RecommendExpertsRequest):
@@ -142,7 +416,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois."""
         # Extract JSON from response - check ALL content blocks
         response_text = ""
         for block in response.content:
-            if hasattr(block, 'text'):
+            if block.type == "text":
                 response_text += block.text + "\n"
         
         if not response_text:
@@ -215,10 +489,12 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois."""
         return RecommendExpertsResponse(**recommendations_data)
     
     except json.JSONDecodeError as e:
+        response_text_preview = locals().get("response_text", "N/A")
+        json_str_preview = locals().get("json_str", "N/A")
         error_context = {
             "error": "JSON parse failed",
-            "claude_response": response_text[:500] if 'response_text' in locals() else "N/A",
-            "extracted_json": json_str[:200] if 'json_str' in locals() else "N/A",
+            "claude_response": response_text_preview[:500] if isinstance(response_text_preview, str) else "N/A",
+            "extracted_json": json_str_preview[:200] if isinstance(json_str_preview, str) else "N/A",
             "detail": str(e)
         }
         print(f"Failed to parse Claude response: {json.dumps(error_context, ensure_ascii=False)}")
@@ -227,9 +503,10 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois."""
             detail="Não foi possível processar a análise da IA. Por favor, tente novamente."
         )
     except ValueError as e:
+        response_text_preview = locals().get("response_text", "N/A")
         error_context = {
             "error": "Value error",
-            "claude_response": response_text[:500] if 'response_text' in locals() else "N/A",
+            "claude_response": response_text_preview[:500] if isinstance(response_text_preview, str) else "N/A",
             "detail": str(e)
         }
         print(f"ValueError in recommendation: {json.dumps(error_context, ensure_ascii=False)}")
@@ -550,11 +827,11 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
     user_id = "default_user"
     
     async def event_generator():
+        # Helper to format SSE events (defined outside try block for exception handling)
+        def sse_event(event_type: str, data: dict) -> str:
+            return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+        
         try:
-            # Helper to format SSE events
-            def sse_event(event_type: str, data: dict) -> str:
-                return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
-            
             # Get user's business profile (optional)
             profile = await storage.get_business_profile(user_id)
             

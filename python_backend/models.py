@@ -124,3 +124,8 @@ class RecommendExpertsRequest(BaseModel):
 class RecommendExpertsResponse(BaseModel):
     """Response with recommended experts ranked by relevance"""
     recommendations: List[ExpertRecommendation]
+
+class AutoCloneRequest(BaseModel):
+    """Request to auto-clone a cognitive expert from minimal input"""
+    targetName: str
+    context: Optional[str] = None  # Optional additional context
