@@ -38,6 +38,13 @@ function startPythonBackend() {
 
 const pythonBackend = startPythonBackend();
 
+// Proxy all /api requests to Python backend BEFORE any other middleware
+// This ensures the request body is not consumed by express.json()
+app.use('/api', createProxyMiddleware({
+  target: 'http://localhost:5001/api',
+  changeOrigin: true,
+}));
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
@@ -81,14 +88,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Proxy all /api requests to Python backend on port 5001
-  // Note: http-proxy-middleware automatically removes the /api prefix when proxying
-  // We need to add it back with pathRewrite
-  app.use('/api', createProxyMiddleware({
-    target: 'http://localhost:5001/api',
-    changeOrigin: true,
-  }));
-  
   await seedExperts();
   const server = await registerRoutes(app);
 

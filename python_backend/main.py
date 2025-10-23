@@ -109,19 +109,12 @@ async def send_message(conversation_id: str, data: MessageSend):
         if not expert:
             raise HTTPException(status_code=404, detail="Expert not found")
         
-        # Save user message
-        user_message = await storage.create_message(MessageCreate(
-            conversationId=conversation_id,
-            role="user",
-            content=data.content
-        ))
-        
-        # Get conversation history (excluding the user message we just saved)
+        # Get conversation history BEFORE saving the new user message
+        # This way we pass all previous messages to the agent
         all_messages = await storage.get_messages(conversation_id)
         history = [
             {"role": msg.role, "content": msg.content}
             for msg in all_messages
-            if msg.id != user_message.id
         ]
         
         # Create agent for this expert
@@ -130,8 +123,15 @@ async def send_message(conversation_id: str, data: MessageSend):
             system_prompt=expert.systemPrompt
         )
         
-        # Get AI response
+        # Get AI response (agent.chat will add the new user message to history)
         ai_response = await agent.chat(history, data.content)
+        
+        # Now save user message AFTER getting AI response
+        user_message = await storage.create_message(MessageCreate(
+            conversationId=conversation_id,
+            role="user",
+            content=data.content
+        ))
         
         # Save assistant message
         assistant_message = await storage.create_message(MessageCreate(
