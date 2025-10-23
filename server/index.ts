@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { spawn } from 'child_process';
+import path from 'path';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedExperts } from "./seed";
@@ -89,6 +90,11 @@ app.use((req, res, next) => {
 
 (async () => {
   await seedExperts();
+  
+  // Serve avatar images and other attached assets
+  // This must be before setupVite to avoid Vite intercepting the routes
+  app.use('/attached_assets', express.static(path.resolve(process.cwd(), 'attached_assets')));
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

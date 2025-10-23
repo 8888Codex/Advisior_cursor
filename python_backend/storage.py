@@ -18,6 +18,7 @@ class MemStorage:
             id=expert_id,
             name=data.name,
             title=data.title,
+            bio=data.bio,
             expertise=data.expertise,
             systemPrompt=data.systemPrompt,
             avatar=data.avatar,
