@@ -10,6 +10,7 @@ from PIL import Image
 import io
 import json
 import asyncio
+import httpx
 
 from models import (
     Expert, ExpertCreate, ExpertType,
@@ -817,6 +818,382 @@ async def get_expert_recommendations():
             status_code=500,
             detail=f"Failed to get recommendations: {str(e)}"
         )
+
+# Suggested Questions endpoint (personalized based on profile + expert expertise)
+@app.get("/api/experts/{expert_id}/suggested-questions")
+async def get_suggested_questions(expert_id: str):
+    """
+    Generate personalized suggested questions for a specific expert.
+    Uses Perplexity AI to create context-aware questions based on:
+    - User's business profile (industry, goals, challenges)
+    - Expert's area of expertise
+    
+    Returns 3-5 highly relevant questions the user could ask.
+    """
+    try:
+        from perplexity_research import perplexity_research
+        
+        # Get expert
+        expert = await storage.get_expert(expert_id)
+        if not expert:
+            raise HTTPException(status_code=404, detail="Expert not found")
+        
+        # Get user's business profile
+        user_id = "default_user"
+        profile = await storage.get_business_profile(user_id)
+        
+        # Build context for Perplexity
+        if profile:
+            # Personalized questions based on profile
+            context = f"""
+Generate 5 highly specific and actionable questions that a business owner in the {profile.industry} industry should ask {expert.name} ({expert.title}).
+
+Business Context:
+- Company: {profile.companyName}
+- Industry: {profile.industry}
+- Size: {profile.companySize}
+- Target Audience: {profile.targetAudience}
+- Main Products: {profile.mainProducts}
+- Marketing Channels: {', '.join(profile.channels) if profile.channels else 'Not specified'}
+- Budget Range: {profile.budgetRange}
+- Primary Goal: {profile.primaryGoal}
+- Main Challenge: {profile.mainChallenge}
+- Timeline: {profile.timeline}
+
+Expert's Areas of Expertise: {', '.join(expert.expertise[:5])}
+
+Generate exactly 5 questions that:
+1. Are SPECIFIC to this business's situation (industry, size, goals, challenges)
+2. Leverage {expert.name}'s unique expertise and methodology
+3. Are actionable and tactical (not generic theory)
+4. Address the business's primary goal ({profile.primaryGoal}) or challenge ({profile.mainChallenge})
+5. Are realistic for the given budget ({profile.budgetRange}) and timeline ({profile.timeline})
+
+Format each question as a complete, natural sentence that the user could directly ask.
+Do NOT number them or add prefixes. Just output 5 questions, one per line.
+"""
+        else:
+            # Generic questions based on expertise
+            context = f"""
+Generate 5 actionable questions that someone could ask {expert.name} ({expert.title}) to get practical marketing advice.
+
+Expert's Areas of Expertise: {', '.join(expert.expertise[:5])}
+
+Generate exactly 5 questions that:
+1. Leverage {expert.name}'s unique expertise and methodologies
+2. Are actionable and tactical (not theoretical)
+3. Cover different aspects of their expertise
+4. Are specific enough to get useful answers
+5. Are realistic for small to medium businesses
+
+Format each question as a complete, natural sentence.
+Do NOT number them or add prefixes. Just output 5 questions, one per line.
+"""
+        
+        # Use Perplexity to generate questions with lower temperature for consistency
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {perplexity_research.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a marketing strategy consultant who generates highly specific, actionable questions. Always respond with exactly 5 questions, one per line, no numbering or prefixes."
+                        },
+                        {
+                            "role": "user",
+                            "content": context
+                        }
+                    ],
+                    "temperature": 0.3,  # Lower temperature for more consistent, focused output
+                    "max_tokens": 500
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+        
+        # Parse questions from response
+        content = data["choices"][0]["message"]["content"]
+        # Split by newlines and filter out empty lines
+        questions = [q.strip() for q in content.split('\n') if q.strip()]
+        
+        # Clean up any numbering that might have been added despite instructions
+        cleaned_questions = []
+        for q in questions:
+            # Remove common numbering patterns: "1. ", "1) ", "- ", "• "
+            q_cleaned = q
+            import re
+            q_cleaned = re.sub(r'^\d+[\.\)]\s*', '', q_cleaned)  # Remove "1. " or "1) "
+            q_cleaned = re.sub(r'^[-•]\s*', '', q_cleaned)  # Remove "- " or "• "
+            if q_cleaned:
+                cleaned_questions.append(q_cleaned)
+        
+        # Return up to 5 questions (in case more were generated)
+        final_questions = cleaned_questions[:5]
+        
+        # Fallback if something went wrong
+        if not final_questions:
+            # Generic fallback based on expertise
+            final_questions = [
+                f"Como posso melhorar {expert.expertise[0].lower() if expert.expertise else 'minha estratégia'}?",
+                f"Quais são as melhores práticas em {expert.expertise[1].lower() if len(expert.expertise) > 1 else 'marketing'}?",
+                f"Como resolver desafios de {expert.expertise[2].lower() if len(expert.expertise) > 2 else 'negócios'}?"
+            ]
+        
+        return {
+            "expertId": expert_id,
+            "expertName": expert.name,
+            "questions": final_questions,
+            "personalized": profile is not None
+        }
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Missing PERPLEXITY_API_KEY
+        if "PERPLEXITY_API_KEY" in str(e):
+            # Return fallback questions instead of failing
+            expert = await storage.get_expert(expert_id)
+            if expert:
+                return {
+                    "expertId": expert_id,
+                    "expertName": expert.name,
+                    "questions": [
+                        f"Como posso melhorar {expert.expertise[0].lower() if expert.expertise else 'minha estratégia'}?",
+                        f"Quais são as melhores práticas em {expert.expertise[1].lower() if len(expert.expertise) > 1 else 'marketing'}?",
+                        f"Como resolver desafios de {expert.expertise[2].lower() if len(expert.expertise) > 2 else 'negócios'}?"
+                    ],
+                    "personalized": False
+                }
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        print(f"Error generating suggested questions: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return fallback instead of failing
+        try:
+            expert = await storage.get_expert(expert_id)
+            if expert:
+                return {
+                    "expertId": expert_id,
+                    "expertName": expert.name,
+                    "questions": [
+                        f"Como posso melhorar {expert.expertise[0].lower() if expert.expertise else 'minha estratégia'}?",
+                        f"Quais são as melhores práticas em {expert.expertise[1].lower() if len(expert.expertise) > 1 else 'marketing'}?",
+                        f"Como resolver desafios de {expert.expertise[2].lower() if len(expert.expertise) > 2 else 'negócios'}?"
+                    ],
+                    "personalized": False
+                }
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to generate questions: {str(e)}")
+
+# Business Insights endpoint (personalized tips based on profile)
+@app.get("/api/insights")
+async def get_business_insights():
+    """
+    Generate personalized business insights based on user's profile.
+    Uses Perplexity AI to create context-aware tips and recommendations.
+    
+    Returns 3-4 actionable insights specific to the user's business situation.
+    """
+    try:
+        from perplexity_research import perplexity_research
+        
+        # Get user's business profile
+        user_id = "default_user"
+        profile = await storage.get_business_profile(user_id)
+        
+        if not profile:
+            # No profile, return empty insights
+            return {
+                "hasProfile": False,
+                "insights": []
+            }
+        
+        # Build context for Perplexity to generate insights
+        context = f"""
+Generate 4 specific, actionable marketing insights for this business:
+
+Business Profile:
+- Company: {profile.companyName}
+- Industry: {profile.industry}
+- Size: {profile.companySize}
+- Target Audience: {profile.targetAudience}
+- Main Products: {profile.mainProducts}
+- Marketing Channels: {', '.join(profile.channels) if profile.channels else 'Not specified'}
+- Budget Range: {profile.budgetRange}
+- Primary Goal: {profile.primaryGoal}
+- Main Challenge: {profile.mainChallenge}
+- Timeline: {profile.timeline}
+
+Generate exactly 4 insights that:
+1. Are HIGHLY SPECIFIC to this business's industry ({profile.industry}), size ({profile.companySize}), and situation
+2. Are ACTIONABLE - something they can implement in the next 30 days
+3. Address their PRIMARY GOAL ({profile.primaryGoal}) or MAIN CHALLENGE ({profile.mainChallenge})
+4. Are realistic given their budget ({profile.budgetRange}) and timeline ({profile.timeline})
+5. Leverage current market trends and best practices (2024-2025 data)
+
+Each insight should:
+- Start with a clear category/topic (e.g., "SEO Strategy:", "Content Marketing:", "Paid Ads:")
+- Be 1-2 sentences maximum
+- Include specific tactics, not generic advice
+- Reference recent data or trends when relevant
+
+Format: Output 4 insights, one per line, each starting with the category followed by colon.
+Do NOT number them. Example format:
+Social Media: [specific insight here]
+Email Marketing: [specific insight here]
+"""
+        
+        # Use Perplexity to generate insights
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {perplexity_research.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a marketing strategist who provides hyper-specific, actionable insights based on business context. Always use recent data and trends. Format insights as 'Category: specific actionable insight'."
+                        },
+                        {
+                            "role": "user",
+                            "content": context
+                        }
+                    ],
+                    "temperature": 0.4,
+                    "max_tokens": 600,
+                    "search_recency_filter": "month"  # Use recent data
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+        
+        # Parse insights from response
+        content = data["choices"][0]["message"]["content"]
+        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        
+        # Parse into structured insights (category + content)
+        insights = []
+        for line in lines:
+            # Remove numbering if present
+            import re
+            line_cleaned = re.sub(r'^\d+[\.\)]\s*', '', line)
+            line_cleaned = re.sub(r'^[-•]\s*', '', line_cleaned)
+            
+            # Try to split by first colon to get category
+            if ':' in line_cleaned:
+                parts = line_cleaned.split(':', 1)
+                if len(parts) == 2:
+                    insights.append({
+                        "category": parts[0].strip(),
+                        "content": parts[1].strip()
+                    })
+            else:
+                # No colon, use whole line as content with generic category
+                insights.append({
+                    "category": "Dica Estratégica",
+                    "content": line_cleaned
+                })
+        
+        # Limit to 4 insights
+        insights = insights[:4]
+        
+        # Fallback if something went wrong
+        if not insights:
+            insights = [
+                {
+                    "category": "Marketing Digital",
+                    "content": f"Para empresas de {profile.industry}, foque em {profile.primaryGoal.lower()} através dos canais que você já usa."
+                },
+                {
+                    "category": "Público-Alvo",
+                    "content": f"Personalize sua mensagem para {profile.targetAudience} com conteúdo relevante e consistente."
+                },
+                {
+                    "category": "Orçamento",
+                    "content": f"Com orçamento de {profile.budgetRange}, priorize canais de alto ROI antes de expandir."
+                }
+            ]
+        
+        return {
+            "hasProfile": True,
+            "insights": insights,
+            "profileSummary": {
+                "companyName": profile.companyName,
+                "industry": profile.industry,
+                "primaryGoal": profile.primaryGoal
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Missing PERPLEXITY_API_KEY - return fallback
+        if "PERPLEXITY_API_KEY" in str(e):
+            user_id = "default_user"
+            profile = await storage.get_business_profile(user_id)
+            if profile:
+                return {
+                    "hasProfile": True,
+                    "insights": [
+                        {
+                            "category": "Marketing Digital",
+                            "content": f"Para empresas de {profile.industry}, foque em {profile.primaryGoal.lower()} através dos canais que você já usa."
+                        },
+                        {
+                            "category": "Público-Alvo",
+                            "content": f"Personalize sua mensagem para {profile.targetAudience} com conteúdo relevante e consistente."
+                        },
+                        {
+                            "category": "Orçamento",
+                            "content": f"Com orçamento de {profile.budgetRange}, priorize canais de alto ROI antes de expandir."
+                        }
+                    ],
+                    "profileSummary": {
+                        "companyName": profile.companyName,
+                        "industry": profile.industry,
+                        "primaryGoal": profile.primaryGoal
+                    }
+                }
+            return {"hasProfile": False, "insights": []}
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        print(f"Error generating business insights: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return fallback instead of failing
+        try:
+            user_id = "default_user"
+            profile = await storage.get_business_profile(user_id)
+            if profile:
+                return {
+                    "hasProfile": True,
+                    "insights": [
+                        {
+                            "category": "Marketing Digital",
+                            "content": f"Para empresas de {profile.industry}, foque em {profile.primaryGoal.lower()}."
+                        }
+                    ],
+                    "profileSummary": {
+                        "companyName": profile.companyName,
+                        "industry": profile.industry,
+                        "primaryGoal": profile.primaryGoal
+                    }
+                }
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to generate insights: {str(e)}")
 
 # Council Analysis endpoints
 @app.post("/api/council/analyze", response_model=CouncilAnalysis)

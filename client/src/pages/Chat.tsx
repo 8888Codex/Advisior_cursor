@@ -89,17 +89,22 @@ export default function Chat() {
     sendMessageMutation.mutate({ conversationId, content: input });
   };
 
+  // Fetch personalized suggested questions
+  const { data: suggestedQuestionsData } = useQuery<{
+    expertId: string;
+    expertName: string;
+    questions: string[];
+    personalized: boolean;
+  }>({
+    queryKey: ["/api/experts", expertId, "suggested-questions"],
+    enabled: !!expertId,
+  });
+
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
   };
 
-  const suggestedQuestions = expert
-    ? [
-        `Como posso melhorar ${expert.expertise[0]?.toLowerCase() || "minha estratégia"}?`,
-        `Quais são as melhores práticas em ${expert.expertise[1]?.toLowerCase() || "minha área"}?`,
-        `Como resolver desafios de ${expert.expertise[2]?.toLowerCase() || "negócios"}?`,
-      ]
-    : [];
+  const suggestedQuestions = suggestedQuestionsData?.questions || [];
 
   if (expertLoading) {
     return (
@@ -251,7 +256,12 @@ export default function Chat() {
             transition={{ duration: 0.3, delay: 0.1 }}
           >
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-muted-foreground">Perguntas Sugeridas</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              Perguntas Sugeridas
+              {suggestedQuestionsData?.personalized && (
+                <span className="ml-2 text-xs text-primary">(Personalizadas para você)</span>
+              )}
+            </span>
           </motion.div>
           <div className="flex flex-wrap gap-2">
             {suggestedQuestions.map((question, index) => (
