@@ -33,7 +33,13 @@ Preferred communication style: Simple, everyday language.
 - **Development Workflow**: `npm run dev` starts Express, which spawns the auto-reloading Python backend.
 - **Production Readiness**: AsyncAnthropic prevents event loop blocking. Auto-clone feature complete. In-memory storage is a known limitation for production persistence.
 - **UX/UI Decisions**: Disney-level animations for onboarding, chat interactions, expert cards, suggested questions, and page transitions. Consistent timing (0.3s for micro, 0.5s for macro) and easing function (cubic-bezier(0.4, 0, 0.2, 1)).
-- **Personalization**: Expert recommendation system based on user profile (goal, industry, challenge, keywords) and automatic injection of profile context into AI system prompts.
+- **Personalization System (Fase 4 - Completa)**:
+  - Expert recommendation engine scores 8 experts (0-100) based on user profile alignment, displays 5-star badges for top matches (stars >= 4)
+  - Contextual AI prompt enrichment injects business profile into system prompts for all chat interactions
+  - Perplexity-powered suggested questions: GET /api/experts/{expert_id}/suggested-questions generates 5 personalized questions (temperature 0.3, sonar-pro model) with defensive fallbacks
+  - Business insights section on home: GET /api/insights generates 3-4 industry-specific tips (temperature 0.4, month recency filter) with category badges
+  - Smart filters on /experts page: search, sort by relevance/name, filter by expertise category, toggle "Apenas Recomendados" (stars >= 4), active filter count
+  - All personalized features conditional on hasProfile=true, graceful fallbacks to generic content when Perplexity API fails or profile missing
 
 ## External Dependencies
 

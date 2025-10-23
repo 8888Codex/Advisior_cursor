@@ -70,6 +70,9 @@ export default function Onboarding() {
     mutationFn: async (data: InsertBusinessProfile) => {
       return await apiRequest("/api/profile", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
     },
