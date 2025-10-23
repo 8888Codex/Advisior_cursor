@@ -11,11 +11,13 @@ import Experts from "@/pages/Experts";
 import Chat from "@/pages/Chat";
 import Create from "@/pages/Create";
 import AdminExperts from "@/pages/AdminExperts";
+import Onboarding from "@/pages/Onboarding";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route path="/experts" component={Experts} />
       <Route path="/chat/:id" component={Chat} />
       <Route path="/create" component={Create} />

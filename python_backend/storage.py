@@ -1,7 +1,10 @@
 from typing import Dict, List, Optional
 from datetime import datetime
 import uuid
-from models import Expert, ExpertCreate, Conversation, ConversationCreate, Message, MessageCreate, ExpertType
+from models import (
+    Expert, ExpertCreate, Conversation, ConversationCreate, 
+    Message, MessageCreate, ExpertType, BusinessProfile, BusinessProfileCreate
+)
 
 class MemStorage:
     """In-memory storage compatible with frontend API expectations"""
@@ -10,6 +13,7 @@ class MemStorage:
         self.experts: Dict[str, Expert] = {}
         self.conversations: Dict[str, Conversation] = {}
         self.messages: Dict[str, Message] = {}
+        self.profiles: Dict[str, BusinessProfile] = {}  # userId -> BusinessProfile
     
     # Expert operations
     async def create_expert(self, data: ExpertCreate) -> Expert:
@@ -88,6 +92,54 @@ class MemStorage:
         # Sort by createdAt ascending (chronological order)
         messages.sort(key=lambda x: x.createdAt)
         return messages
+    
+    # Business Profile operations
+    async def save_business_profile(self, user_id: str, data: BusinessProfileCreate) -> BusinessProfile:
+        """Create or update business profile for a user"""
+        existing_profile = self.profiles.get(user_id)
+        
+        if existing_profile:
+            # Update existing profile
+            profile = BusinessProfile(
+                id=existing_profile.id,
+                userId=user_id,
+                companyName=data.companyName,
+                industry=data.industry,
+                companySize=data.companySize,
+                targetAudience=data.targetAudience,
+                mainProducts=data.mainProducts,
+                channels=data.channels,
+                budgetRange=data.budgetRange,
+                primaryGoal=data.primaryGoal,
+                mainChallenge=data.mainChallenge,
+                timeline=data.timeline,
+                createdAt=existing_profile.createdAt,
+                updatedAt=datetime.utcnow()
+            )
+        else:
+            # Create new profile
+            profile_id = str(uuid.uuid4())
+            profile = BusinessProfile(
+                id=profile_id,
+                userId=user_id,
+                companyName=data.companyName,
+                industry=data.industry,
+                companySize=data.companySize,
+                targetAudience=data.targetAudience,
+                mainProducts=data.mainProducts,
+                channels=data.channels,
+                budgetRange=data.budgetRange,
+                primaryGoal=data.primaryGoal,
+                mainChallenge=data.mainChallenge,
+                timeline=data.timeline
+            )
+        
+        self.profiles[user_id] = profile
+        return profile
+    
+    async def get_business_profile(self, user_id: str) -> Optional[BusinessProfile]:
+        """Get business profile for a user"""
+        return self.profiles.get(user_id)
 
 # Global storage instance
 storage = MemStorage()

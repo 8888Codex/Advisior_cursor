@@ -11,7 +11,8 @@ import io
 from models import (
     Expert, ExpertCreate, ExpertType,
     Conversation, ConversationCreate,
-    Message, MessageCreate, MessageSend, MessageResponse
+    Message, MessageCreate, MessageSend, MessageResponse,
+    BusinessProfile, BusinessProfileCreate
 )
 from storage import storage
 from crew_agent import LegendAgentFactory
@@ -265,6 +266,26 @@ async def send_message(conversation_id: str, data: MessageSend):
     except Exception as e:
         print(f"Error processing message: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to process message: {str(e)}")
+
+# Business Profile endpoints
+@app.post("/api/profile", response_model=BusinessProfile)
+async def save_profile(data: BusinessProfileCreate):
+    """Create or update business profile"""
+    # For now, use a default user_id until we add authentication
+    user_id = "default_user"
+    try:
+        profile = await storage.save_business_profile(user_id, data)
+        return profile
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save profile: {str(e)}")
+
+@app.get("/api/profile", response_model=Optional[BusinessProfile])
+async def get_profile():
+    """Get current user's business profile"""
+    # For now, use a default user_id until we add authentication
+    user_id = "default_user"
+    profile = await storage.get_business_profile(user_id)
+    return profile
 
 if __name__ == "__main__":
     import uvicorn
