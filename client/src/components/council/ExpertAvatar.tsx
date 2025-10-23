@@ -13,31 +13,31 @@ const statusConfig = {
     icon: null,
     color: "text-muted-foreground",
     bgColor: "bg-muted",
-    label: "Waiting",
+    label: "Aguardando",
   },
   researching: {
     icon: Search,
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
-    label: "Researching",
+    label: "Pesquisando",
   },
   analyzing: {
     icon: Sparkles,
     color: "text-primary",
     bgColor: "bg-primary/10",
-    label: "Analyzing",
+    label: "Analisando",
   },
   completed: {
     icon: Check,
     color: "text-green-500",
     bgColor: "bg-green-500/10",
-    label: "Completed",
+    label: "Concluído",
   },
   failed: {
     icon: X,
     color: "text-destructive",
     bgColor: "bg-destructive/10",
-    label: "Failed",
+    label: "Falhou",
   },
 };
 
@@ -143,10 +143,10 @@ export function ExpertAvatar({ status, index }: ExpertAvatarProps) {
               className="text-xs text-center space-y-1 text-muted-foreground"
             >
               {status.insightCount !== undefined && (
-                <div>{status.insightCount} insights</div>
+                <div>{status.insightCount} insight{status.insightCount !== 1 ? 's' : ''}</div>
               )}
               {status.recommendationCount !== undefined && (
-                <div>{status.recommendationCount} recommendations</div>
+                <div>{status.recommendationCount} recomendaç{status.recommendationCount !== 1 ? 'ões' : 'ão'}</div>
               )}
             </motion.div>
           )}

@@ -43,9 +43,9 @@ export function ActivityFeed({ activities, className = "" }: ActivityFeedProps) 
   return (
     <div className={`space-y-2 ${className}`} data-testid="activity-feed">
       <div className="flex items-center justify-between px-1">
-        <h3 className="font-semibold text-sm">Activity Feed</h3>
+        <h3 className="font-semibold text-sm">Feed de Atividades</h3>
         <span className="text-xs text-muted-foreground">
-          {activities.length} events
+          {activities.length} evento{activities.length !== 1 ? 's' : ''}
         </span>
       </div>
 
@@ -57,7 +57,7 @@ export function ActivityFeed({ activities, className = "" }: ActivityFeedProps) 
               animate={{ opacity: 1 }}
               className="flex items-center justify-center h-full text-muted-foreground text-sm"
             >
-              No activity yet...
+              Nenhuma atividade ainda...
             </motion.div>
           ) : (
             <div className="space-y-3">

@@ -29,12 +29,12 @@ export function CouncilAnimation({
       >
         <div className="flex items-center justify-center gap-2 mb-2">
           <Users className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Council in Session</h2>
+          <h2 className="text-2xl font-bold">Conselho em Sessão</h2>
         </div>
         <p className="text-muted-foreground">
           {isStreaming
-            ? `Analyzing... (${completedCount}/${totalCount} experts completed)`
-            : `Analysis complete (${completedCount}/${totalCount} experts)`}
+            ? `Analisando... (${completedCount}/${totalCount} especialista${totalCount !== 1 ? 's' : ''} concluído${completedCount !== 1 ? 's' : ''})`
+            : `Análise completa (${completedCount}/${totalCount} especialista${totalCount !== 1 ? 's' : ''})`}
         </p>
       </motion.div>
 
@@ -44,9 +44,9 @@ export function CouncilAnimation({
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Expert Panel</CardTitle>
+              <CardTitle>Painel de Especialistas</CardTitle>
               <CardDescription>
-                Marketing legends analyzing your challenge
+                Lendas do marketing analisando seu desafio
               </CardDescription>
             </CardHeader>
             <CardContent>

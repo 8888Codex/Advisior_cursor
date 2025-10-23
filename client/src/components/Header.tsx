@@ -21,7 +21,7 @@ export function Header() {
           </Link>
           <Link href="/test-council">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-test-council">
-              🧪 Test Council
+              🧪 Testar Conselho
             </span>
           </Link>
           <Link href="/create">

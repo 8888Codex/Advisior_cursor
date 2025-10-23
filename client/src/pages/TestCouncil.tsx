@@ -109,10 +109,10 @@ export default function TestCouncil() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
           <Users className="h-10 w-10" />
-          Council Analysis Test
+          Teste de Análise do Conselho
         </h1>
         <p className="text-muted-foreground">
-          Test the AI council feature with legendary marketing experts
+          Teste a funcionalidade do conselho de IA com lendas do marketing
         </p>
       </div>
 
@@ -120,14 +120,14 @@ export default function TestCouncil() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Your Business Challenge</CardTitle>
+              <CardTitle>Seu Desafio de Negócio</CardTitle>
               <CardDescription>
-                Describe the problem you'd like the council to analyze
+                Descreva o problema que você gostaria que o conselho analisasse
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Example: We're launching a sustainable fashion brand targeting Gen Z. How should we position ourselves against fast fashion giants while maintaining authentic values?"
+                placeholder="Exemplo: Estamos lançando uma marca de moda sustentável para a Geração Z. Como devemos nos posicionar contra gigantes do fast fashion mantendo valores autênticos?"
                 value={problem}
                 onChange={(e) => setProblem(e.target.value)}
                 className="min-h-[150px] text-base"
@@ -141,10 +141,10 @@ export default function TestCouncil() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Select Experts</CardTitle>
+                  <CardTitle>Selecionar Especialistas</CardTitle>
                   <CardDescription>
-                    Choose which marketing legends to consult ({selectedExperts.length}{" "}
-                    selected)
+                    Escolha quais lendas do marketing consultar ({selectedExperts.length}{" "}
+                    selecionado{selectedExperts.length !== 1 ? 's' : ''})
                   </CardDescription>
                 </div>
                 <Button
@@ -154,7 +154,7 @@ export default function TestCouncil() {
                   disabled={loadingExperts || analyzeMutation.isPending}
                   data-testid="button-select-all"
                 >
-                  {selectedExperts.length === experts.length ? "Deselect All" : "Select All"}
+                  {selectedExperts.length === experts.length ? "Desmarcar Todos" : "Selecionar Todos"}
                 </Button>
               </div>
             </CardHeader>
@@ -203,10 +203,10 @@ export default function TestCouncil() {
                 <div className="space-y-0.5">
                   <Label htmlFor="streaming-mode" className="flex items-center gap-2 cursor-pointer">
                     <Zap className="h-4 w-4 text-primary" />
-                    Live Streaming Mode
+                    Modo Streaming ao Vivo
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Watch experts work in real-time
+                    Veja os especialistas trabalhando em tempo real
                   </p>
                 </div>
                 <Switch
@@ -234,12 +234,12 @@ export default function TestCouncil() {
             {isAnalyzing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Analyzing... (this may take 1-3 minutes)
+                Analisando... (pode levar 1-3 minutos)
               </>
             ) : (
               <>
                 {useStreaming ? <Zap className="mr-2 h-5 w-5" /> : <Sparkles className="mr-2 h-5 w-5" />}
-                Consult Council ({selectedExperts.length} experts)
+                Consultar Conselho ({selectedExperts.length} especialista{selectedExperts.length !== 1 ? 's' : ''})
               </>
             )}
           </Button>
@@ -248,7 +248,7 @@ export default function TestCouncil() {
             <Card className="border-destructive">
               <CardContent className="pt-6">
                 <p className="text-destructive">
-                  ❌ Error: {(analyzeMutation.error as Error).message}
+                  ❌ Erro: {(analyzeMutation.error as Error).message}
                 </p>
               </CardContent>
             </Card>
@@ -273,24 +273,24 @@ export default function TestCouncil() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Council Insights
+                  Insights do Conselho
                 </CardTitle>
                 <CardDescription>
-                  Analysis from {analysis.contributions.length} expert(s)
+                  Análise de {analysis.contributions.length} especialista{analysis.contributions.length !== 1 ? 's' : ''}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[600px] pr-4">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="font-semibold mb-2">📋 Strategic Consensus</h3>
+                      <h3 className="font-semibold mb-2">📋 Consenso Estratégico</h3>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {analysis.consensus}
                       </p>
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="font-semibold">💡 Expert Contributions</h3>
+                      <h3 className="font-semibold">💡 Contribuições dos Especialistas</h3>
                       {analysis.contributions.map((contrib, idx) => (
                         <Card key={idx}>
                           <CardHeader className="pb-3">
@@ -301,7 +301,7 @@ export default function TestCouncil() {
                           <CardContent className="space-y-3">
                             {contrib.keyInsights.length > 0 && (
                               <div>
-                                <p className="text-sm font-medium mb-1">Key Insights:</p>
+                                <p className="text-sm font-medium mb-1">Principais Insights:</p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
                                   {contrib.keyInsights.map((insight, i) => (
                                     <li key={i} className="flex gap-2">
@@ -315,7 +315,7 @@ export default function TestCouncil() {
                             {contrib.recommendations.length > 0 && (
                               <div>
                                 <p className="text-sm font-medium mb-1">
-                                  Recommendations:
+                                  Recomendações:
                                 </p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
                                   {contrib.recommendations.map((rec, i) => (
@@ -340,7 +340,7 @@ export default function TestCouncil() {
               <CardContent className="pt-6">
                 <div className="text-center text-muted-foreground py-12">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Submit a problem to see council analysis</p>
+                  <p>Envie um problema para ver a análise do conselho</p>
                 </div>
               </CardContent>
             </Card>
