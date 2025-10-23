@@ -16,7 +16,8 @@ from models import (
     Conversation, ConversationCreate,
     Message, MessageCreate, MessageSend, MessageResponse,
     BusinessProfile, BusinessProfileCreate,
-    CouncilAnalysis, CouncilAnalysisCreate
+    CouncilAnalysis, CouncilAnalysisCreate,
+    RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation
 )
 from storage import storage
 from crew_agent import LegendAgentFactory
@@ -68,6 +69,185 @@ async def create_expert(data: ExpertCreate):
         return expert
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create expert: {str(e)}")
+
+@app.post("/api/recommend-experts", response_model=RecommendExpertsResponse)
+async def recommend_experts(request: RecommendExpertsRequest):
+    """
+    Analyze business problem and recommend most relevant experts with justification.
+    Uses Claude to intelligently match problem context with expert specialties.
+    """
+    try:
+        # Get all available experts
+        experts = await storage.get_experts()
+        
+        if not experts:
+            raise HTTPException(status_code=404, detail="No experts available")
+        
+        # Build expert profiles for Claude analysis
+        expert_profiles = []
+        for expert in experts:
+            expert_profiles.append({
+                "id": expert.id,
+                "name": expert.name,
+                "title": expert.title,
+                "expertise": expert.expertise,
+                "bio": expert.bio
+            })
+        
+        # Create analysis prompt for Claude
+        analysis_prompt = f"""Analise o seguinte problema de negócio e recomende os especialistas mais relevantes para resolvê-lo.
+
+PROBLEMA DO CLIENTE:
+{request.problem}
+
+ESPECIALISTAS DISPONÍVEIS:
+{json.dumps(expert_profiles, ensure_ascii=False, indent=2)}
+
+INSTRUÇÕES:
+1. Analise o problema cuidadosamente
+2. Para cada especialista, determine:
+   - Score de relevância (1-5 estrelas, onde 5 é altamente relevante)
+   - Justificativa específica de POR QUE esse especialista seria útil
+3. Recomende APENAS especialistas com score 3 ou superior
+4. Ordene por relevância (score mais alto primeiro)
+5. Retorne APENAS JSON válido no seguinte formato:
+
+{{
+  "recommendations": [
+    {{
+      "expertId": "id-do-especialista",
+      "expertName": "Nome do Especialista",
+      "relevanceScore": 5,
+      "justification": "Justificativa específica em português brasileiro"
+    }}
+  ]
+}}
+
+IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois."""
+
+        # Call Claude for intelligent analysis
+        from anthropic import AsyncAnthropic
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        response = await anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2048,
+            temperature=0.3,  # Lower temperature for more consistent analysis
+            messages=[{
+                "role": "user",
+                "content": analysis_prompt
+            }]
+        )
+        
+        # Extract JSON from response - check ALL content blocks
+        response_text = ""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                response_text += block.text + "\n"
+        
+        if not response_text:
+            raise ValueError("No text content in Claude response")
+        
+        # Robust JSON extraction - try ALL brace candidates and return first valid recommendations JSON
+        # This handles Claude responses with prose, brace fragments, or irrelevant JSON before payload
+        def extract_recommendations_json(text: str) -> str:
+            """Find first valid JSON object containing 'recommendations' key"""
+            # Find all potential starting positions
+            potential_starts = [i for i, char in enumerate(text) if char == '{']
+            
+            if not potential_starts:
+                raise ValueError("No JSON object found - no opening brace")
+            
+            # Try each candidate starting position
+            for start_pos in potential_starts:
+                brace_count = 0
+                in_string = False
+                escape_next = False
+                
+                for i in range(start_pos, len(text)):
+                    char = text[i]
+                    
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    
+                    if char == '\\':
+                        escape_next = True
+                        continue
+                    
+                    if char == '"' and not in_string:
+                        in_string = True
+                    elif char == '"' and in_string:
+                        in_string = False
+                    elif char == '{' and not in_string:
+                        brace_count += 1
+                    elif char == '}' and not in_string:
+                        brace_count -= 1
+                        if brace_count == 0:
+                            # Found complete object - test if it matches RecommendExpertsResponse schema
+                            candidate = text[start_pos:i+1]
+                            try:
+                                parsed = json.loads(candidate)
+                                # Verify this object matches the expected schema
+                                if isinstance(parsed, dict) and 'recommendations' in parsed:
+                                    # Try Pydantic validation to ensure schema compliance
+                                    try:
+                                        RecommendExpertsResponse(**parsed)
+                                        # Valid schema! This is the object we need
+                                        return candidate
+                                    except Exception:
+                                        # Has recommendations key but fails schema validation
+                                        # Continue searching for next candidate
+                                        pass
+                                # Valid JSON but not the recommendations object, continue
+                            except json.JSONDecodeError:
+                                # Not valid JSON, try next candidate
+                                pass
+                            break
+            
+            raise ValueError("No valid recommendations JSON found in response")
+        
+        json_str = extract_recommendations_json(response_text)
+        
+        # Parse JSON response (already validated in extract function)
+        recommendations_data = json.loads(json_str)
+        
+        return RecommendExpertsResponse(**recommendations_data)
+    
+    except json.JSONDecodeError as e:
+        error_context = {
+            "error": "JSON parse failed",
+            "claude_response": response_text[:500] if 'response_text' in locals() else "N/A",
+            "extracted_json": json_str[:200] if 'json_str' in locals() else "N/A",
+            "detail": str(e)
+        }
+        print(f"Failed to parse Claude response: {json.dumps(error_context, ensure_ascii=False)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Não foi possível processar a análise da IA. Por favor, tente novamente."
+        )
+    except ValueError as e:
+        error_context = {
+            "error": "Value error",
+            "claude_response": response_text[:500] if 'response_text' in locals() else "N/A",
+            "detail": str(e)
+        }
+        print(f"ValueError in recommendation: {json.dumps(error_context, ensure_ascii=False)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível encontrar recomendações válidas. Por favor, tente novamente."
+        )
+    except Exception as e:
+        error_context = {
+            "error": "Unexpected error",
+            "type": type(e).__name__,
+            "detail": str(e)
+        }
+        print(f"Error recommending experts: {json.dumps(error_context, ensure_ascii=False)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Erro ao processar recomendações. Por favor, tente novamente."
+        )
 
 @app.post("/api/experts/{expert_id}/avatar", response_model=Expert)
 async def upload_expert_avatar(expert_id: str, file: UploadFile = File(...)):

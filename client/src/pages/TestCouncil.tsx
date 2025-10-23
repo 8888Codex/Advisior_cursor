@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCouncilStream } from "@/hooks/useCouncilStream";
+import { useDebounce } from "@/hooks/useDebounce";
 import { CouncilAnimation } from "@/components/council/CouncilAnimation";
 
 interface Expert {
@@ -18,6 +20,13 @@ interface Expert {
   name: string;
   tagline: string;
   specialty: string;
+}
+
+interface ExpertRecommendation {
+  expertId: string;
+  expertName: string;
+  relevanceScore: number;  // 1-5 stars
+  justification: string;
 }
 
 interface CouncilAnalysis {
@@ -41,6 +50,29 @@ export default function TestCouncil() {
   const { data: experts = [], isLoading: loadingExperts } = useQuery<Expert[]>({
     queryKey: ["/api/experts"],
   });
+
+  // Debounce problem input for recommendations (800ms delay)
+  const debouncedProblem = useDebounce(problem, 800);
+
+  // Get expert recommendations based on problem
+  const { data: recommendationsData, isLoading: loadingRecommendations } = useQuery<{ recommendations: ExpertRecommendation[] }>({
+    queryKey: ["/api/recommend-experts", debouncedProblem],
+    queryFn: async () => {
+      if (!debouncedProblem.trim() || debouncedProblem.trim().length < 10) {
+        return { recommendations: [] };
+      }
+      
+      const response = await apiRequest("/api/recommend-experts", {
+        method: "POST",
+        body: JSON.stringify({ problem: debouncedProblem }),
+        headers: { "Content-Type": "application/json" },
+      });
+      return response.json();
+    },
+    enabled: debouncedProblem.trim().length >= 10,
+  });
+
+  const recommendations = recommendationsData?.recommendations || [];
 
   // SSE Streaming hook
   const [streamingEnabled, setStreamingEnabled] = useState(false);
@@ -83,6 +115,11 @@ export default function TestCouncil() {
     } else {
       setSelectedExperts(experts.map((e) => e.id));
     }
+  };
+
+  const handleApplySuggestions = () => {
+    const recommendedIds = recommendations.map(r => r.expertId);
+    setSelectedExperts(recommendedIds);
   };
 
   const handleSubmit = async () => {
@@ -137,6 +174,45 @@ export default function TestCouncil() {
             </CardContent>
           </Card>
 
+          {/* AI Recommendations Section */}
+          {loadingRecommendations && debouncedProblem.trim().length >= 10 && (
+            <Card className="border-primary/50 bg-primary/5">
+              <CardContent className="pt-6 pb-6">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Analisando seu problema para recomendar especialistas...
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {recommendations.length > 0 && !loadingRecommendations && (
+            <Card className="border-primary/50 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleApplySuggestions}
+                    disabled={analyzeMutation.isPending || loadingRecommendations}
+                    data-testid="button-apply-suggestions"
+                  >
+                    Usar Sugestões ({recommendations.length})
+                  </Button>
+                </div>
+                <CardDescription>
+                  Recomendamos estes especialistas com base no seu problema
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -164,34 +240,71 @@ export default function TestCouncil() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {experts.map((expert) => (
-                    <div
-                      key={expert.id}
-                      className="flex items-start space-x-3 p-3 rounded-lg border hover-elevate cursor-pointer"
-                      onClick={() => handleToggleExpert(expert.id)}
-                      data-testid={`expert-card-${expert.id}`}
-                    >
-                      <Checkbox
-                        checked={selectedExperts.includes(expert.id)}
-                        onCheckedChange={() => handleToggleExpert(expert.id)}
-                        disabled={analyzeMutation.isPending}
-                        data-testid={`checkbox-expert-${expert.id}`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <Label className="font-semibold cursor-pointer">
-                          {expert.name}
-                        </Label>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {expert.tagline}
-                        </p>
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          {expert.specialty}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <TooltipProvider>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {experts.map((expert) => {
+                      const recommendation = recommendations.find(r => r.expertId === expert.id);
+                      const isRecommended = !!recommendation;
+                      
+                      return (
+                        <Tooltip key={expert.id}>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={`flex items-start space-x-3 p-3 rounded-lg border hover-elevate cursor-pointer ${
+                                isRecommended ? 'border-primary/50 bg-primary/5' : ''
+                              }`}
+                              onClick={() => handleToggleExpert(expert.id)}
+                              data-testid={`expert-card-${expert.id}`}
+                            >
+                              <Checkbox
+                                checked={selectedExperts.includes(expert.id)}
+                                disabled={analyzeMutation.isPending}
+                                data-testid={`checkbox-expert-${expert.id}`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Label className="font-semibold cursor-pointer">
+                                    {expert.name}
+                                  </Label>
+                                  {isRecommended && (
+                                    <Badge variant="default" className="text-xs px-1.5 py-0">
+                                      Recomendado
+                                    </Badge>
+                                  )}
+                                </div>
+                                {isRecommended && recommendation && (
+                                  <div className="flex items-center gap-0.5 mb-1">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-3 w-3 ${
+                                          i < recommendation.relevanceScore
+                                            ? 'fill-primary text-primary'
+                                            : 'text-muted-foreground/30'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {expert.tagline}
+                                </p>
+                                <Badge variant="secondary" className="mt-1 text-xs">
+                                  {expert.specialty}
+                                </Badge>
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          {isRecommended && recommendation && (
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-sm">{recommendation.justification}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </TooltipProvider>
               )}
             </CardContent>
           </Card>

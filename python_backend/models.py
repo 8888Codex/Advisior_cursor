@@ -109,3 +109,18 @@ class CouncilAnalysisCreate(BaseModel):
     """Request payload for council analysis"""
     problem: str
     expertIds: Optional[List[str]] = None  # If None, use all 8 legends
+
+class ExpertRecommendation(BaseModel):
+    """Single expert recommendation with relevance score and justification"""
+    expertId: str
+    expertName: str
+    relevanceScore: int  # 1-5 stars
+    justification: str
+
+class RecommendExpertsRequest(BaseModel):
+    """Request to get expert recommendations based on problem"""
+    problem: str
+
+class RecommendExpertsResponse(BaseModel):
+    """Response with recommended experts ranked by relevance"""
+    recommendations: List[ExpertRecommendation]
