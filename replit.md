@@ -183,3 +183,26 @@ Each marketing legend has a detailed system prompt with 8 cognitive layers:
 - AI responses authentic to each legend's personality (verified manually and via tests)
 - Concurrent request support confirmed via async client architecture
 - Preview→test→save workflow validated by architect review
+
+**Fase 2: Onboarding Cinematográfico (COMPLETED)**
+- **Página /welcome com 3 Etapas**:
+  - **Hero Section**: Introdução visual com animações Framer Motion, badge "Bem-vindo ao AdvisorIA", título principal, descrição do sistema e botão CTA com loading state
+  - **Tour Interativo**: Carrossel cinematográfico apresentando os 8 legendários do marketing com avatars, badges de expertise, biografia e progress bar. Navegação anterior/próximo/pular totalmente funcional
+  - **Formulário de Perfil**: Coleta dados do negócio (empresa, indústria, tamanho, público-alvo, produtos, canais, orçamento, objetivo, desafio, prazo) para personalização futura
+- **Estados de Loading/Empty Robusto**:
+  - Hero CTA desabilitado apenas durante `expertsLoading`, habilitado assim que request termina
+  - Tour acessível em QUALQUER cenário: loading (mostra card com Sparkles rotativo), empty (mostra escape hatch "Pular para Perfil"), success (mostra carrossel)
+  - Garantia de zero dead-ends: usuário sempre pode progredir independente do payload de experts
+- **Animações Disney-Level**:
+  - AnimatePresence do Framer Motion para transições suaves entre etapas
+  - Entrada/saída com fade e slide (x/y offset)
+  - Progress bar animado no tour
+  - Loading state no botão de salvar perfil com ícone rotativo
+- **Fluxo UX Completo**:
+  - Hero → Tour (com skip) → Profile → Save → Redirect para Home
+  - localStorage marca `onboarding_complete` após salvar
+  - Home verifica localStorage + API profile para redirecionar novos usuários para /welcome automaticamente
+- **Integração Backend**:
+  - Usa endpoints existentes POST/GET `/api/profile` (BusinessProfile model)
+  - Mutation TanStack Query para salvar perfil com invalidação de cache
+  - Redirecionamento automático após sucesso
