@@ -12,11 +12,13 @@ from models import (
     Expert, ExpertCreate, ExpertType,
     Conversation, ConversationCreate,
     Message, MessageCreate, MessageSend, MessageResponse,
-    BusinessProfile, BusinessProfileCreate
+    BusinessProfile, BusinessProfileCreate,
+    CouncilAnalysis, CouncilAnalysisCreate
 )
 from storage import storage
 from crew_agent import LegendAgentFactory
 from seed import seed_legends
+from crew_council import council_orchestrator
 
 app = FastAPI(title="AdvisorIA - Marketing Legends API")
 
@@ -286,6 +288,83 @@ async def get_profile():
     user_id = "default_user"
     profile = await storage.get_business_profile(user_id)
     return profile
+
+# Council Analysis endpoints
+@app.post("/api/council/analyze", response_model=CouncilAnalysis)
+async def create_council_analysis(data: CouncilAnalysisCreate):
+    """
+    Run collaborative analysis by council of marketing legend experts.
+    
+    This endpoint:
+    1. Conducts Perplexity research (if user has BusinessProfile)
+    2. Gets independent analyses from 8 marketing legends
+    3. Synthesizes consensus recommendation
+    """
+    # For now, use a default user_id until we add authentication
+    user_id = "default_user"
+    
+    try:
+        # Get user's business profile (optional)
+        profile = await storage.get_business_profile(user_id)
+        
+        # Get experts to consult (all 8 if not specified)
+        if data.expertIds:
+            experts = []
+            for expert_id in data.expertIds:
+                expert = await storage.get_expert(expert_id)
+                if not expert:
+                    raise HTTPException(status_code=404, detail=f"Expert {expert_id} not found")
+                experts.append(expert)
+        else:
+            # Use all available experts
+            experts = await storage.get_experts()
+            if not experts:
+                raise HTTPException(status_code=400, detail="No experts available for analysis")
+        
+        # Run council analysis
+        analysis = await council_orchestrator.analyze(
+            problem=data.problem,
+            experts=experts,
+            profile=profile,
+            user_id=user_id
+        )
+        
+        # Save analysis
+        await storage.save_council_analysis(analysis)
+        
+        return analysis
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Missing API keys (ANTHROPIC_API_KEY, PERPLEXITY_API_KEY)
+        error_msg = str(e)
+        if "API_KEY" in error_msg or "api_key" in error_msg.lower():
+            raise HTTPException(
+                status_code=503,
+                detail=f"Service temporarily unavailable: {error_msg}"
+            )
+        raise
+    except Exception as e:
+        print(f"Error creating council analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create council analysis: {str(e)}")
+
+@app.get("/api/council/analyses", response_model=List[CouncilAnalysis])
+async def get_council_analyses():
+    """Get all council analyses for the current user"""
+    # For now, use a default user_id until we add authentication
+    user_id = "default_user"
+    return await storage.get_council_analyses(user_id)
+
+@app.get("/api/council/analyses/{analysis_id}", response_model=CouncilAnalysis)
+async def get_council_analysis(analysis_id: str):
+    """Get a specific council analysis by ID"""
+    analysis = await storage.get_council_analysis(analysis_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Council analysis not found")
+    return analysis
 
 if __name__ == "__main__":
     import uvicorn

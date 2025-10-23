@@ -8,15 +8,40 @@ from typing import List, Dict, Optional, Any
 from models import BusinessProfile
 
 class PerplexityResearch:
-    """Wrapper for Perplexity API with business context"""
+    """Wrapper for Perplexity API with business context and lazy initialization"""
     
     def __init__(self):
-        self.api_key = os.getenv("PERPLEXITY_API_KEY")
-        if not self.api_key:
-            raise ValueError("PERPLEXITY_API_KEY not found in environment")
-        
-        self.base_url = "https://api.perplexity.ai/chat/completions"
-        self.model = "sonar-pro"  # Advanced search with grounding for complex queries
+        self._api_key = None
+        self._base_url = None
+        self._model = None
+    
+    def _ensure_initialized(self):
+        """Lazy initialization - validates API key only when needed"""
+        if self._api_key is None:
+            self._api_key = os.getenv("PERPLEXITY_API_KEY")
+            if not self._api_key:
+                raise ValueError(
+                    "PERPLEXITY_API_KEY environment variable is required for market research. "
+                    "Please configure your API key in environment variables."
+                )
+            
+            self._base_url = "https://api.perplexity.ai/chat/completions"
+            self._model = "sonar-pro"  # Advanced search with grounding for complex queries
+    
+    @property
+    def api_key(self):
+        self._ensure_initialized()
+        return self._api_key
+    
+    @property
+    def base_url(self):
+        self._ensure_initialized()
+        return self._base_url
+    
+    @property
+    def model(self):
+        self._ensure_initialized()
+        return self._model
     
     async def research(
         self,

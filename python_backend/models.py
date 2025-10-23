@@ -84,3 +84,28 @@ class BusinessProfileCreate(BaseModel):
     primaryGoal: str
     mainChallenge: str
     timeline: str
+
+class AgentContribution(BaseModel):
+    """Individual expert's contribution to council analysis"""
+    expertId: str
+    expertName: str
+    analysis: str
+    keyInsights: List[str]
+    recommendations: List[str]
+
+class CouncilAnalysis(BaseModel):
+    """Complete council analysis with all expert contributions"""
+    id: str
+    userId: str
+    problem: str
+    profileId: Optional[str] = None  # BusinessProfile ID if used
+    marketResearch: Optional[str] = None  # Perplexity findings
+    contributions: List[AgentContribution]
+    consensus: str  # Synthesized final recommendation
+    citations: List[str] = []  # From Perplexity
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+
+class CouncilAnalysisCreate(BaseModel):
+    """Request payload for council analysis"""
+    problem: str
+    expertIds: Optional[List[str]] = None  # If None, use all 8 legends

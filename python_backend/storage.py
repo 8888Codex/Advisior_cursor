@@ -3,7 +3,8 @@ from datetime import datetime
 import uuid
 from models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
-    Message, MessageCreate, ExpertType, BusinessProfile, BusinessProfileCreate
+    Message, MessageCreate, ExpertType, BusinessProfile, BusinessProfileCreate,
+    CouncilAnalysis
 )
 
 class MemStorage:
@@ -14,6 +15,7 @@ class MemStorage:
         self.conversations: Dict[str, Conversation] = {}
         self.messages: Dict[str, Message] = {}
         self.profiles: Dict[str, BusinessProfile] = {}  # userId -> BusinessProfile
+        self.council_analyses: Dict[str, CouncilAnalysis] = {}  # analysisId -> CouncilAnalysis
     
     # Expert operations
     async def create_expert(self, data: ExpertCreate) -> Expert:
@@ -140,6 +142,23 @@ class MemStorage:
     async def get_business_profile(self, user_id: str) -> Optional[BusinessProfile]:
         """Get business profile for a user"""
         return self.profiles.get(user_id)
+    
+    # Council Analysis operations
+    async def save_council_analysis(self, analysis: CouncilAnalysis) -> CouncilAnalysis:
+        """Save a completed council analysis"""
+        self.council_analyses[analysis.id] = analysis
+        return analysis
+    
+    async def get_council_analysis(self, analysis_id: str) -> Optional[CouncilAnalysis]:
+        """Get a specific council analysis"""
+        return self.council_analyses.get(analysis_id)
+    
+    async def get_council_analyses(self, user_id: str) -> List[CouncilAnalysis]:
+        """Get all council analyses for a user"""
+        analyses = [a for a in self.council_analyses.values() if a.userId == user_id]
+        # Sort by createdAt descending (most recent first)
+        analyses.sort(key=lambda x: x.createdAt, reverse=True)
+        return analyses
 
 # Global storage instance
 storage = MemStorage()
