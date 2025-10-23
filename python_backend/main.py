@@ -576,7 +576,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
             # Emit initial event with expert list
             yield sse_event("analysis_started", {
                 "expertCount": len(experts),
-                "experts": [{"id": e.id, "name": e.name} for e in experts]
+                "experts": [{"id": e.id, "name": e.name, "avatar": e.avatar} for e in experts]
             })
             
             # Run council analysis with progress events

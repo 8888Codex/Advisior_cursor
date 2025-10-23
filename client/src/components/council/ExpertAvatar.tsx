@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Check, X, Loader2, Search, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ExpertStatus } from "@/hooks/useCouncilStream";
 
 interface ExpertAvatarProps {
@@ -104,11 +105,18 @@ export function ExpertAvatar({ status, index }: ExpertAvatarProps) {
               />
             </svg>
 
-            {/* Avatar circle */}
-            <div
-              className={`absolute inset-2 rounded-full flex items-center justify-center text-lg font-bold ${config.bgColor} ${config.color}`}
-            >
-              {initials}
+            {/* Avatar circle with photo */}
+            <div className="absolute inset-2">
+              <Avatar className="w-full h-full">
+                <AvatarImage 
+                  src={status.expertAvatar} 
+                  alt={status.expertName}
+                  className="object-cover"
+                />
+                <AvatarFallback className={`text-lg font-bold ${config.bgColor} ${config.color}`}>
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
             </div>
 
             {/* Status icon overlay */}

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ interface Expert {
   name: string;
   tagline: string;
   specialty: string;
+  avatar?: string;
 }
 
 interface ExpertRecommendation {
@@ -261,6 +263,12 @@ export default function TestCouncil() {
                                 disabled={analyzeMutation.isPending}
                                 data-testid={`checkbox-expert-${expert.id}`}
                               />
+                              <Avatar className="h-10 w-10 flex-shrink-0">
+                                <AvatarImage src={expert.avatar} alt={expert.name} className="object-cover" />
+                                <AvatarFallback className="text-xs font-bold">
+                                  {expert.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <Label className="font-semibold cursor-pointer">

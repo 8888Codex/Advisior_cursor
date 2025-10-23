@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 export interface ExpertStatus {
   expertId: string;
   expertName: string;
+  expertAvatar?: string;
   status: "waiting" | "researching" | "analyzing" | "completed" | "failed";
   progress: number; // 0-100
   insightCount?: number;
@@ -183,10 +184,11 @@ export function useCouncilStream({ problem, expertIds, enabled }: UseCouncilStre
     switch (eventType) {
       case "analysis_started":
         addActivity(`Starting analysis with ${data.expertCount} experts`, "info");
-        // Populate expert names from data.experts
+        // Populate expert names and avatars from data.experts
         data.experts?.forEach((expert: any) => {
           updateExpertStatus(expert.id, expert.name, {
             expertName: expert.name,
+            expertAvatar: expert.avatar,
             status: "waiting",
             progress: 0,
           });
