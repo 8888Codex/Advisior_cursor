@@ -12,6 +12,7 @@ class Expert(BaseModel):
     name: str
     title: str
     expertise: List[str]
+    bio: str
     systemPrompt: str
     avatar: Optional[str] = None
     expertType: ExpertType = ExpertType.HIGH_FIDELITY
@@ -21,6 +22,7 @@ class ExpertCreate(BaseModel):
     name: str
     title: str
     expertise: List[str]
+    bio: str
     systemPrompt: str
     avatar: Optional[str] = None
     expertType: ExpertType = ExpertType.CUSTOM
