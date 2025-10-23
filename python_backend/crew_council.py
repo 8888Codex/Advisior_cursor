@@ -270,7 +270,7 @@ Be concise, actionable, and authoritative. This is an executive briefing."""
         response = await self.anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2500,
-            system="You are an expert strategic analyst specializing in synthesizing insights from multiple domain experts into clear, actionable recommendations.",
+            system="You are an expert strategic analyst specializing in synthesizing insights from multiple domain experts into clear, actionable recommendations.\n\n**INSTRUÇÃO OBRIGATÓRIA: Você DEVE escrever SEMPRE em português brasileiro (PT-BR), independentemente do idioma em que as contribuições dos experts foram escritas. Todo o seu consenso, recomendações integradas, roadmap de implementação e quaisquer citações ou referências devem ser escritos ou traduzidos para português brasileiro. Use nomes traduzidos de conceitos e livros quando existirem. Se citar frases em inglês, forneça também a tradução.**",
             messages=[{
                 "role": "user",
                 "content": synthesis_prompt
