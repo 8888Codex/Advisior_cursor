@@ -1,102 +1,103 @@
-import { useRoute } from "wouter";
-import { ChatInterface } from "@/components/ChatInterface";
+import { useState, useEffect } from "react";
+import { useRoute, useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequestJson } from "@/lib/queryClient";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import strategistAvatar from "@assets/generated_images/Business_strategist_expert_avatar_ef5e30a4.png";
-import marketingAvatar from "@assets/generated_images/Marketing_expert_avatar_608db140.png";
-import financialAvatar from "@assets/generated_images/Financial_advisor_avatar_b42774d1.png";
-import techAvatar from "@assets/generated_images/Technology_consultant_avatar_afb33655.png";
-import operationsAvatar from "@assets/generated_images/Operations_expert_avatar_380f05da.png";
-import leadershipAvatar from "@assets/generated_images/Leadership_coach_avatar_b49e344d.png";
-
-const mockExperts = {
-  "1": {
-    id: "1",
-    name: "Dr. Michael Thompson",
-    title: "Estrategista de Negócios Sênior",
-    expertise: ["Estratégia Corporativa", "M&A", "Transformação Organizacional"],
-    bio: "Especialista em transformações organizacionais",
-    avatar: strategistAvatar,
-    suggestions: [
-      "Como estruturar uma estratégia de expansão internacional?",
-      "Quais são as melhores práticas em M&A?",
-      "Como liderar uma transformação organizacional de sucesso?",
-    ],
-  },
-  "2": {
-    id: "2",
-    name: "Ana Costa",
-    title: "Especialista em Marketing Digital",
-    expertise: ["Marketing Digital", "Branding", "Growth Hacking"],
-    bio: "Líder em estratégias de marketing digital",
-    avatar: marketingAvatar,
-    suggestions: [
-      "Como construir uma estratégia de marketing digital eficaz?",
-      "Quais canais priorizar para growth hacking?",
-      "Como medir ROI de campanhas digitais?",
-    ],
-  },
-  "3": {
-    id: "3",
-    name: "Patricia Almeida",
-    title: "Consultora Financeira Estratégica",
-    expertise: ["Finanças Corporativas", "Valuation", "Reestruturação"],
-    bio: "Especialista em modelagem financeira",
-    avatar: financialAvatar,
-    suggestions: [
-      "Como fazer valuation de uma startup?",
-      "Quais métricas financeiras são essenciais?",
-      "Como estruturar uma reestruturação financeira?",
-    ],
-  },
-  "4": {
-    id: "4",
-    name: "Ricardo Santos",
-    title: "Consultor de Inovação Tecnológica",
-    expertise: ["Transformação Digital", "IA & Automação", "Cloud Strategy"],
-    bio: "Pioneiro em implementações de IA",
-    avatar: techAvatar,
-    suggestions: [
-      "Como implementar IA na minha empresa?",
-      "Qual a melhor estratégia de cloud?",
-      "Como automatizar processos com eficiência?",
-    ],
-  },
-  "5": {
-    id: "5",
-    name: "Mariana Silva",
-    title: "Especialista em Excelência Operacional",
-    expertise: ["Lean & Six Sigma", "Process Optimization", "Supply Chain"],
-    bio: "Black Belt Six Sigma",
-    avatar: operationsAvatar,
-    suggestions: [
-      "Como otimizar processos operacionais?",
-      "Quais são os princípios Lean mais importantes?",
-      "Como melhorar a eficiência da supply chain?",
-    ],
-  },
-  "6": {
-    id: "6",
-    name: "Dr. Carlos Mendes",
-    title: "Coach de Liderança Executiva",
-    expertise: ["Liderança", "Cultura Organizacional", "Change Management"],
-    bio: "Mentor de CEOs e líderes C-level",
-    avatar: leadershipAvatar,
-    suggestions: [
-      "Como desenvolver habilidades de liderança?",
-      "Como transformar a cultura organizacional?",
-      "Quais são os desafios da liderança executiva?",
-    ],
-  },
-};
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
+import { ChatMessage } from "@/components/ChatMessage";
+import type { Expert, Conversation, Message } from "@shared/schema";
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:id");
-  const expertId = params?.id || "1";
-  const expert = mockExperts[expertId as keyof typeof mockExperts] || mockExperts["1"];
+  const [, setLocation] = useLocation();
+  const expertId = params?.id || "";
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+
+  const { data: expert, isLoading: expertLoading } = useQuery<Expert>({
+    queryKey: ["/api/experts", expertId],
+    enabled: !!expertId,
+  });
+
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ["/api/conversations", conversationId, "messages"],
+    enabled: !!conversationId,
+  });
+
+  const createConversationMutation = useMutation({
+    mutationFn: async (data: { expertId: string; title: string }) => {
+      return await apiRequestJson<Conversation>("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: (conversation) => {
+      setConversationId(conversation.id);
+    },
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { conversationId: string; content: string }) => {
+      return await apiRequestJson<{ userMessage: Message; assistantMessage: Message }>(
+        `/api/conversations/${data.conversationId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: data.content }),
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversationId, "messages"] });
+      setInput("");
+    },
+  });
+
+  useEffect(() => {
+    if (expert && !conversationId && !createConversationMutation.isPending) {
+      createConversationMutation.mutate({
+        expertId: expert.id,
+        title: `Conversa com ${expert.name}`,
+      });
+    }
+  }, [expert, conversationId]);
+
+  const handleSend = () => {
+    if (!input.trim() || !conversationId) return;
+    sendMessageMutation.mutate({ conversationId, content: input });
+  };
+
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+  };
+
+  const suggestedQuestions = expert
+    ? [
+        `Como posso melhorar ${expert.expertise[0]?.toLowerCase() || "minha estratégia"}?`,
+        `Quais são as melhores práticas em ${expert.expertise[1]?.toLowerCase() || "minha área"}?`,
+        `Como resolver desafios de ${expert.expertise[2]?.toLowerCase() || "negócios"}?`,
+      ]
+    : [];
+
+  if (expertLoading) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!expert) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <p className="text-muted-foreground">Especialista não encontrado</p>
+      </div>
+    );
+  }
 
   const initials = expert.name
     .split(" ")
@@ -110,13 +111,16 @@ export default function Chat() {
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Link href="/experts">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setLocation("/experts")}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-              <AvatarImage src={expert.avatar} alt={expert.name} />
+              <AvatarImage src={expert.avatar || undefined} alt={expert.name} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -134,8 +138,94 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        <ChatInterface expert={expert} suggestedQuestions={expert.suggestions} />
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messagesLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            <ChatMessage
+              message={{
+                id: "welcome",
+                role: "assistant",
+                content: `Olá! Sou ${expert.name}, ${expert.title}. Como posso ajudá-lo hoje com seus desafios estratégicos?`,
+                timestamp: new Date(),
+              }}
+              expertName={expert.name}
+              expertAvatar={expert.avatar || undefined}
+            />
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={{
+                  id: message.id,
+                  role: message.role as "user" | "assistant",
+                  content: message.content,
+                  timestamp: message.createdAt,
+                }}
+                expertName={expert.name}
+                expertAvatar={expert.avatar || undefined}
+              />
+            ))}
+            {sendMessageMutation.isPending && (
+              <div className="flex gap-3">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarImage src={expert.avatar || undefined} alt={expert.name} />
+                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="flex items-center gap-2 px-4 py-3 bg-card border rounded-xl">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Pensando...</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {suggestedQuestions.length > 0 && messages.length === 0 && !sendMessageMutation.isPending && (
+        <div className="px-6 pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">Perguntas Sugeridas</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {suggestedQuestions.map((question, index) => (
+              <Badge
+                key={index}
+                variant="outline"
+                className="cursor-pointer hover-elevate active-elevate-2 py-2 px-3"
+                onClick={() => handleSuggestedQuestion(question)}
+                data-testid={`badge-suggestion-${index}`}
+              >
+                {question}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t bg-card p-4">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !sendMessageMutation.isPending && handleSend()}
+            placeholder="Digite sua pergunta estratégica..."
+            className="flex-1"
+            disabled={sendMessageMutation.isPending}
+            data-testid="input-chat-message"
+          />
+          <Button 
+            onClick={handleSend} 
+            size="icon" 
+            disabled={sendMessageMutation.isPending || !input.trim()}
+            data-testid="button-send-message"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
