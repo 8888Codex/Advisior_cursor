@@ -49,7 +49,9 @@ Preferred communication style: Simple, everyday language.
 **API Endpoints**
 - `GET /api/experts` - List all marketing legend experts
 - `GET /api/experts/:id` - Get specific expert details
-- `POST /api/experts` - Create custom cognitive clone (future: guided EXTRACT process)
+- `POST /api/experts` - Save cognitive clone to storage
+- `POST /api/experts/auto-clone` - Auto-generate clone from person name (Perplexity research + Claude synthesis)
+- `POST /api/experts/test-chat` - Test clone preview without persistence
 - `POST /api/conversations` - Create conversation with an expert
 - `GET /api/conversations/:id/messages` - Get conversation message history
 - `POST /api/conversations/:id/messages` - Send message and get AI response
@@ -128,20 +130,37 @@ Each marketing legend has a detailed system prompt with 8 cognitive layers:
 
 **Production Readiness Notes**
 - ✅ AsyncAnthropic prevents event loop blocking (supports concurrent requests)
+- ✅ Auto-clone feature complete: Perplexity research + Claude EXTRACT synthesis
+- ✅ Preview→test→save workflow prevents unwanted clones in storage
 - ⚠️ In-memory storage: Replace with PostgreSQL/Drizzle for persistence
 - ⚠️ No authentication system yet (planned: Replit Auth)
-- ⚠️ Custom clone creation endpoint exists but lacks guided EXTRACT process
 - ⚠️ No streaming responses yet (frontend and backend support needed)
 - ⚠️ Error handling could be more granular (distinguish API errors, timeouts, etc.)
 
 **Migration Path**
 - Storage: Swap MemStorage for PostgreSQL via Drizzle ORM
 - Auth: Integrate Replit Auth for user sessions
-- Custom Clones: Add guided multi-step EXTRACT interview process
 - Streaming: Implement Server-Sent Events (SSE) for real-time AI responses
 - Monitoring: Add logging, metrics, error tracking (e.g., Sentry)
+- Disney-Level UX: Complete phases 2-6 (onboarding, micro-moments, personalization, export, gamification)
 
 ## Recent Changes (October 23, 2025)
+
+**Fase 1: Auto-Clone Cognitivo (COMPLETED)**
+- **Backend Auto-Clone System**:
+  - `POST /api/experts/auto-clone`: Accepts only `targetName` (required) and `context` (optional)
+  - Uses Perplexity API to research target person (biography, philosophy, methods, iconic phrases)
+  - Claude synthesizes research into complete EXTRACT system prompt (8 cognitive layers)
+  - Second Claude call extracts metadata (title, expertise, bio)
+  - Returns `ExpertCreate` data WITHOUT persisting (preview-first workflow)
+- **Frontend UX Refinements**:
+  - Minimalist form on `/create` page (2 inputs: name + context)
+  - 3-stage animated loading (Pesquisando → Analisando → Sintetizando)
+  - Preview screen with expandable system prompt
+  - Test chat uses dedicated endpoint (`/api/experts/test-chat`) without persistence
+  - Save/Regenerate buttons: only Save persists to storage
+- **Workflow Guarantee**: Preview→test→save prevents unwanted clones and storage pollution
+- **Design Compliance**: All emojis removed from UI (toast titles, descriptions)
 
 **Backend Migration to Python/FastAPI**
 - Replaced TypeScript backend with Python/FastAPI for AI orchestration
@@ -157,8 +176,10 @@ Each marketing legend has a detailed system prompt with 8 cognitive layers:
 1. **Proxy Middleware Order**: Moved proxy BEFORE express.json() to preserve POST bodies
 2. **Async API Calls**: Switched from sync Anthropic to AsyncAnthropic to prevent event loop blocking
 3. **Conversation History**: Fixed logic to include all prior messages in AI context
+4. **Auto-Clone Persistence**: Fixed to defer storage until explicit save (prevents duplicates)
 
 **Testing**
 - End-to-end Playwright tests confirm full user flow working
 - AI responses authentic to each legend's personality (verified manually and via tests)
 - Concurrent request support confirmed via async client architecture
+- Preview→test→save workflow validated by architect review
