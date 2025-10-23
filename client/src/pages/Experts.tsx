@@ -204,7 +204,7 @@ export default function Experts() {
                   size="sm"
                   onClick={() => setShowRecommendedOnly(!showRecommendedOnly)}
                   className="gap-2"
-                  data-testid="button-toggle-recommended"
+                  data-testid="toggle-recommended"
                 >
                   <Star className="h-4 w-4" />
                   Apenas Recomendados
