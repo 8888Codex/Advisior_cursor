@@ -6,9 +6,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AnimatedPage } from "@/components/AnimatedPage";
 import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 import type { Expert, Conversation, Message } from "@shared/schema";
 
 export default function Chat() {
@@ -101,17 +103,21 @@ export default function Chat() {
 
   if (expertLoading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AnimatedPage>
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AnimatedPage>
     );
   }
 
   if (!expert) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
-        <p className="text-muted-foreground">Especialista não encontrado</p>
-      </div>
+      <AnimatedPage>
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <p className="text-muted-foreground">Especialista não encontrado</p>
+        </div>
+      </AnimatedPage>
     );
   }
 
@@ -123,7 +129,8 @@ export default function Chat() {
     .slice(0, 2);
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <AnimatedPage>
+      <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
@@ -185,41 +192,91 @@ export default function Chat() {
               />
             ))}
             {sendMessageMutation.isPending && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage src={expert.avatar || undefined} alt={expert.name} />
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="flex items-center gap-2 px-4 py-3 bg-card border rounded-xl">
+              <motion.div 
+                className="flex gap-3"
+                initial={{ opacity: 0, x: -20, y: 10 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-primary/20">
+                    <AvatarImage src={expert.avatar || undefined} alt={expert.name} />
+                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                </motion.div>
+                <motion.div 
+                  className="flex items-center gap-2 px-4 py-3 bg-card border rounded-xl"
+                  animate={{ 
+                    boxShadow: [
+                      "0 0 0 0 rgba(var(--primary), 0)",
+                      "0 0 0 4px rgba(var(--primary), 0.1)",
+                      "0 0 0 0 rgba(var(--primary), 0)"
+                    ]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm text-muted-foreground">Pensando...</span>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             )}
           </>
         )}
       </div>
 
       {suggestedQuestions.length > 0 && messages.length === 0 && !sendMessageMutation.isPending && (
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-2 mb-3">
+        <motion.div 
+          className="px-6 pb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <motion.div 
+            className="flex items-center gap-2 mb-3"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium text-muted-foreground">Perguntas Sugeridas</span>
-          </div>
+          </motion.div>
           <div className="flex flex-wrap gap-2">
             {suggestedQuestions.map((question, index) => (
-              <Badge
+              <motion.div
                 key={index}
-                variant="outline"
-                className="cursor-pointer hover-elevate active-elevate-2 py-2 px-3"
-                onClick={() => handleSuggestedQuestion(question)}
-                data-testid={`badge-suggestion-${index}`}
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.3, 
+                  delay: 0.2 + index * 0.1,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
               >
-                {question}
-              </Badge>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover-elevate active-elevate-2 py-2 px-3"
+                  onClick={() => handleSuggestedQuestion(question)}
+                  data-testid={`badge-suggestion-${index}`}
+                >
+                  {question}
+                </Badge>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       <div className="border-t bg-card p-4">
@@ -243,6 +300,7 @@ export default function Chat() {
           </Button>
         </div>
       </div>
-    </div>
+      </div>
+    </AnimatedPage>
   );
 }

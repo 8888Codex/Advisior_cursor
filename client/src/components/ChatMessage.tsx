@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { motion } from "framer-motion";
 
 export interface Message {
   id: string;
@@ -27,7 +28,13 @@ export function ChatMessage({ message, expertName, expertAvatar }: ChatMessagePr
     .slice(0, 2) || "AI";
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, x: isUser ? 20 : -20, y: 10 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      transition={{ 
+        duration: 0.3, 
+        ease: [0.4, 0, 0.2, 1]
+      }}
       className={cn(
         "flex gap-3 mb-4",
         isUser ? "flex-row-reverse" : "flex-row"
@@ -123,6 +130,6 @@ export function ChatMessage({ message, expertName, expertAvatar }: ChatMessagePr
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

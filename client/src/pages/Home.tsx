@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Hero } from "@/components/Hero";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AnimatedPage } from "@/components/AnimatedPage";
 import { TrendingUp, Clock, Award } from "lucide-react";
 
 export default function Home() {
@@ -26,7 +27,8 @@ export default function Home() {
   }, [profile, setLocation]);
 
   return (
-    <div className="min-h-screen">
+    <AnimatedPage>
+      <div className="min-h-screen">
       <Hero />
 
       <section className="w-full py-16 bg-muted/30">
@@ -80,6 +82,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </AnimatedPage>
   );
 }

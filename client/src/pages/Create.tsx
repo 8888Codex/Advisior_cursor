@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AnimatedPage } from "@/components/AnimatedPage";
 import { Sparkles, Loader2, Brain, Search, Wand2, Check, MessageSquare, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Expert } from "@shared/schema";
@@ -207,7 +208,8 @@ export default function Create() {
   const isProcessing = ["researching", "analyzing", "synthesizing"].includes(cloneStep);
 
   return (
-    <div className="min-h-screen py-8">
+    <AnimatedPage>
+      <div className="min-h-screen py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
@@ -457,5 +459,6 @@ export default function Create() {
         </div>
       </div>
     </div>
+    </AnimatedPage>
   );
 }

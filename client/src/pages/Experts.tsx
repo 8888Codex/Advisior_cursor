@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
+import { AnimatedPage } from "@/components/AnimatedPage";
 import { Search, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -25,7 +26,8 @@ export default function Experts() {
   };
 
   return (
-    <div className="min-h-screen py-8">
+    <AnimatedPage>
+      <div className="min-h-screen py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
@@ -69,6 +71,7 @@ export default function Experts() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </AnimatedPage>
   );
 }
