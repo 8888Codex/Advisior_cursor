@@ -24,7 +24,7 @@ interface CouncilAnalysis {
     expertId: string;
     expertName: string;
     analysis: string;
-    insights: string[];
+    keyInsights: string[];
     recommendations: string[];
   }>;
   consensus: string;
@@ -236,11 +236,11 @@ export default function TestCouncil() {
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
-                            {contrib.insights.length > 0 && (
+                            {contrib.keyInsights.length > 0 && (
                               <div>
                                 <p className="text-sm font-medium mb-1">Key Insights:</p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
-                                  {contrib.insights.map((insight, i) => (
+                                  {contrib.keyInsights.map((insight, i) => (
                                     <li key={i} className="flex gap-2">
                                       <span>•</span>
                                       <span>{insight}</span>
