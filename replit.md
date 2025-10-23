@@ -206,3 +206,34 @@ Each marketing legend has a detailed system prompt with 8 cognitive layers:
   - Usa endpoints existentes POST/GET `/api/profile` (BusinessProfile model)
   - Mutation TanStack Query para salvar perfil com invalidação de cache
   - Redirecionamento automático após sucesso
+
+**Fase 3: Micro-Momentos de Interação Disney-Level (COMPLETED)**
+- **Animações de Entrada para Mensagens de Chat**:
+  - Mensagens deslizam de lados opostos (user: direita, assistant: esquerda)
+  - Fade + slide combinados com cubic bezier ease (0.4, 0, 0.2, 1)
+  - Animação suave de 0.3s por mensagem via motion.div
+- **Feedback Visual Premium ao Enviar Mensagem**:
+  - Avatar do especialista pulsa com breathing effect durante "Pensando..." (scale 1.0 → 1.05 loop)
+  - Ripple effect no card de mensagem (boxShadow animado com glow)
+  - Animação infinita com loop de 2s usando keyframes CSS
+- **Expert Cards com Hover/Tap Effects**:
+  - Card envolto em motion.div com fade-in + slide-up na entrada inicial
+  - Avatar: scale 1.05 + rotate wiggle (-2°, 2°, 0°) ao hover no card parent
+  - Badges: staggered animation (0.05s delay entre cada badge)
+  - Botão: whileHover scale 1.02, whileTap scale 0.98 para feedback tátil
+- **Perguntas Sugeridas com Stagger Animation**:
+  - Container fade-in + slide-up na montagem
+  - Label "Perguntas Sugeridas" com delay 0.1s
+  - Badges aparecem uma após outra (delay: 0.2 + index * 0.1)
+  - Animação scale + fade para cada badge (cubic bezier consistente)
+- **Transições Suaves Entre Páginas**:
+  - Criado componente AnimatedPage wrapper universal
+  - Aplicado em Home, Experts, Chat, Create (todas páginas principais)
+  - Fade + slide vertical (y: 20 → 0 enter, y: -20 exit) em 0.3s
+  - AnimatePresence mode="wait" integrado com wouter router via useLocation
+  - Exit animations funcionais: key={location} no Switch trigger rerenders
+- **Consistência e Performance**:
+  - Todos os timings: 0.3s (micro-momentos), 0.5s (macro-transições)
+  - Easing function padronizada: cubic-bezier(0.4, 0, 0.2, 1) "ease-out"
+  - Animações sutis para não atrasar percepção de performance
+  - Arquiteto validou zero jank ou regressões de performance
