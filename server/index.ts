@@ -1,9 +1,42 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { spawn } from 'child_process';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedExperts } from "./seed";
 
 const app = express();
+
+// Start Python backend automatically
+function startPythonBackend() {
+  log("Starting Python backend on port 5001...");
+  const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '5001', '--reload'], {
+    cwd: 'python_backend',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  
+  pythonProcess.stdout.on('data', (data) => {
+    log(`[Python Backend] ${data.toString().trim()}`);
+  });
+  
+  pythonProcess.stderr.on('data', (data) => {
+    log(`[Python Backend Error] ${data.toString().trim()}`);
+  });
+  
+  pythonProcess.on('error', (error) => {
+    log(`[Python Backend] Failed to start: ${error.message}`);
+  });
+  
+  pythonProcess.on('exit', (code) => {
+    if (code !== null && code !== 0) {
+      log(`[Python Backend] Exited with code ${code}`);
+    }
+  });
+  
+  return pythonProcess;
+}
+
+const pythonBackend = startPythonBackend();
 
 declare module 'http' {
   interface IncomingMessage {
@@ -48,6 +81,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Proxy all /api requests to Python backend on port 5001
+  // Note: http-proxy-middleware automatically removes the /api prefix when proxying
+  // We need to add it back with pathRewrite
+  app.use('/api', createProxyMiddleware({
+    target: 'http://localhost:5001/api',
+    changeOrigin: true,
+  }));
+  
   await seedExperts();
   const server = await registerRoutes(app);
 
