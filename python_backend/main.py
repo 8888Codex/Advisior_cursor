@@ -442,7 +442,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                 })
                 
                 try:
-                    contribution = await council_orchestrator._analyze_with_expert(
+                    contribution = await council_orchestrator._get_expert_analysis(
                         expert=expert,
                         problem=data.problem,
                         profile=profile,
