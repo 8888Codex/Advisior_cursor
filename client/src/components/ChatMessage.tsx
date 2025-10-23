@@ -1,6 +1,8 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export interface Message {
   id: string;
@@ -55,13 +57,70 @@ export function ChatMessage({ message, expertName, expertAvatar }: ChatMessagePr
         )}
         <div
           className={cn(
-            "rounded-xl px-4 py-3 text-sm leading-relaxed",
+            "rounded-xl px-4 py-3 text-sm",
             isUser
               ? "bg-primary text-primary-foreground"
               : "bg-card border"
           )}
         >
-          {message.content}
+          {isUser ? (
+            <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({ children }) => (
+                    <h1 className="text-lg font-bold mt-4 mb-2 first:mt-0">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-base font-bold mt-3 mb-2 first:mt-0">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-sm font-semibold mt-3 mb-1 first:mt-0">{children}</h3>
+                  ),
+                  p: ({ children }) => (
+                    <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="leading-relaxed">{children}</li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic">{children}</em>
+                  ),
+                  code: ({ children, className }) => {
+                    const isInline = !className;
+                    return isInline ? (
+                      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="block bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto mb-2">
+                        {children}
+                      </code>
+                    );
+                  },
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-primary pl-4 italic my-2">
+                      {children}
+                    </blockquote>
+                  ),
+                  hr: () => <hr className="my-4 border-border" />,
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
         </div>
       </div>
     </div>
