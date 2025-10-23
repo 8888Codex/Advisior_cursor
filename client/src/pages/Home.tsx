@@ -1,9 +1,30 @@
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Hero } from "@/components/Hero";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, Clock, Award } from "lucide-react";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
+
+  // Check if user has completed onboarding
+  const { data: profile } = useQuery({
+    queryKey: ["/api/profile"],
+    retry: false,
+  });
+
+  useEffect(() => {
+    // Check if onboarding has been completed
+    const onboardingComplete = localStorage.getItem("onboarding_complete");
+    
+    // If no localStorage flag and no profile, redirect to welcome
+    if (!onboardingComplete && !profile) {
+      setLocation("/welcome");
+    }
+  }, [profile, setLocation]);
+
   return (
     <div className="min-h-screen">
       <Hero />

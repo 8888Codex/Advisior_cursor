@@ -13,11 +13,13 @@ import Create from "@/pages/Create";
 import AdminExperts from "@/pages/AdminExperts";
 import Onboarding from "@/pages/Onboarding";
 import TestCouncil from "@/pages/TestCouncil";
+import Welcome from "@/pages/Welcome";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/welcome" component={Welcome} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/experts" component={Experts} />
       <Route path="/chat/:id" component={Chat} />
