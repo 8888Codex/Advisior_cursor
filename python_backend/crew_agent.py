@@ -3,19 +3,19 @@ CrewAI Integration for Marketing Legends Cognitive Clones
 """
 import os
 from typing import List
-from crewai import Agent, Task, Crew
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 
 class MarketingLegendAgent:
     """
     Wrapper for CrewAI Agent representing a marketing legend
-    Uses Anthropic Claude via CrewAI
+    Uses Async Anthropic Claude to avoid blocking the event loop
     """
     
     def __init__(self, name: str, system_prompt: str):
         self.name = name
         self.system_prompt = system_prompt
-        self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        # Use AsyncAnthropic to avoid blocking FastAPI's event loop
+        self.anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
     async def chat(self, conversation_history: List[dict], user_message: str) -> str:
         """
@@ -44,8 +44,8 @@ class MarketingLegendAgent:
             "content": user_message
         })
         
-        # Call Claude with the legend's system prompt
-        response = self.anthropic_client.messages.create(
+        # Call Claude with the legend's system prompt (async to avoid blocking event loop)
+        response = await self.anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2048,
             system=self.system_prompt,
