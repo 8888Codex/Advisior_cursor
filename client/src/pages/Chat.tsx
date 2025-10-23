@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
 import { ChatMessage } from "@/components/ChatMessage";
+import { useToast } from "@/hooks/use-toast";
 import type { Expert, Conversation, Message } from "@shared/schema";
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:id");
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const expertId = params?.id || "";
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -38,6 +40,13 @@ export default function Chat() {
     onSuccess: (conversation) => {
       setConversationId(conversation.id);
     },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar conversa",
+        description: "Não foi possível iniciar a conversa com o especialista.",
+      });
+    },
   });
 
   const sendMessageMutation = useMutation({
@@ -54,6 +63,13 @@ export default function Chat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversationId, "messages"] });
       setInput("");
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao enviar mensagem",
+        description: "Não foi possível processar sua mensagem. Tente novamente.",
+      });
     },
   });
 

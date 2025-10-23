@@ -102,11 +102,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/conversations/:id/messages", async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const { content } = req.body;
-
-      if (!content || typeof content !== "string") {
-        return res.status(400).json({ error: "Message content is required" });
-      }
+      
+      // Validate message payload with Zod
+      const messageSchema = z.object({
+        content: z.string().min(1, "Message content is required"),
+      });
+      
+      const { content } = messageSchema.parse(req.body);
 
       const conversation = await storage.getConversation(conversationId);
       if (!conversation) {
@@ -152,6 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assistantMessage,
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       console.error("Error processing message:", error);
       res.status(500).json({ error: "Failed to process message" });
     }
