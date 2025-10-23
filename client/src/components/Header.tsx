@@ -24,6 +24,11 @@ export function Header() {
               Criar Especialista
             </span>
           </Link>
+          <Link href="/admin/experts">
+            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-admin">
+              Admin
+            </span>
+          </Link>
         </nav>
 
         <ThemeToggle />

@@ -33,6 +33,14 @@ class MemStorage:
     async def get_experts(self) -> List[Expert]:
         return list(self.experts.values())
     
+    async def update_expert_avatar(self, expert_id: str, avatar_path: str) -> Optional[Expert]:
+        """Update expert's avatar path"""
+        expert = self.experts.get(expert_id)
+        if expert:
+            expert.avatar = avatar_path
+            return expert
+        return None
+    
     # Conversation operations
     async def create_conversation(self, data: ConversationCreate) -> Conversation:
         conversation_id = str(uuid.uuid4())

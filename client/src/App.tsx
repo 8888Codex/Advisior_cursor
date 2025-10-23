@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import Experts from "@/pages/Experts";
 import Chat from "@/pages/Chat";
 import Create from "@/pages/Create";
+import AdminExperts from "@/pages/AdminExperts";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/experts" component={Experts} />
       <Route path="/chat/:id" component={Chat} />
       <Route path="/create" component={Create} />
+      <Route path="/admin/experts" component={AdminExperts} />
       <Route component={NotFound} />
     </Switch>
   );
