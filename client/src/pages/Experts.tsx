@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
 import { AnimatedPage } from "@/components/AnimatedPage";
 import { Search, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+
+interface Recommendation {
+  expertId: string;
+  expertName: string;
+  score: number;
+  stars: number;
+  justification: string;
+  breakdown: Record<string, number>;
+}
+
+interface RecommendationsResponse {
+  hasProfile: boolean;
+  recommendations: Recommendation[];
+}
 
 export default function Experts() {
   const [search, setSearch] = useState("");
@@ -14,8 +28,36 @@ export default function Experts() {
     queryKey: ["/api/experts"],
   });
 
-  const filteredExperts = experts.filter(
-    (expert) =>
+  const { data: recommendationsData } = useQuery<RecommendationsResponse>({
+    queryKey: ["/api/experts/recommendations"],
+  });
+
+  const expertRecommendationMap = useMemo(() => {
+    if (!recommendationsData?.recommendations) return new Map();
+    
+    const map = new Map();
+    recommendationsData.recommendations.forEach(rec => {
+      map.set(rec.expertId, rec);
+    });
+    return map;
+  }, [recommendationsData]);
+
+  const hasProfile = recommendationsData?.hasProfile ?? false;
+
+  const expertsWithRecommendations = useMemo(() => {
+    return experts.map(expert => ({
+      expert,
+      recommendation: expertRecommendationMap.get(expert.id)
+    })).sort((a, b) => {
+      if (hasProfile && a.recommendation && b.recommendation) {
+        return b.recommendation.score - a.recommendation.score;
+      }
+      return 0;
+    });
+  }, [experts, expertRecommendationMap, hasProfile]);
+
+  const filteredExperts = expertsWithRecommendations.filter(
+    ({ expert }) =>
       expert.name.toLowerCase().includes(search.toLowerCase()) ||
       expert.title.toLowerCase().includes(search.toLowerCase()) ||
       expert.expertise.some((e) => e.toLowerCase().includes(search.toLowerCase()))
@@ -54,9 +96,25 @@ export default function Experts() {
             </div>
           ) : (
             <>
+              {hasProfile && (
+                <div className="mb-6 bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Personalizado para você:</span> Os especialistas estão ordenados por relevância com base no seu perfil de negócio.
+                  </p>
+                </div>
+              )}
+              
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredExperts.map((expert) => (
-                  <ExpertCard key={expert.id} expert={expert} onConsult={handleConsult} />
+                {filteredExperts.map(({ expert, recommendation }) => (
+                  <ExpertCard 
+                    key={expert.id} 
+                    expert={expert} 
+                    onConsult={handleConsult}
+                    showRecommendation={hasProfile}
+                    recommendationScore={recommendation?.score}
+                    recommendationStars={recommendation?.stars}
+                    recommendationJustification={recommendation?.justification}
+                  />
                 ))}
               </div>
 

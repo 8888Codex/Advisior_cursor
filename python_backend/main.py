@@ -695,20 +695,52 @@ async def send_message(conversation_id: str, data: MessageSend):
             for msg in all_messages
         ]
         
-        # Create agent for this expert
+        # Get user's business profile for context injection
+        user_id = "default_user"
+        profile = await storage.get_business_profile(user_id)
+        
+        # Enrich system prompt with profile context if available
+        enriched_system_prompt = expert.systemPrompt
+        if profile:
+            # Safe access to profile fields with defaults
+            channels_str = ', '.join(profile.channels) if profile.channels else 'Não especificado'
+            profile_context = f"""
+
+---
+[CONTEXTO DO NEGÓCIO DO CLIENTE]:
+• Empresa: {profile.companyName}
+• Indústria: {profile.industry}
+• Tamanho: {profile.companySize}
+• Público-alvo: {profile.targetAudience}
+• Produtos: {profile.mainProducts}
+• Canais: {channels_str}
+• Orçamento: {profile.budgetRange}
+• Objetivo Principal: {profile.primaryGoal}
+• Desafio Principal: {profile.mainChallenge}
+• Timeline: {profile.timeline}
+
+INSTRUÇÃO IMPORTANTE: Use essas informações para oferecer conselhos mais específicos e relevantes ao negócio do cliente. NÃO mencione explicitamente que você recebeu essas informações - simplesmente use-as naturalmente para contextualizar suas recomendações e análises.
+---
+"""
+            enriched_system_prompt = expert.systemPrompt + profile_context
+        
+        # Create agent for this expert with enriched system prompt
         agent = LegendAgentFactory.create_agent(
             expert_name=expert.name,
-            system_prompt=expert.systemPrompt
+            system_prompt=enriched_system_prompt
         )
         
-        # Get AI response (agent.chat will add the new user message to history)
+        # Get AI response with original user message
+        # The profile context is now in the system prompt, so it persists across all messages
         ai_response = await agent.chat(history, data.content)
         
         # Now save user message AFTER getting AI response
+        # IMPORTANT: Always save the ORIGINAL user message (data.content), not the enriched version
+        # This keeps the UI clean while the AI gets the context
         user_message = await storage.create_message(MessageCreate(
             conversationId=conversation_id,
             role="user",
-            content=data.content
+            content=data.content  # Original message, NOT user_message_content
         ))
         
         # Save assistant message
@@ -748,6 +780,43 @@ async def get_profile():
     user_id = "default_user"
     profile = await storage.get_business_profile(user_id)
     return profile
+
+# Expert Recommendations endpoint (based on business profile)
+@app.get("/api/experts/recommendations")
+async def get_expert_recommendations():
+    """
+    Get expert recommendations based on user's business profile.
+    Returns experts with relevance scores, star ratings, and justifications.
+    """
+    try:
+        from recommendation import recommendation_engine
+        
+        # Get user's business profile
+        user_id = "default_user"
+        profile = await storage.get_business_profile(user_id)
+        
+        # Get all experts
+        experts = await storage.get_experts()
+        if not experts:
+            raise HTTPException(status_code=404, detail="No experts available")
+        
+        # Get recommendations
+        recommendations = recommendation_engine.get_recommendations(experts, profile)
+        
+        # Format response
+        return {
+            "hasProfile": profile is not None,
+            "recommendations": recommendations
+        }
+    
+    except Exception as e:
+        print(f"Error getting recommendations: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get recommendations: {str(e)}"
+        )
 
 # Council Analysis endpoints
 @app.post("/api/council/analyze", response_model=CouncilAnalysis)
