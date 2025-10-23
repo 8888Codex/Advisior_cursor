@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from pydantic import BaseModel
 import os
@@ -7,6 +8,8 @@ import shutil
 from pathlib import Path
 from PIL import Image
 import io
+import json
+import asyncio
 
 from models import (
     Expert, ExpertCreate, ExpertType,
@@ -350,6 +353,182 @@ async def create_council_analysis(data: CouncilAnalysisCreate):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to create council analysis: {str(e)}")
+
+@app.post("/api/council/analyze-stream")
+async def create_council_analysis_stream(data: CouncilAnalysisCreate):
+    """
+    Run collaborative analysis with Server-Sent Events streaming.
+    
+    Emits real-time progress events:
+    - expert_started: When expert begins analysis
+    - expert_researching: During Perplexity research
+    - expert_analyzing: During Claude analysis
+    - expert_completed: When expert finishes
+    - consensus_started: Before synthesis
+    - analysis_complete: Final result with full analysis
+    """
+    user_id = "default_user"
+    
+    async def event_generator():
+        try:
+            # Helper to format SSE events
+            def sse_event(event_type: str, data: dict) -> str:
+                return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+            
+            # Get user's business profile (optional)
+            profile = await storage.get_business_profile(user_id)
+            
+            # Get experts to consult
+            if data.expertIds:
+                experts = []
+                for expert_id in data.expertIds:
+                    expert = await storage.get_expert(expert_id)
+                    if not expert:
+                        yield sse_event("error", {"message": f"Expert {expert_id} not found"})
+                        return
+                    experts.append(expert)
+            else:
+                experts = await storage.get_experts()
+                if not experts:
+                    yield sse_event("error", {"message": "No experts available"})
+                    return
+            
+            # Emit initial event with expert list
+            yield sse_event("analysis_started", {
+                "expertCount": len(experts),
+                "experts": [{"id": e.id, "name": e.name} for e in experts]
+            })
+            
+            # Run council analysis with progress events
+            # We'll need to modify council_orchestrator to emit events
+            # For now, we'll simulate the workflow
+            
+            contributions = []
+            research_findings = None
+            
+            # Perplexity research phase
+            if profile:
+                yield sse_event("research_started", {
+                    "message": "Conducting market research..."
+                })
+                
+                from perplexity_research import PerplexityResearch
+                perplexity = PerplexityResearch()
+                try:
+                    research_result = await perplexity.research(
+                        problem=data.problem,
+                        profile=profile
+                    )
+                    research_findings = research_result.get("findings", "")
+                    
+                    yield sse_event("research_completed", {
+                        "message": "Market research complete",
+                        "citations": len(research_result.get("sources", []))
+                    })
+                except Exception as e:
+                    yield sse_event("research_failed", {
+                        "message": f"Research failed: {str(e)}"
+                    })
+            
+            # Analyze with each expert (emitting events for each)
+            from crew_council import council_orchestrator
+            
+            # Process experts sequentially for event emission
+            for expert in experts:
+                yield sse_event("expert_started", {
+                    "expertId": expert.id,
+                    "expertName": expert.name,
+                    "message": f"{expert.name} is analyzing..."
+                })
+                
+                try:
+                    contribution = await council_orchestrator._analyze_with_expert(
+                        expert=expert,
+                        problem=data.problem,
+                        profile=profile,
+                        research_findings=research_findings
+                    )
+                    contributions.append(contribution)
+                    
+                    yield sse_event("expert_completed", {
+                        "expertId": expert.id,
+                        "expertName": expert.name,
+                        "insightCount": len(contribution.keyInsights),
+                        "recommendationCount": len(contribution.recommendations)
+                    })
+                except Exception as e:
+                    yield sse_event("expert_failed", {
+                        "expertId": expert.id,
+                        "expertName": expert.name,
+                        "error": str(e)
+                    })
+            
+            if not contributions:
+                yield sse_event("error", {"message": "All expert analyses failed"})
+                return
+            
+            # Synthesize consensus
+            yield sse_event("consensus_started", {
+                "message": "Synthesizing council consensus..."
+            })
+            
+            consensus = await council_orchestrator._synthesize_consensus(
+                problem=data.problem,
+                contributions=contributions,
+                research_findings=research_findings
+            )
+            
+            # Create final analysis object
+            from models import CouncilAnalysis, AgentContribution
+            import uuid
+            
+            analysis = CouncilAnalysis(
+                id=str(uuid.uuid4()),
+                userId=user_id,
+                problem=data.problem,
+                profileId=profile.id if profile else None,
+                marketResearch=research_findings,
+                contributions=contributions,
+                consensus=consensus
+            )
+            
+            # Save analysis
+            await storage.save_council_analysis(analysis)
+            
+            # Send final complete event
+            yield sse_event("analysis_complete", {
+                "analysisId": analysis.id,
+                "analysis": {
+                    "id": analysis.id,
+                    "problem": analysis.problem,
+                    "contributions": [
+                        {
+                            "expertId": c.expertId,
+                            "expertName": c.expertName,
+                            "analysis": c.analysis,
+                            "keyInsights": c.keyInsights,
+                            "recommendations": c.recommendations
+                        }
+                        for c in analysis.contributions
+                    ],
+                    "consensus": analysis.consensus
+                }
+            })
+            
+        except Exception as e:
+            yield sse_event("error", {
+                "message": f"Analysis failed: {str(e)}"
+            })
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
 
 @app.get("/api/council/analyses", response_model=List[CouncilAnalysis])
 async def get_council_analyses():

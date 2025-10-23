@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Users, Sparkles, TrendingUp } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Users, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCouncilStream } from "@/hooks/useCouncilStream";
+import { CouncilAnimation } from "@/components/council/CouncilAnimation";
 
 interface Expert {
   id: string;
@@ -33,11 +36,21 @@ interface CouncilAnalysis {
 export default function TestCouncil() {
   const [problem, setProblem] = useState("");
   const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
+  const [useStreaming, setUseStreaming] = useState(true); // Auto-enable for 2+ experts
 
   const { data: experts = [], isLoading: loadingExperts } = useQuery<Expert[]>({
     queryKey: ["/api/experts"],
   });
 
+  // SSE Streaming hook
+  const [streamingEnabled, setStreamingEnabled] = useState(false);
+  const streamState = useCouncilStream({
+    problem: problem.trim(),
+    expertIds: selectedExperts,
+    enabled: streamingEnabled,
+  });
+
+  // Traditional mutation (non-streaming)
   const analyzeMutation = useMutation({
     mutationFn: async (data: { problem: string; expertIds: string[] }) => {
       const response = await apiRequest("/api/council/analyze", {
@@ -48,6 +61,13 @@ export default function TestCouncil() {
       return response.json();
     },
   });
+
+  // Start streaming when enabled
+  useEffect(() => {
+    if (streamingEnabled && !streamState.isStreaming && !streamState.finalAnalysis) {
+      streamState.startStreaming();
+    }
+  }, [streamingEnabled]);
 
   const handleToggleExpert = (expertId: string) => {
     setSelectedExperts((prev) =>
@@ -69,13 +89,20 @@ export default function TestCouncil() {
     if (!problem.trim()) return;
     if (selectedExperts.length === 0) return;
 
-    analyzeMutation.mutate({
-      problem: problem.trim(),
-      expertIds: selectedExperts,
-    });
+    if (useStreaming) {
+      // Use SSE streaming
+      setStreamingEnabled(true);
+    } else {
+      // Use traditional mutation
+      analyzeMutation.mutate({
+        problem: problem.trim(),
+        expertIds: selectedExperts,
+      });
+    }
   };
 
-  const analysis = analyzeMutation.data as CouncilAnalysis | undefined;
+  const analysis = streamState.finalAnalysis || (analyzeMutation.data as CouncilAnalysis | undefined);
+  const isAnalyzing = useStreaming ? streamState.isStreaming : analyzeMutation.isPending;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -169,25 +196,49 @@ export default function TestCouncil() {
             </CardContent>
           </Card>
 
+          {/* Streaming Toggle */}
+          <Card>
+            <CardContent className="pt-6 pb-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="streaming-mode" className="flex items-center gap-2 cursor-pointer">
+                    <Zap className="h-4 w-4 text-primary" />
+                    Live Streaming Mode
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Watch experts work in real-time
+                  </p>
+                </div>
+                <Switch
+                  id="streaming-mode"
+                  checked={useStreaming}
+                  onCheckedChange={setUseStreaming}
+                  disabled={isAnalyzing}
+                  data-testid="switch-streaming"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Button
             onClick={handleSubmit}
             disabled={
               !problem.trim() ||
               selectedExperts.length === 0 ||
-              analyzeMutation.isPending
+              isAnalyzing
             }
             className="w-full"
             size="lg"
             data-testid="button-analyze"
           >
-            {analyzeMutation.isPending ? (
+            {isAnalyzing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Analyzing... (this may take 1-3 minutes)
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-5 w-5" />
+                {useStreaming ? <Zap className="mr-2 h-5 w-5" /> : <Sparkles className="mr-2 h-5 w-5" />}
                 Consult Council ({selectedExperts.length} experts)
               </>
             )}
@@ -204,7 +255,19 @@ export default function TestCouncil() {
           )}
         </div>
 
-        <div className="lg:col-span-1">
+        {/* Show CouncilAnimation when streaming */}
+        {useStreaming && (streamState.isStreaming || streamState.expertStatusArray.length > 0) && (
+          <div className="lg:col-span-3">
+            <CouncilAnimation
+              expertStatuses={streamState.expertStatusArray}
+              activityFeed={streamState.activityFeed}
+              isStreaming={streamState.isStreaming}
+            />
+          </div>
+        )}
+
+        {/* Show results (for both streaming and non-streaming after completion) */}
+        <div className={`lg:col-span-1 ${useStreaming && (streamState.isStreaming || !streamState.finalAnalysis) ? "hidden" : ""}`}>
           {analysis ? (
             <Card>
               <CardHeader>
