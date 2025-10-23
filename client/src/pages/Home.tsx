@@ -112,9 +112,9 @@ export default function Home() {
                     
                     <div className="flex items-start gap-4 relative z-10">
                       <motion.div
-                        whileHover={{ scale: 1.05, rotate: 3 }}
-                        transition={{ type: "spring", stiffness: 300, duration: 0.6 }}
-                        className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:shadow-primary/20 transition-shadow duration-600"
+                        whileHover={{ scale: 1.01 }}
+                        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                        className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:shadow-primary/15 transition-shadow duration-600"
                       >
                         <Lightbulb className="h-6 w-6 text-white" />
                       </motion.div>

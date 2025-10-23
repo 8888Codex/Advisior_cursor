@@ -82,7 +82,7 @@ export function Hero() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-16 w-full max-w-4xl mx-auto">
             {[
               {
                 icon: Brain,
@@ -115,9 +115,9 @@ export function Hero() {
                   delay: feature.delay,
                   ease: [0.4, 0, 0.2, 1]
                 }}
-                className="flex flex-col items-center gap-4 p-8 glass rounded-3xl hover:glass-strong transition-all duration-600 card-3d-hover group"
+                className="flex flex-col items-center gap-4 p-8 glass rounded-3xl hover:glass-strong transition-all duration-600 group hover:scale-[1.01] hover:-translate-y-0.5"
               >
-                <div className={`rounded-full bg-gradient-to-br ${feature.gradient} p-4 shadow-md group-hover:shadow-lg transition-shadow duration-600`}>
+                <div className={`rounded-full bg-gradient-to-br ${feature.gradient} p-4 shadow-md group-hover:shadow-lg transition-all duration-600`}>
                   <feature.icon className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="font-semibold text-lg tracking-tight">{feature.title}</h3>

@@ -76,7 +76,7 @@ export function ExpertCard({
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
             className="absolute -top-2 -right-2 z-10"
           >
-            <Badge className="gap-1 rounded-full px-3 py-1 bg-gradient-to-r from-primary/90 to-accent-cyan/90 text-white shadow-md pulse-glow text-xs" data-testid={`badge-recommended-${expert.id}`}>
+            <Badge className="gap-1 rounded-full px-3 py-0.5 bg-gradient-to-r from-primary/90 to-accent-cyan/90 text-white shadow-sm pulse-glow text-xs hover:bg-primary/8" data-testid={`badge-recommended-${expert.id}`}>
               <Sparkles className="h-3 w-3" />
               Recomendado
             </Badge>
@@ -87,7 +87,8 @@ export function ExpertCard({
           {/* Avatar with Premium Hover Effect */}
           <motion.div
             animate={{
-              scale: isHovered ? 1.05 : 1,
+              scale: isHovered ? 1.01 : 1,
+              y: isHovered ? -2 : 0,
             }}
             transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
             className="relative"
@@ -130,7 +131,7 @@ export function ExpertCard({
                     key={i}
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 + i * 0.05 }}
+                    transition={{ delay: 0.4 + i * 0.15 }}
                   >
                     <Star
                       className={`h-4 w-4 transition-all ${
@@ -158,11 +159,11 @@ export function ExpertCard({
               initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ 
-                duration: 0.3, 
-                delay: 0.1 + index * 0.05,
+                duration: 0.6, 
+                delay: 0.1 + index * 0.15,
                 ease: [0.4, 0, 0.2, 1]
               }}
-              whileHover={{ scale: 1.03 }}
+              whileHover={{ scale: 1.01 }}
             >
               <Badge 
                 variant="secondary" 
@@ -200,10 +201,11 @@ export function ExpertCard({
           </motion.div>
         )}
 
-        {/* CTA Button with Enhanced Hover */}
+        {/* CTA Button with Ultra-Subtle Hover */}
         <motion.div
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.01, y: -2 }}
           whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
           className="relative z-10"
         >
           <Button 
