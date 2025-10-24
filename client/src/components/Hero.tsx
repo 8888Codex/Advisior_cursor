@@ -1,83 +1,60 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Brain, Users, Zap } from "lucide-react";
 import { Link } from "wouter";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRipple } from "@/hooks/use-ripple";
-import { useRef } from "react";
 
 export function Hero() {
   const { createRipple } = useRipple();
-  const heroRef = useRef<HTMLElement>(null);
-  
-  // Parallax effect: background moves slower than content
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"]
-  });
-  
-  const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
   
   return (
-    <section ref={heroRef} className="relative w-full py-20 md:py-32 overflow-hidden">
-      {/* Premium Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-hero pointer-events-none" />
-      
-      {/* Animated Mesh Gradient Overlay with Parallax */}
-      <motion.div 
-        className="absolute inset-0 opacity-30"
-        style={{ y: yParallax }}
-      >
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-cyan/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      </motion.div>
-
-      <div className="container mx-auto px-4 relative z-10">
+    <section className="relative w-full py-24 md:py-32">
+      <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto gap-8">
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 glass rounded-full px-6 py-2.5 text-sm shimmer"
+            transition={{ duration: 0.3 }}
+            className="inline-flex items-center gap-2 bg-muted/50 rounded-full px-6 py-2.5 text-sm border border-border/50"
           >
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent-cyan">
+            <Sparkles className="h-4 w-4 text-accent" />
+            <span className="font-medium text-foreground">
               Consultoria Estratégica de Elite com IA
             </span>
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight"
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-tight"
           >
             Democratizando o Acesso a{" "}
-            <span className="text-gradient-premium inline-block">
+            <span className="text-accent">
               Mentalidades Estratégicas
             </span>{" "}
             de Alto Nível
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
             className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed"
           >
             Consulte clones digitais de especialistas renomados ou crie seus próprios consultores de IA personalizados para resolver seus desafios de negócios mais complexos.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
             className="flex flex-col sm:flex-row gap-4 mt-4"
           >
             <Link href="/experts">
               <Button 
                 size="lg" 
-                className="gap-2 rounded-xl glow-subtle transition-all duration-600 press-effect relative overflow-hidden" 
+                className="gap-2 rounded-xl press-effect" 
                 data-testid="button-explore-experts"
                 onClick={createRipple}
               >
@@ -90,7 +67,7 @@ export function Hero() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="gap-2 rounded-xl glass-strong hover:border-primary/30 transition-all duration-600 press-effect relative overflow-hidden" 
+                className="gap-2 rounded-xl press-effect" 
                 data-testid="button-create-expert"
                 onClick={createRipple}
               >
@@ -100,46 +77,43 @@ export function Hero() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-16 w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-20 w-full max-w-4xl mx-auto">
             {[
               {
                 icon: Brain,
                 title: "Expertise de Elite",
                 description: "Acesse conhecimento estratégico de consultores de alto nível",
-                gradient: "from-primary to-accent-cyan",
-                delay: 0.4
+                delay: 0.2
               },
               {
                 icon: Users,
                 title: "Consultores Personalizados",
                 description: "Crie especialistas customizados para suas necessidades específicas",
-                gradient: "from-accent-cyan to-accent",
-                delay: 0.5
+                delay: 0.25
               },
               {
                 icon: Sparkles,
                 title: "Insights Estratégicos",
                 description: "Obtenha análises profundas e soluções inovadoras instantaneamente",
-                gradient: "from-accent to-primary",
-                delay: 0.6
+                delay: 0.3
               }
             ].map((feature, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  duration: 0.5, 
+                  duration: 0.3, 
                   delay: feature.delay,
-                  ease: [0.4, 0, 0.2, 1]
+                  ease: [0.25, 0.1, 0.25, 1]
                 }}
-                className="flex flex-col items-center gap-4 p-8 glass rounded-3xl hover:glass-strong transition-all duration-600 group hover:scale-[1.01] hover:-translate-y-0.5"
+                className="flex flex-col items-center gap-4 p-8 bg-card/50 border border-border/50 rounded-2xl card-hover"
               >
-                <div className={`rounded-full bg-gradient-to-br ${feature.gradient} p-4 shadow-md group-hover:shadow-lg transition-all duration-600`}>
-                  <feature.icon className="h-8 w-8 text-white" />
+                <div className="rounded-full bg-accent/10 p-4 border border-accent/20">
+                  <feature.icon className="h-8 w-8 text-accent" />
                 </div>
-                <h3 className="font-semibold text-lg tracking-tight">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground/80 leading-relaxed font-normal">
+                <h3 className="font-medium text-lg tracking-tight">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>

@@ -9,18 +9,18 @@ export function ChatMessageSkeleton({ isUser = false }: { isUser?: boolean }) {
       className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {!isUser && (
-        <div className="h-8 w-8 rounded-full bg-muted shimmer flex-shrink-0" />
+        <div className="h-8 w-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
       )}
       
       <div className={`flex flex-col gap-2 max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`space-y-2 ${isUser ? 'bg-primary/10' : 'bg-muted'} rounded-2xl p-4 shimmer`}>
+        <div className={`space-y-2 ${isUser ? 'bg-accent/10' : 'bg-muted'} rounded-2xl p-4 animate-pulse`}>
           <div className="h-4 w-48 bg-muted/50 rounded-xl" />
           <div className="h-4 w-36 bg-muted/50 rounded-xl" />
         </div>
       </div>
 
       {isUser && (
-        <div className="h-8 w-8 rounded-full bg-muted shimmer flex-shrink-0" />
+        <div className="h-8 w-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
       )}
     </motion.div>
   );
