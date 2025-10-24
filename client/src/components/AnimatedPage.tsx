@@ -8,9 +8,24 @@ interface AnimatedPageProps {
 export function AnimatedPage({ children }: AnimatedPageProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.98, y: -10 }}
+      initial={{ 
+        opacity: 0, 
+        scale: 0.98, 
+        y: 10,
+        filter: "blur(4px)"
+      }}
+      animate={{ 
+        opacity: 1, 
+        scale: 1, 
+        y: 0,
+        filter: "blur(0px)"
+      }}
+      exit={{ 
+        opacity: 0, 
+        scale: 0.98, 
+        y: -10,
+        filter: "blur(4px)"
+      }}
       transition={{ 
         duration: 0.6, 
         ease: [0.4, 0, 0.2, 1],
