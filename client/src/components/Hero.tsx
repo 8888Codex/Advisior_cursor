@@ -2,8 +2,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Brain, Users, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useRipple } from "@/hooks/use-ripple";
 
 export function Hero() {
+  const { createRipple } = useRipple();
+  
   return (
     <section className="relative w-full py-20 md:py-32 overflow-hidden">
       {/* Premium Gradient Background */}
@@ -61,8 +64,9 @@ export function Hero() {
             <Link href="/experts">
               <Button 
                 size="lg" 
-                className="gap-2 rounded-xl glow-subtle transition-all duration-600" 
+                className="gap-2 rounded-xl glow-subtle transition-all duration-600 press-effect relative overflow-hidden" 
                 data-testid="button-explore-experts"
+                onClick={createRipple}
               >
                 <Zap className="h-5 w-5" />
                 Explorar Especialistas
@@ -73,8 +77,9 @@ export function Hero() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="gap-2 rounded-xl glass-strong hover:border-primary/30 transition-all duration-600" 
+                className="gap-2 rounded-xl glass-strong hover:border-primary/30 transition-all duration-600 press-effect relative overflow-hidden" 
                 data-testid="button-create-expert"
+                onClick={createRipple}
               >
                 <Brain className="h-4 w-4" />
                 Criar Seu Especialista

@@ -12,6 +12,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import type { Expert, Conversation, Message } from "@shared/schema";
+import { ChatLoadingSkeleton } from "@/components/skeletons/ChatMessageSkeleton";
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:id");
@@ -168,9 +169,7 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messagesLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <ChatLoadingSkeleton />
         ) : (
           <>
             <ChatMessage

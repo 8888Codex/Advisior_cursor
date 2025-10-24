@@ -14,6 +14,8 @@ import {
 import { AnimatedPage } from "@/components/AnimatedPage";
 import { Search, Loader2, SlidersHorizontal, Star, X } from "lucide-react";
 import { useLocation } from "wouter";
+import { ExpertGridSkeleton } from "@/components/skeletons/SkeletonCard";
+import { motion } from "framer-motion";
 
 interface Recommendation {
   expertId: string;
@@ -228,9 +230,7 @@ export default function Experts() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <ExpertGridSkeleton count={6} />
           ) : (
             <>
               {hasProfile && (
@@ -241,19 +241,49 @@ export default function Experts() {
                 </div>
               )}
               
-              <div className="grid md:grid-cols-2 gap-8">
-                {filteredAndSortedExperts.map(({ expert, recommendation }) => (
-                  <ExpertCard 
-                    key={expert.id} 
-                    expert={expert} 
-                    onConsult={handleConsult}
-                    showRecommendation={hasProfile}
-                    recommendationScore={recommendation?.score}
-                    recommendationStars={recommendation?.stars}
-                    recommendationJustification={recommendation?.justification}
-                  />
+              <motion.div 
+                className="grid md:grid-cols-2 gap-8"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.15,
+                      delayChildren: 0.1
+                    }
+                  }
+                }}
+              >
+                {filteredAndSortedExperts.map(({ expert, recommendation }, index) => (
+                  <motion.div
+                    key={expert.id}
+                    variants={{
+                      hidden: { opacity: 0, y: 30, scale: 0.95 },
+                      visible: { 
+                        opacity: 1, 
+                        y: 0, 
+                        scale: 1,
+                        transition: {
+                          type: "tween",
+                          duration: 0.6,
+                          ease: [0.4, 0, 0.2, 1]
+                        }
+                      }
+                    }}
+                  >
+                    <ExpertCard 
+                      expert={expert} 
+                      onConsult={handleConsult}
+                      showRecommendation={hasProfile}
+                      recommendationScore={recommendation?.score}
+                      recommendationStars={recommendation?.stars}
+                      recommendationJustification={recommendation?.justification}
+                    />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
 
               {filteredAndSortedExperts.length === 0 && (
                 <div className="text-center py-16">

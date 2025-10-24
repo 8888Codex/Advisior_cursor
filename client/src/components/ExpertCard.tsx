@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquare, Star, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useRipple } from "@/hooks/use-ripple";
 
 export interface Expert {
   id: string;
@@ -33,6 +34,7 @@ export function ExpertCard({
   showRecommendation = false
 }: ExpertCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const { createRipple } = useRipple();
   
   const initials = expert.name
     .split(" ")
@@ -45,18 +47,14 @@ export function ExpertCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ 
-        duration: 0.6, 
-        ease: [0.4, 0, 0.2, 1]
-      }}
       whileHover={{ 
         scale: 1.01, 
         y: -2,
         transition: { type: "tween", duration: 0.6, ease: [0.4, 0, 0.2, 1] }
       }}
-      className="relative group"
+      whileTap={{ scale: 0.98 }}
+      className="relative group press-effect"
+      onClick={createRipple}
     >
       <Card 
         className={`
