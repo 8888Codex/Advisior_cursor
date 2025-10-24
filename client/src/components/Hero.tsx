@@ -1,23 +1,36 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Brain, Users, Zap } from "lucide-react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { useRipple } from "@/hooks/use-ripple";
+import { useRef } from "react";
 
 export function Hero() {
   const { createRipple } = useRipple();
+  const heroRef = useRef<HTMLElement>(null);
+  
+  // Parallax effect: background moves slower than content
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  
+  const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
   
   return (
-    <section className="relative w-full py-20 md:py-32 overflow-hidden">
+    <section ref={heroRef} className="relative w-full py-20 md:py-32 overflow-hidden">
       {/* Premium Gradient Background */}
       <div className="absolute inset-0 bg-gradient-hero pointer-events-none" />
       
-      {/* Animated Mesh Gradient Overlay */}
-      <div className="absolute inset-0 opacity-30">
+      {/* Animated Mesh Gradient Overlay with Parallax */}
+      <motion.div 
+        className="absolute inset-0 opacity-30"
+        style={{ y: yParallax }}
+      >
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-cyan/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
+      </motion.div>
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto gap-8">

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import type { Expert, Conversation, Message } from "@shared/schema";
 import { ChatLoadingSkeleton } from "@/components/skeletons/ChatMessageSkeleton";
+import { PulseLoader } from "@/components/PulseLoader";
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:id");
@@ -232,8 +233,7 @@ export default function Chat() {
                     ease: "easeInOut"
                   }}
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Pensando...</span>
+                  <PulseLoader size="sm" text="Pensando..." />
                 </motion.div>
               </motion.div>
             )}

@@ -76,9 +76,9 @@ export function ExpertCard({
         {/* Highly Recommended Badge */}
         {isHighlyRecommended && (
           <motion.div
-            initial={{ opacity: 0, scale: 0, rotate: -10 }}
+            initial={{ opacity: 0, scale: 0, rotate: -5 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
             className="absolute -top-2 -right-2 z-10"
           >
             <Badge className="gap-1 rounded-full px-3 py-0.5 bg-gradient-to-r from-primary/90 to-accent-cyan/90 text-white shadow-sm pulse-glow text-xs hover:bg-primary/8" data-testid={`badge-recommended-${expert.id}`}>
@@ -98,7 +98,7 @@ export function ExpertCard({
             transition={{ type: "tween", duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
             className="relative"
           >
-            <Avatar className={`h-24 w-24 ring-2 transition-all duration-600 ${
+            <Avatar className={`h-24 w-24 ring-2 transition-all duration-600 avatar-breathe ${
               isHovered 
                 ? 'ring-primary/40 shadow-md shadow-primary/15' 
                 : 'ring-primary/15'
@@ -156,19 +156,20 @@ export function ExpertCard({
           </div>
         </div>
 
-        {/* Expertise Tags with Stagger Animation */}
+        {/* Expertise Tags with Spring Pop Animation */}
         <div className="flex flex-wrap gap-2 relative z-10">
           {expert.expertise.map((skill, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0, rotate: -5 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ 
-                duration: 0.6, 
-                delay: 0.1 + index * 0.15,
-                ease: [0.4, 0, 0.2, 1]
+                type: "spring",
+                stiffness: 300,
+                damping: 20,
+                delay: 0.1 + index * 0.08
               }}
-              whileHover={{ scale: 1.01 }}
+              whileHover={{ scale: 1.05, rotate: 2 }}
             >
               <Badge 
                 variant="secondary" 
