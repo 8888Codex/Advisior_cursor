@@ -2,7 +2,7 @@
 
 ## Overview
 
-AdvisorIA is a premium AI consultancy platform featuring cognitive clones of 8 legendary marketing figures. It uses the Framework EXTRACT methodology to create high-fidelity AI personalities via Anthropic's Claude. The platform is built with a React/TypeScript frontend, an Express.js proxy, and a Python/FastAPI backend with async AI integration. Its purpose is to provide expert marketing advice through AI-powered cognitive clones, offering a unique and specialized consulting experience.
+AdvisorIA is a premium AI consultancy platform featuring cognitive clones of **18 specialists** across **15 disciplines**. It uses the **Framework EXTRACT de 12 Camadas** to create ultra-realistic AI personalities via Anthropic's Claude. The platform is built with a React/TypeScript frontend, an Express.js proxy, and a Python/FastAPI backend with async AI integration. Its purpose is to provide expert advice through AI-powered cognitive clones, offering a specialized multi-category consulting experience.
 
 ## User Preferences
 
@@ -14,17 +14,39 @@ Preferred communication style: Simple, everyday language.
 - **Framework & Tooling**: React 18 with TypeScript, Vite, Wouter for routing, TanStack Query v5 for server state.
 - **UI Component System**: shadcn/ui components on Radix UI, Tailwind CSS for styling. Professional aesthetic inspired by Linear, Notion, and LinkedIn, with dark mode primary and light mode support.
 - **State Management**: TanStack Query for server state, React Context for theme, react-hook-form with Zod for forms. No global state library.
+- **Routing**: Wouter with custom `useURLSearchParam` hook for reliable URL query parameter synchronization (see URL Sync Solution below).
 
 ### Backend Architecture (Hybrid Proxy + Python)
 - **Express.js Proxy Server (Port 5000)**: Lightweight TypeScript proxy forwarding `/api` requests to Python backend, automatic Python backend startup, Vite integration, serves static frontend in production.
 - **Python/FastAPI Backend (Port 5001)**: FastAPI for async API routes, AsyncAnthropic client for non-blocking AI calls.
-- **API Endpoints**: CRUD operations for experts and conversations, including `auto-clone` and `test-chat` functionalities.
-- **Storage Layer**: In-memory Python storage (MemStorage) using Pydantic models for Expert, Conversation, and Message entities.
+- **API Endpoints**: 
+  - `GET /api/experts` (supports `?category=` filter)
+  - `GET /api/categories` (metadata: id, name PT-BR, description, icon, color, expertCount)
+  - `GET /api/experts/{id}/suggested-questions` (Perplexity-powered personalization)
+  - `POST /api/chat` (streaming AI responses)
+  - `POST /api/auto-clone` (research + prompt generation)
+  - `GET /api/profile` (user business profile)
+  - `GET /api/insights` (Perplexity industry tips)
+- **Storage Layer**: In-memory Python storage (MemStorage) using Pydantic models for Expert (with CategoryType enum), Conversation, and Message entities.
 
-### AI Integration - Cognitive Cloning
-- **Framework EXTRACT Methodology**: Each marketing legend has a detailed system prompt with 8 cognitive layers (Identity Core, Terminology, Reasoning Patterns, Communication Style, Expertise Contexts, Techniques & Methods, Limitations, Meta-Awareness).
-- **Implementation**: Uses AsyncAnthropic Claude API (claude-sonnet-4-20250514) for non-blocking calls. System prompts are stored in `python_backend/prompts/legends.py`.
-- **Pre-Seeded Legends**: Includes 8 marketing legends like Philip Kotler, David Ogilvy, and Seth Godin, each responding with authentic personality and expertise.
+### AI Integration - Cognitive Cloning (Enhanced)
+- **Framework EXTRACT de 12 Camadas**: Each specialist has an ultra-realistic system prompt with 12 cognitive layers:
+  1. **Identity Core**: Name, role, historical context
+  2. **Terminology**: Domain-specific vocabulary
+  3. **Reasoning Patterns**: How they think and solve problems
+  4. **Communication Style**: Tone, formality, linguistic quirks
+  5. **Expertise Contexts**: Where they excel
+  6. **Techniques & Methods**: Proprietary frameworks (ICE, STEPPS, AIDA)
+  7. **Limitations**: What they DON'T do
+  8. **Meta-Awareness**: Self-reference behavior
+  9. **Famous Quotes**: Authentic quotes from books/speeches
+  10. **Real Cases**: Documented campaigns/strategies
+  11. **Controversial Takes**: Polarizing opinions
+  12. **Temporal Context**: 2025 awareness with maintained philosophy
+- **Implementation**: Uses AsyncAnthropic Claude API (claude-sonnet-4-20250514) for non-blocking calls. System prompts stored in `python_backend/prompts/legends.py`.
+- **Current Specialists (18)**: Philip Kotler, David Ogilvy, Seth Godin, Al Ries, Bill Bernbach, Dan Kennedy, Ann Handley, Neil Patel, Robert Cialdini, Simon Sinek, Byron Sharp, Sean Ellis, Brian Balfour, Andrew Chen, Jonah Berger, Hiten Shah, Elena Verna, Casey Winters.
+- **Cross-References**: Each specialist can recommend other specialists when appropriate (e.g., Sean Ellis → Brian Balfour for growth systems)
+- **Socratic Questioning**: Each specialist asks diagnostic questions before advising (e.g., Dan Kennedy asks about CAC/LTV before strategy recommendations)
 
 ### Key Architectural Decisions
 - **Monorepo Structure**: `/client` (React), `/server` (Express), `/python_backend` (FastAPI), and `/shared` (TypeScript types).
@@ -64,7 +86,32 @@ Preferred communication style: Simple, everyday language.
   - Smart filters on /experts page: search, sort by relevance/name, filter by expertise category, toggle "Apenas Recomendados" (stars >= 4), active filter count
   - All personalized features conditional on hasProfile=true, graceful fallbacks to generic content when Perplexity API fails or profile missing
 
+### Multi-Category Navigation System (NEW)
+- **15 Categories**: marketing, growth, psychology, branding, sales, content, seo, analytics, sales_enablement, media_buying, virality, product_strategy, retention, conversion_optimization, network_effects
+- **Category Page** (`/categories`): Grid layout with glassmorphism cards, Lucide icons, theme colors (purple for marketing, emerald for growth, cyan for psychology, etc.), stagger animations (0.15s delay)
+- **Expert Filtering** (`/experts?category={id}`): Dropdown filter, category badges on ExpertCards, "Limpar Filtros" button
+- **Design System**: 
+  - `CATEGORY_COLORS`: bg/text/glow/border variants for all 15 categories
+  - `CATEGORY_ICONS`: Brain, Rocket, Award, Handshake, BarChart3, etc.
+  - `CATEGORY_NAMES`: PT-BR labels ("Marketing Tradicional", "Growth Hacking", etc.)
+- **URL Sync Solution**: Custom `useURLSearchParam` hook with polling fallback (100ms) + event listeners (popstate, hashchange) ensures UI syncs with URL across ALL navigation types (dropdown selection, browser back/forward, category card clicks, direct URLs)
+- **Mobile Accessibility**: Touch targets corrected to 44px minimum (`min-h-11`) for all interactive buttons
+- **Hover Effects**: `overflow-visible` on Cards to enable `translateY(-2px) scale(1.01)` 3D animations
+
 ## Recent Updates
+
+### October 24, 2025 - Multi-Category System: URL Sync Fix + Production-Ready
+- **Custom Hook `useURLSearchParam`**: Created `client/src/hooks/use-url-search-params.ts` to solve URL ↔ UI synchronization bug
+- **Polling Fallback**: 100ms polling catches programmatic navigation when Wouter location hook doesn't trigger (e.g., dropdown selection, setLocation calls)
+- **Event Listeners**: popstate (browser back/forward) + hashchange (URL changes) + wouter location dependency
+- **Architecture**: Simplified `Experts.tsx` from manual useState sync to single `const selectedCategory = useURLSearchParam("category", "all")` line
+- **E2E Testing PASS**: All navigation flows validated (dropdown, browser history, category cards, direct URLs)
+- **Architect Review PASS**: Production-ready with recommendations to monitor polling if hook reused widely, evaluate wouter built-in search handling, add regression tests
+- **Bug Fixes Applied**:
+  - Touch targets: `min-h-11` (44px) on "Consultar Especialista" and "Ver Especialistas" buttons
+  - Hover effects: Removed `overflow-hidden` from ExpertCard, added `overflow-visible` to enable 3D transform animations
+  - URL sync: Custom hook with polling eliminates all sync issues across navigation methods
+- **Specialist Count**: 18/25+ (all with 12-layer EXTRACT prompts, cross-references, socratic questioning)
 
 ### October 24, 2025 - Disney-Level Polish: Micro-Interações Mágicas (Fase 1-4 Completa)
 - **Press Effects & Ripple**: Scale(0.98) ao clicar em cards/botões, ripple animation expandindo ao click com hook useRipple
