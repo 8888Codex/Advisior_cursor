@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -40,6 +40,7 @@ interface Expert {
   title: string;
   expertise: string[];
   bio: string;
+  avatar?: string;
 }
 
 interface ProfileFormData {
@@ -307,6 +308,7 @@ export default function Welcome() {
                   className="flex-shrink-0"
                 >
                   <Avatar className="h-32 w-32 border-4 border-primary/20">
+                    <AvatarImage src={currentExpert.avatar} alt={currentExpert.name} />
                     <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-primary/5">
                       {expertInitials}
                     </AvatarFallback>

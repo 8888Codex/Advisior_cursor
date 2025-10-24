@@ -47,8 +47,15 @@ export function ExpertCard({
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ scale: 1.01, y: -2 }}
+      transition={{ 
+        duration: 0.6, 
+        ease: [0.4, 0, 0.2, 1]
+      }}
+      whileHover={{ 
+        scale: 1.01, 
+        y: -2,
+        transition: { type: "tween", duration: 0.6, ease: [0.4, 0, 0.2, 1] }
+      }}
       className="relative group"
     >
       <Card 
@@ -90,7 +97,7 @@ export function ExpertCard({
               scale: isHovered ? 1.01 : 1,
               y: isHovered ? -2 : 0,
             }}
-            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ type: "tween", duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
             className="relative"
           >
             <Avatar className={`h-24 w-24 ring-2 transition-all duration-600 ${

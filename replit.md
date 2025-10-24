@@ -44,6 +44,18 @@ Preferred communication style: Simple, everyday language.
   - **Hero Section**: Mesh gradient animado com 3 blobs pulsantes, glassmorphism badges, text gradients, glow CTAs
   - **Expert Cards**: 3D hover transform, avatar ring glow, gradient borders para recomendados, shimmer badges
   - **Page Transitions**: Fade + scale coordenados (0.98→1) entry/exit 500ms
+- **Visual Refinement "Apple Store Sofisticado" (Completo)**:
+  - Border-radius system: cards rounded-3xl (24px), badges rounded-full, buttons rounded-xl (12px)
+  - Hover animations: translateY(-2px) scale(1.01) duration-600ms type:"tween" (ultra-sutis e cinematográficos)
+  - Grid layout: 2 colunas desktop (md:grid-cols-2) com gap-8, nunca 3 colunas
+  - Spacing generous: cards p-8 gap-6, sections py-20/24, avatars w-24 h-24
+  - Typography weights: font-bold apenas títulos principais, resto font-medium/semibold/normal
+  - Glassmorphism: backdrop-blur-lg bg-card/30 (reduzido de xl/40), borders /30
+  - Glow effects: opacidades 0.12-0.15 (reduzidas de 0.3-0.4), spreads 8-30px
+  - Stagger animations: 0.15s delays (aumentado de 0.05s-0.1s)
+  - Avatar photos: todos os 8 especialistas com fotos reais (/attached_assets/generated_images/)
+  - AnimatedPage transitions: 0.6s duration com stagger coordenado
+  - Expert cards: p-8 gap-6 rounded-3xl com hover suave e fotos visíveis
 - **Personalization System (Fase 4 - Completa)**:
   - Expert recommendation engine scores 8 experts (0-100) based on user profile alignment, displays 5-star badges for top matches (stars >= 4)
   - Contextual AI prompt enrichment injects business profile into system prompts for all chat interactions
@@ -51,6 +63,21 @@ Preferred communication style: Simple, everyday language.
   - Business insights section on home: GET /api/insights generates 3-4 industry-specific tips (temperature 0.4, month recency filter) with category badges
   - Smart filters on /experts page: search, sort by relevance/name, filter by expertise category, toggle "Apenas Recomendados" (stars >= 4), active filter count
   - All personalized features conditional on hasProfile=true, graceful fallbacks to generic content when Perplexity API fails or profile missing
+
+## Recent Updates
+
+### October 24, 2025 - Visual Refinement "Apple Store Sofisticado"
+- **Avatar Photos Fixed**: Added AvatarImage component to Welcome.tsx onboarding tour - all 8 expert photos now display correctly instead of initials
+- **Hover Animations Refined**: Updated to ultra-subtle translateY(-2px) scale(1.01) with 600ms duration and type:"tween" for smooth, cinematographic feel (previously -4px/-6px and 1.02-1.05 with faster 300-500ms timing)
+- **Border-Radius Systemized**: Cards rounded-3xl (24px), badges rounded-full, buttons rounded-xl (12px) for organic, flowing design
+- **Grid Layout Optimized**: Changed from 3 to 2 columns on desktop (md:grid-cols-2) with gap-8 for generous breathing room
+- **Typography Weights Lightened**: Removed excessive font-bold, using font-medium/semibold/normal throughout (bold only on main headings)
+- **Spacing Increased**: Cards p-8 gap-6 (was p-6 gap-4), sections py-20/24 (was py-16/20), avatars w-24 h-24 (was w-20)
+- **Glassmorphism Refined**: backdrop-blur-lg bg-card/30 (was xl/40), more subtle transparency and lighter borders /30
+- **Glow Effects Reduced**: Opacities 0.12-0.15 (was 0.3-0.4), spreads 8-30px (was 20-60px) for understated elegance
+- **Stagger Timing Extended**: Animation delays 0.15s (was 0.05s-0.1s) for better visual rhythm
+- **AnimatedPage Duration**: Increased to 0.6s (was 0.5s) for smoother page transitions
+- **design_guidelines.md Updated**: Complete documentation of "Apple Store Sofisticado" philosophy with all refined values
 
 ## External Dependencies
 
