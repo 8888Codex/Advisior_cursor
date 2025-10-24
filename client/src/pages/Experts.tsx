@@ -50,12 +50,26 @@ export default function Experts() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showRecommendedOnly, setShowRecommendedOnly] = useState(false);
 
-  // Derive selectedCategory from URL location (ensures reload/share URLs work correctly)
+  // Sync selectedCategory with URL (handles both programmatic navigation and browser back/forward)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlCategory = params.get("category") || "all";
-    setSelectedCategory(urlCategory);
-  }, [location]); // Re-run when location changes (router navigation)
+    // Function to update category from current URL
+    const syncCategoryFromURL = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlCategory = params.get("category") || "all";
+      setSelectedCategory(urlCategory);
+    };
+
+    // Initial sync
+    syncCategoryFromURL();
+
+    // Listen for browser back/forward navigation
+    const handlePopState = () => {
+      syncCategoryFromURL();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [location]); // Re-sync when wouter location changes OR popstate fires
 
   // Fetch categories
   const { data: categories = [] } = useQuery<Category[]>({

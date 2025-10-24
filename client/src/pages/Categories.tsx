@@ -205,7 +205,7 @@ function CategoryCard({ category, index }: { category: Category; index: number }
             <Button
               variant="ghost"
               size="sm"
-              className={cn("rounded-xl", colors.text)}
+              className={cn("rounded-xl min-h-11", colors.text)}
               data-testid={`button-view-experts-${category.id}`}
             >
               Ver Especialistas →

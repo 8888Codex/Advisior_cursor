@@ -92,12 +92,12 @@ export function ExpertCard({
         transition: { type: "tween", duration: 0.6, ease: [0.4, 0, 0.2, 1] }
       }}
       whileTap={{ scale: 0.98 }}
-      className="relative group press-effect"
+      className="relative group press-effect overflow-visible"
       onClick={createRipple}
     >
       <Card 
         className={`
-          flex flex-col p-8 gap-6 relative overflow-hidden rounded-3xl
+          flex flex-col p-8 gap-6 relative rounded-3xl
           transition-all duration-600
           ${isHighlyRecommended ? 'gradient-border glow-subtle' : ''}
           hover:shadow-lg
@@ -275,7 +275,7 @@ export function ExpertCard({
           className="relative z-10"
         >
           <Button 
-            className="w-full gap-2 mt-2 rounded-xl shadow-sm hover:shadow-md hover:shadow-primary/10 transition-all duration-600" 
+            className="w-full gap-2 mt-2 rounded-xl shadow-sm hover:shadow-md hover:shadow-primary/10 transition-all duration-600 min-h-11" 
             onClick={() => onConsult?.(expert)}
             data-testid={`button-consult-${expert.id}`}
           >
