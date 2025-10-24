@@ -3,6 +3,12 @@
 ## Overview
 AdvisorIA is a premium AI consultancy platform offering expert advice through cognitive clones of 18 specialists across 15 disciplines. It leverages the "Framework EXTRACT de 12 Camadas" with Anthropic's Claude to create ultra-realistic AI personalities. The platform features a React/TypeScript frontend, an Express.js proxy, and a Python/FastAPI backend with asynchronous AI integration, aiming to provide a specialized multi-category consulting experience.
 
+## Recent Changes (October 2025 - Marketing Copy Overhaul)
+- **Welcome Page Redesign**: Hero section com copy persuasiva ("Converse com as Maiores Lendas do Marketing"), nova seção "Como Funciona" explicando clonagem cognitiva em 3 passos, comparação IA Genérica vs Clone Perfeito, tour expandido para 18 especialistas (antes 8).
+- **Marketing Page Criada**: Página dedicada `/marketing` showcasing as 18 lendas com timeline de impacto (1967-Hoje, 57 anos), seção "Perguntas Concretas" (18 exemplos reais), grid completo de especialistas, comparação Framework EXTRACT detalhada.
+- **CTAs Globais Otimizados**: Textos genéricos substituídos por copy específica e persuasiva em Welcome.tsx e Home.tsx, micro-copy que remove objeções, promessas alinhadas com comportamento real validado.
+- **Copy Marketing-Quality**: Toda copy aproveitando expertise das 18 lendas do marketing presentes na plataforma, persuasiva mas honesta, números verificáveis ("18 Especialistas • 15 Disciplinas"), foco em benefícios reais vs features técnicas.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
