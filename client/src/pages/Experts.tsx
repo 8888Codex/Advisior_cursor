@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Search, Loader2, SlidersHorizontal, Star, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { ExpertGridSkeleton } from "@/components/skeletons/SkeletonCard";
 import { motion } from "framer-motion";
+import { useURLSearchParam } from "@/hooks/use-url-search-params";
 
 interface Category {
   id: string;
@@ -43,33 +44,14 @@ interface RecommendationsResponse {
 type SortOption = "relevance" | "name-asc" | "name-desc";
 
 export default function Experts() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("relevance");
   const [filterExpertise, setFilterExpertise] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showRecommendedOnly, setShowRecommendedOnly] = useState(false);
 
-  // Sync selectedCategory with URL (handles both programmatic navigation and browser back/forward)
-  useEffect(() => {
-    // Function to update category from current URL
-    const syncCategoryFromURL = () => {
-      const params = new URLSearchParams(window.location.search);
-      const urlCategory = params.get("category") || "all";
-      setSelectedCategory(urlCategory);
-    };
-
-    // Initial sync
-    syncCategoryFromURL();
-
-    // Listen for browser back/forward navigation
-    const handlePopState = () => {
-      syncCategoryFromURL();
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [location]); // Re-sync when wouter location changes OR popstate fires
+  // Use custom hook to get category from URL - automatically syncs with all navigation types
+  const selectedCategory = useURLSearchParam("category", "all");
 
   // Fetch categories
   const { data: categories = [] } = useQuery<Category[]>({
@@ -170,10 +152,9 @@ export default function Experts() {
     (showRecommendedOnly ? 1 : 0);
 
   const clearAllFilters = () => {
-    setSelectedCategory("all");
     setFilterExpertise("all");
     setShowRecommendedOnly(false);
-    // Use wouter router to update URL
+    // Use wouter router to update URL (selectedCategory will auto-sync from URL)
     setLocation('/experts');
   };
 
