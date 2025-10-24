@@ -19,24 +19,19 @@ export function Header() {
               Especialistas
             </span>
           </Link>
+          <Link href="/marketing">
+            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-marketing">
+              As 18 Lendas
+            </span>
+          </Link>
           <Link href="/categories">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-categories">
               Categorias
             </span>
           </Link>
-          <Link href="/test-council">
-            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-test-council">
-              🧪 Testar Conselho
-            </span>
-          </Link>
           <Link href="/create">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-create">
               Criar Especialista
-            </span>
-          </Link>
-          <Link href="/admin/experts">
-            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-admin">
-              Admin
             </span>
           </Link>
         </nav>
