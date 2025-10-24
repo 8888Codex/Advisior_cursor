@@ -213,7 +213,7 @@ export function ExpertCard({
 
         {/* CTA Button */}
         <Button 
-          className="w-full gap-2 mt-2 rounded-xl shadow-sm" 
+          className="w-full gap-2 mt-2 rounded-xl shadow-sm bg-accent text-accent-foreground hover:bg-accent/90" 
           onClick={() => onConsult?.(expert)}
           data-testid={`button-consult-${expert.id}`}
         >
