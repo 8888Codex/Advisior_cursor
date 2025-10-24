@@ -1,0 +1,46 @@
+{
+  "david_ogilvy": {
+    "expert": "David Ogilvy",
+    "expert_id": "9b129145-ff1b-4324-b7a5-f95bba7f5522",
+    "results": [
+      {
+        "dimension": "EXTREMOS (Recusa)",
+        "error": "HTTP 500",
+        "score": 0
+      },
+      {
+        "dimension": "TRIGGERS (Framework Naming)",
+        "error": "HTTP 500",
+        "score": 0
+      },
+      {
+        "dimension": "TOM (Callbacks)",
+        "error": "HTTP 500",
+        "score": 0
+      }
+    ],
+    "timestamp": "2025-10-24T17:49:54.205652"
+  },
+  "sean_ellis": {
+    "expert": "Sean Ellis",
+    "expert_id": "a983328e-f933-4c54-a845-99770af66c80",
+    "results": [
+      {
+        "dimension": "EXTREMOS (Recusa)",
+        "error": "HTTP 500",
+        "score": 0
+      },
+      {
+        "dimension": "TRIGGERS (Framework Naming)",
+        "error": "HTTP 500",
+        "score": 0
+      },
+      {
+        "dimension": "TOM (Callbacks)",
+        "error": "HTTP 500",
+        "score": 0
+      }
+    ],
+    "timestamp": "2025-10-24T17:49:54.291717"
+  }
+}
