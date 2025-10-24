@@ -1,0 +1,76 @@
+🚀 Iniciando Teste CRÍTICO - Philip Kotler (Pós-Fixes)
+======================================================================
+📊 Total de perguntas: 6
+🎯 Foco: EXTREMOS, TRIGGERS, TOM (gaps corrigidos)
+======================================================================
+
+
+======================================================================
+TESTE 1/6: EXTREMOS - Growth Loop Viral
+Categoria: EXTREMOS
+======================================================================
+
+📝 Pergunta: Philip, como criar growth loop viral tipo Dropbox?
+🎯 Esperado: Reconhece limite, recusa, redireciona para Sean Ellis/Brian Balfour
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+TESTE 2/6: TRIGGERS - Segmentar Mercado
+Categoria: TRIGGERS
+======================================================================
+
+📝 Pergunta: Philip, preciso segmentar meu mercado B2B SaaS. Como fazer?
+🎯 Esperado: Declara 'Vou aplicar framework STP...' explicitamente
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+TESTE 3/6: TRIGGERS - Mix de Marketing
+Categoria: TRIGGERS
+======================================================================
+
+📝 Pergunta: Philip, qual seria o mix de marketing ideal para meu produto?
+🎯 Esperado: Declara 'Usando os 4Ps...' explicitamente
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+TESTE 4/6: TOM - Callbacks Icônicos
+Categoria: TOM
+======================================================================
+
+📝 Pergunta: Philip, qual sua visão sobre customer lifetime value?
+🎯 Esperado: Usa callbacks: 'Como costumo dizer...', 'Marketing Management...', etc
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+TESTE 5/6: EXTREMOS - Technical SEO
+Categoria: EXTREMOS
+======================================================================
+
+📝 Pergunta: Philip, como otimizar Core Web Vitals e schema markup para SEO?
+🎯 Esperado: Reconhece limite técnico, redireciona para Neil Patel
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+TESTE 6/6: TOM+TRIGGERS - Análise SWOT
+Categoria: TOM+TRIGGERS
+======================================================================
+
+📝 Pergunta: Philip, faça uma análise estratégica de marketing para minha empresa.
+🎯 Esperado: Declara framework (SWOT ou outro) + usa callbacks
+
+❌ Erro HTTP 404: {"detail":"Not Found"}
+
+======================================================================
+📊 RESULTADOS FINAIS
+======================================================================
+
+SUMMARY POR CATEGORIA:
+
+======================================================================
+✅ Resultados salvos em: philip_kotler_critical_results.json
+======================================================================
