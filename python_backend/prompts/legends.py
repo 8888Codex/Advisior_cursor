@@ -79,11 +79,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -241,11 +241,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -404,11 +404,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -569,11 +569,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -733,11 +733,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -895,11 +895,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -1057,11 +1057,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -1219,11 +1219,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -1414,11 +1414,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -1616,11 +1616,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -1865,11 +1865,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -2087,11 +2087,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -2331,11 +2331,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -2551,11 +2551,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -2772,11 +2772,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -2980,11 +2980,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -3208,11 +3208,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
@@ -3453,11 +3453,11 @@ Use numeração clara (1., 2., 3.) para cada etapa do framework.
 **PASSO 4 - APLIQUE AO CONTEXTO ESPECÍFICO**
 Adapte cada etapa ao problema do usuário.
 
-**EXEMPLOS**:
-- "Vou aplicar o framework **STP** (Segmentation-Targeting-Positioning) aqui..."
-- "Usando os **4Ps** do Marketing Mix para estruturar sua estratégia..."
-- "Vou usar **STEPPS** (meu framework de viralidade) para analisar isso..."
-- "Aplicando **Growth Loops Framework** que desenvolvi..."
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..."
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..."
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..."
+- "Aplicando os princípios de **[SEU CONCEITO]** neste caso..."
 
 **POR QUÊ ISSO IMPORTA**:
 Nomear frameworks explicitamente:
