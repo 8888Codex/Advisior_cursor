@@ -950,48 +950,50 @@ async def get_suggested_questions(expert_id: str):
         if profile:
             # Personalized questions based on profile
             context = f"""
-Generate 5 highly specific and actionable questions that a business owner in the {profile.industry} industry should ask {expert.name} ({expert.title}).
+Gere 5 perguntas altamente específicas e acionáveis que um empresário do setor de {profile.industry} deveria fazer para {expert.name} ({expert.title}).
 
-Business Context:
-- Company: {profile.companyName}
-- Industry: {profile.industry}
-- Size: {profile.companySize}
-- Target Audience: {profile.targetAudience}
-- Main Products: {profile.mainProducts}
-- Marketing Channels: {', '.join(profile.channels) if profile.channels else 'Not specified'}
-- Budget Range: {profile.budgetRange}
-- Primary Goal: {profile.primaryGoal}
-- Main Challenge: {profile.mainChallenge}
-- Timeline: {profile.timeline}
+Contexto do Negócio:
+- Empresa: {profile.companyName}
+- Setor: {profile.industry}
+- Porte: {profile.companySize}
+- Público-Alvo: {profile.targetAudience}
+- Principais Produtos: {profile.mainProducts}
+- Canais de Marketing: {', '.join(profile.channels) if profile.channels else 'Não especificado'}
+- Faixa de Orçamento: {profile.budgetRange}
+- Objetivo Principal: {profile.primaryGoal}
+- Principal Desafio: {profile.mainChallenge}
+- Prazo: {profile.timeline}
 
-Expert's Areas of Expertise: {', '.join(expert.expertise[:5])}
+Áreas de Especialidade do Expert: {', '.join(expert.expertise[:5])}
 
-Generate exactly 5 questions that:
-1. Are SPECIFIC to this business's situation (industry, size, goals, challenges)
-2. Leverage {expert.name}'s unique expertise and methodology
-3. Are actionable and tactical (not generic theory)
-4. Address the business's primary goal ({profile.primaryGoal}) or challenge ({profile.mainChallenge})
-5. Are realistic for the given budget ({profile.budgetRange}) and timeline ({profile.timeline})
+Gere exatamente 5 perguntas que:
+1. Sejam ESPECÍFICAS para a situação deste negócio (setor, porte, objetivos, desafios)
+2. Aproveitem a expertise única e metodologia de {expert.name}
+3. Sejam acionáveis e táticas (não teoria genérica)
+4. Abordem o objetivo principal ({profile.primaryGoal}) ou desafio ({profile.mainChallenge}) do negócio
+5. Sejam realistas para o orçamento dado ({profile.budgetRange}) e prazo ({profile.timeline})
 
-Format each question as a complete, natural sentence that the user could directly ask.
-Do NOT number them or add prefixes. Just output 5 questions, one per line.
+IMPORTANTE: Responda SEMPRE em português brasileiro natural e fluente.
+Formate cada pergunta como uma frase completa e natural que o usuário poderia fazer diretamente.
+NÃO numere as perguntas nem adicione prefixos. Apenas retorne 5 perguntas, uma por linha.
 """
         else:
             # Generic questions based on expertise
             context = f"""
-Generate 5 actionable questions that someone could ask {expert.name} ({expert.title}) to get practical marketing advice.
+Gere 5 perguntas acionáveis que alguém poderia fazer para {expert.name} ({expert.title}) para obter conselhos práticos de marketing e estratégia.
 
-Expert's Areas of Expertise: {', '.join(expert.expertise[:5])}
+Áreas de Especialidade do Expert: {', '.join(expert.expertise[:5])}
 
-Generate exactly 5 questions that:
-1. Leverage {expert.name}'s unique expertise and methodologies
-2. Are actionable and tactical (not theoretical)
-3. Cover different aspects of their expertise
-4. Are specific enough to get useful answers
-5. Are realistic for small to medium businesses
+Gere exatamente 5 perguntas que:
+1. Aproveitem a expertise única e metodologias de {expert.name}
+2. Sejam acionáveis e táticas (não teóricas)
+3. Cubram diferentes aspectos de sua expertise
+4. Sejam específicas o suficiente para obter respostas úteis
+5. Sejam realistas para pequenas e médias empresas
 
-Format each question as a complete, natural sentence.
-Do NOT number them or add prefixes. Just output 5 questions, one per line.
+IMPORTANTE: Responda SEMPRE em português brasileiro natural e fluente.
+Formate cada pergunta como uma frase completa e natural.
+NÃO numere as perguntas nem adicione prefixos. Apenas retorne 5 perguntas, uma por linha.
 """
         
         # Use Perplexity to generate questions with lower temperature for consistency
@@ -1007,7 +1009,7 @@ Do NOT number them or add prefixes. Just output 5 questions, one per line.
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a marketing strategy consultant who generates highly specific, actionable questions. Always respond with exactly 5 questions, one per line, no numbering or prefixes."
+                            "content": "Você é um consultor de estratégia de marketing que gera perguntas altamente específicas e acionáveis. SEMPRE responda em português brasileiro. Sempre retorne exatamente 5 perguntas, uma por linha, sem numeração ou prefixos."
                         },
                         {
                             "role": "user",
@@ -1122,37 +1124,38 @@ async def get_business_insights():
         
         # Build context for Perplexity to generate insights
         context = f"""
-Generate 4 specific, actionable marketing insights for this business:
+Gere 4 insights de marketing específicos e acionáveis para este negócio:
 
-Business Profile:
-- Company: {profile.companyName}
-- Industry: {profile.industry}
-- Size: {profile.companySize}
-- Target Audience: {profile.targetAudience}
-- Main Products: {profile.mainProducts}
-- Marketing Channels: {', '.join(profile.channels) if profile.channels else 'Not specified'}
-- Budget Range: {profile.budgetRange}
-- Primary Goal: {profile.primaryGoal}
-- Main Challenge: {profile.mainChallenge}
-- Timeline: {profile.timeline}
+Perfil do Negócio:
+- Empresa: {profile.companyName}
+- Setor: {profile.industry}
+- Porte: {profile.companySize}
+- Público-Alvo: {profile.targetAudience}
+- Principais Produtos: {profile.mainProducts}
+- Canais de Marketing: {', '.join(profile.channels) if profile.channels else 'Não especificado'}
+- Faixa de Orçamento: {profile.budgetRange}
+- Objetivo Principal: {profile.primaryGoal}
+- Principal Desafio: {profile.mainChallenge}
+- Prazo: {profile.timeline}
 
-Generate exactly 4 insights that:
-1. Are HIGHLY SPECIFIC to this business's industry ({profile.industry}), size ({profile.companySize}), and situation
-2. Are ACTIONABLE - something they can implement in the next 30 days
-3. Address their PRIMARY GOAL ({profile.primaryGoal}) or MAIN CHALLENGE ({profile.mainChallenge})
-4. Are realistic given their budget ({profile.budgetRange}) and timeline ({profile.timeline})
-5. Leverage current market trends and best practices (2024-2025 data)
+Gere exatamente 4 insights que:
+1. Sejam ALTAMENTE ESPECÍFICOS para o setor ({profile.industry}), porte ({profile.companySize}) e situação deste negócio
+2. Sejam ACIONÁVEIS - algo que possam implementar nos próximos 30 dias
+3. Abordem o OBJETIVO PRINCIPAL ({profile.primaryGoal}) ou DESAFIO PRINCIPAL ({profile.mainChallenge})
+4. Sejam realistas dado o orçamento ({profile.budgetRange}) e prazo ({profile.timeline})
+5. Aproveitem tendências atuais de mercado e melhores práticas (dados 2024-2025)
 
-Each insight should:
-- Start with a clear category/topic (e.g., "SEO Strategy:", "Content Marketing:", "Paid Ads:")
-- Be 1-2 sentences maximum
-- Include specific tactics, not generic advice
-- Reference recent data or trends when relevant
+Cada insight deve:
+- Começar com uma categoria/tópico claro (ex: "Estratégia SEO:", "Marketing de Conteúdo:", "Anúncios Pagos:")
+- Ter no máximo 1-2 frases
+- Incluir táticas específicas, não conselhos genéricos
+- Referenciar dados ou tendências recentes quando relevante
 
-Format: Output 4 insights, one per line, each starting with the category followed by colon.
-Do NOT number them. Example format:
-Social Media: [specific insight here]
-Email Marketing: [specific insight here]
+IMPORTANTE: Responda SEMPRE em português brasileiro natural e fluente.
+Formato: Retorne 4 insights, um por linha, cada um começando com a categoria seguida de dois pontos.
+NÃO numere. Formato de exemplo:
+Redes Sociais: [insight específico aqui]
+E-mail Marketing: [insight específico aqui]
 """
         
         # Use Perplexity to generate insights
@@ -1168,7 +1171,7 @@ Email Marketing: [specific insight here]
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a marketing strategist who provides hyper-specific, actionable insights based on business context. Always use recent data and trends. Format insights as 'Category: specific actionable insight'."
+                            "content": "Você é um estrategista de marketing que fornece insights hiper-específicos e acionáveis baseados no contexto do negócio. SEMPRE responda em português brasileiro. Sempre use dados e tendências recentes. Formate os insights como 'Categoria: insight acionável específico'."
                         },
                         {
                             "role": "user",

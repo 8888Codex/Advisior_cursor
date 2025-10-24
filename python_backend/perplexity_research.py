@@ -75,10 +75,10 @@ class PerplexityResearch:
                         {
                             "role": "system",
                             "content": (
-                                "You are a market research analyst. Provide factual, "
-                                "data-driven insights with specific statistics, trends, "
-                                "and examples. Focus on recent data (2024-2025). "
-                                "Include competitive analysis and industry benchmarks when relevant."
+                                "Você é um analista de pesquisa de mercado. SEMPRE responda em português brasileiro. "
+                                "Forneça insights factuais e baseados em dados com estatísticas específicas, tendências e exemplos. "
+                                "Foque em dados recentes (2024-2025). "
+                                "Inclua análise competitiva e benchmarks do setor quando relevante."
                             )
                         },
                         {
@@ -119,48 +119,48 @@ class PerplexityResearch:
         
         if not profile:
             # Generic research without context
-            return f"Market research and trends for: {problem}"
+            return f"Pesquisa de mercado e tendências para: {problem}"
         
         # Build rich context from profile (Pydantic uses camelCase attributes)
         context_parts = []
         
         # Industry and company size context
         context_parts.append(
-            f"Industry: {profile.industry} "
-            f"(company size: {profile.companySize})"
+            f"Setor: {profile.industry} "
+            f"(porte da empresa: {profile.companySize})"
         )
         
         # Target audience context
-        context_parts.append(f"Target audience: {profile.targetAudience}")
+        context_parts.append(f"Público-alvo: {profile.targetAudience}")
         
         # Channels context
         if profile.channels:
             channels_str = ", ".join(profile.channels)
-            context_parts.append(f"Sales channels: {channels_str}")
+            context_parts.append(f"Canais de venda: {channels_str}")
         
         # Primary goal context
         goal_map = {
-            "growth": "focused on growth and customer acquisition",
-            "positioning": "working on brand positioning and differentiation",
-            "retention": "improving customer retention and loyalty",
-            "launch": "launching new products/services",
-            "awareness": "building brand awareness"
+            "growth": "focado em crescimento e aquisição de clientes",
+            "positioning": "trabalhando em posicionamento e diferenciação de marca",
+            "retention": "melhorando retenção e fidelização de clientes",
+            "launch": "lançando novos produtos/serviços",
+            "awareness": "construindo reconhecimento de marca"
         }
         goal_desc = goal_map.get(profile.primaryGoal, profile.primaryGoal)
-        context_parts.append(f"Primary goal: {goal_desc}")
+        context_parts.append(f"Objetivo principal: {goal_desc}")
         
         # Build final query
         context = ". ".join(context_parts)
         
         query = (
-            f"Context: {context}. "
-            f"Problem/Question: {problem}. "
-            f"\n\nProvide market research including: "
-            f"1) Current industry trends and statistics for {profile.industry}, "
-            f"2) Competitive landscape and benchmarks, "
-            f"3) Best practices for companies of similar size ({profile.companySize}), "
-            f"4) Specific data relevant to the problem stated above. "
-            f"Focus on actionable insights with recent data (2024-2025)."
+            f"Contexto: {context}. "
+            f"Problema/Pergunta: {problem}. "
+            f"\n\nForneça pesquisa de mercado incluindo: "
+            f"1) Tendências atuais da indústria e estatísticas para {profile.industry}, "
+            f"2) Cenário competitivo e benchmarks, "
+            f"3) Melhores práticas para empresas de porte similar ({profile.companySize}), "
+            f"4) Dados específicos relevantes ao problema mencionado acima. "
+            f"Foque em insights acionáveis com dados recentes (2024-2025)."
         )
         
         return query

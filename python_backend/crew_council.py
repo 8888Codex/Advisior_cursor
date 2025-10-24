@@ -245,26 +245,26 @@ Draw on your signature frameworks, methodologies, and philosophies. Be authentic
             for rec in contrib.recommendations:
                 contributions_text += f"- {rec}\n"
         
-        synthesis_prompt = f"""You are a strategic synthesizer analyzing input from a council of legendary marketing experts.
+        synthesis_prompt = f"""Você é um sintetizador estratégico analisando contribuições de um conselho de especialistas lendários em marketing.
 
-**Problem Analyzed:**
+**Problema Analisado:**
 {problem}
 
-**Expert Council Contributions:**
+**Contribuições do Conselho de Especialistas:**
 {contributions_text}
 
-**Your Task:**
-Synthesize a unified executive summary that:
+**Sua Tarefa:**
+Sintetize um resumo executivo unificado que:
 
-1. **Consensus Strategy** (1-2 paragraphs): Where do all experts agree? What is the core strategic direction?
+1. **Estratégia Consensual** (1-2 parágrafos): Onde todos os especialistas concordam? Qual é a direção estratégica central?
 
-2. **Integrated Recommendations** (5-7 points): Combine and prioritize the most impactful recommendations across all experts. Attribute specific tactics to experts when relevant (e.g., "As Kotler emphasized...").
+2. **Recomendações Integradas** (5-7 pontos): Combine e priorize as recomendações mais impactantes de todos os especialistas. Atribua táticas específicas aos especialistas quando relevante (ex: "Como Kotler enfatizou...").
 
-3. **Key Tensions** (if any): Where do experts disagree or emphasize different priorities? Frame these as strategic choices, not contradictions.
+3. **Tensões-Chave** (se houver): Onde os especialistas discordam ou enfatizam prioridades diferentes? Apresente essas como escolhas estratégicas, não contradições.
 
-4. **Implementation Roadmap** (3-5 steps): Synthesize a practical sequence of actions drawing from all expert recommendations.
+4. **Roadmap de Implementação** (3-5 passos): Sintetize uma sequência prática de ações baseada nas recomendações de todos os especialistas.
 
-Be concise, actionable, and authoritative. This is an executive briefing."""
+Seja conciso, acionável e autoritativo. Este é um briefing executivo."""
         
         # Call Claude for synthesis (using a neutral system prompt)
         response = await self.anthropic_client.messages.create(
