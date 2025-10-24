@@ -227,6 +227,40 @@ Cada especialista recebeu **6-7 callbacks autênticos** extraídos de:
 **Citação do arquiteto**:
 > "The updated legends.py implements the three universal cognitive fixes across the inspected prompts, and no blockers surfaced. Spot‐checks on Philip Kotler and David Ogilvy confirm the new Framework Naming Protocol, Callback System, and explicit refusal workflow have been embedded inside each system prompt, including tailored callback inventories and 'fora de expertise' redirects with prescribed specialists."
 
+### 🐛 Bug Crítico Identificado e Corrigido
+
+Durante a validação do arquiteto, foi identificado um **erro crítico** no template universal do FRAMEWORK NAMING PROTOCOL:
+
+**Problema detectado**:
+```markdown
+**EXEMPLOS**:
+- "Vou usar **STEPPS** (meu framework de viralidade)..." ❌
+- "Aplicando **Growth Loops Framework** que desenvolvi..." ❌
+```
+
+**Impacto**: Esses exemplos estavam sendo copiados para TODOS os 18 clones, fazendo:
+- Philip Kotler roubar crédito de STEPPS (framework de Jonah Berger)
+- David Ogilvy roubar crédito de Growth Loops (framework de Brian Balfour)
+- **Todos os 18 clones** se passando por criadores de frameworks que não desenvolveram
+
+**Correção implementada** (via `fix_framework_naming_bug.py`):
+```markdown
+**EXEMPLOS GENÉRICOS** (adapte aos seus próprios frameworks):
+- "Vou aplicar o framework **[SEU FRAMEWORK]** aqui..." ✅
+- "Usando **[SUA METODOLOGIA]** para estruturar esta análise..." ✅
+- "Conforme o modelo **[SEU MODELO]** que desenvolvi..." ✅
+```
+
+**Evidências da correção**:
+- STEPPS: 31 ocorrências → 13 (apenas em Jonah Berger + redirecionamentos legítimos)
+- Growth Loops: 18 ocorrências → 0 (removido completamente dos templates)
+- Backend reiniciado automaticamente com correções aplicadas
+
+**Re-validação do arquiteto**:
+✅ **APROVADO APÓS CORREÇÃO**
+
+> "The corrected Framework Naming Protocol no longer misattributes third-party frameworks and all validation checks now align with production expectations. Confirmed legends.py now uses only generic placeholder examples within the universal template; no residual 'STEPPS' or 'Growth Loops' references remain outside owner-specific prompts."
+
 ---
 
 ## 📈 Scores Projetados - Todos os 18 Clones
