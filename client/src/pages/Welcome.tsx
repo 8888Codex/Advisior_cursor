@@ -174,11 +174,11 @@ export default function Welcome() {
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20"
             >
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <span className="text-sm font-medium text-accent">
                 Bem-vindo ao AdvisorIA
               </span>
             </motion.div>
@@ -189,10 +189,10 @@ export default function Welcome() {
               transition={{ delay: 0.4, duration: 0.6 }}
               className="space-y-4"
             >
-              <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
                 Consultoria de Marketing
                 <br />
-                <span className="text-primary">com os Maiores Gênios</span>
+                <span className="text-accent">com os Maiores Gênios</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                 Acesse a sabedoria coletiva de 8 lendas do marketing. De Philip
@@ -260,7 +260,7 @@ export default function Welcome() {
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   >
-                    <Sparkles className="h-12 w-12 text-primary" />
+                    <Sparkles className="h-12 w-12 text-accent" />
                   </motion.div>
                   <p className="text-lg text-muted-foreground">
                     Preparando os especialistas...
@@ -293,7 +293,7 @@ export default function Welcome() {
                   <div
                     key={idx}
                     className={`h-1.5 flex-1 rounded-full transition-colors ${
-                      idx <= tourIndex ? "bg-primary" : "bg-muted"
+                      idx <= tourIndex ? "bg-accent" : "bg-muted"
                     }`}
                   />
                 ))}
@@ -307,9 +307,9 @@ export default function Welcome() {
                   transition={{ delay: 0.1, duration: 0.4 }}
                   className="flex-shrink-0"
                 >
-                  <Avatar className="h-32 w-32 border-4 border-primary/20">
+                  <Avatar className="h-32 w-32 border-4 border-accent/20">
                     <AvatarImage src={currentExpert.avatar} alt={currentExpert.name} />
-                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-primary/5">
+                    <AvatarFallback className="text-3xl font-semibold bg-accent/10">
                       {expertInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -322,7 +322,7 @@ export default function Welcome() {
                   className="flex-1 space-y-4"
                 >
                   <div>
-                    <h2 className="text-3xl font-bold mb-2">
+                    <h2 className="text-3xl font-semibold mb-2">
                       {currentExpert.name}
                     </h2>
                     <p className="text-lg text-muted-foreground mb-4">
@@ -390,7 +390,7 @@ export default function Welcome() {
             <Card className="p-8">
               <form onSubmit={handleProfileSubmit} className="space-y-6">
                 <div className="text-center space-y-2 mb-8">
-                  <h2 className="text-3xl font-bold">
+                  <h2 className="text-3xl font-semibold">
                     Conte-nos sobre seu negócio
                   </h2>
                   <p className="text-muted-foreground">
