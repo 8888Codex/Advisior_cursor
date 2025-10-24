@@ -27,6 +27,11 @@ import {
   DollarSign,
   Calendar,
   AlertCircle,
+  MessageSquare,
+  Zap,
+  Award,
+  Check,
+  X,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequestJson, queryClient } from "@/lib/queryClient";
@@ -245,6 +250,154 @@ export default function Welcome() {
               <span>15 Disciplinas</span>
               <span className="text-border">•</span>
               <span>Respostas em 30 segundos</span>
+            </motion.div>
+
+            {/* Como Funciona Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.5 }}
+              className="w-full max-w-5xl mt-24 space-y-12"
+            >
+              <div className="text-center space-y-4">
+                <h2 className="text-3xl md:text-4xl font-semibold">
+                  Como Funciona a Clonagem Cognitiva?
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  3 passos simples separam você das maiores mentes do marketing mundial
+                </p>
+              </div>
+
+              {/* 3 Steps */}
+              <div className="grid md:grid-cols-3 gap-8">
+                {[
+                  {
+                    step: "1",
+                    icon: Users,
+                    title: "Escolha Sua Lenda",
+                    description: "Navegue por 18 especialistas. De Philip Kotler a Gary Vaynerchuk."
+                  },
+                  {
+                    step: "2",
+                    icon: MessageSquare,
+                    title: "Faça Sua Pergunta",
+                    description: "Descreva seu desafio real. Em português, naturalmente."
+                  },
+                  {
+                    step: "3",
+                    icon: Zap,
+                    title: "Receba Insight Perfeito",
+                    description: "Resposta em 30s com fidelidade cognitiva 19-20/20."
+                  }
+                ].map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.1 + index * 0.1, duration: 0.3 }}
+                    className="text-center space-y-4"
+                  >
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted">
+                      <item.icon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-accent">Passo {item.step}</div>
+                      <h3 className="text-xl font-semibold">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* IA Genérica vs Clone Perfeito */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.4, duration: 0.5 }}
+                className="grid md:grid-cols-2 gap-6 mt-16"
+              >
+                {/* IA Genérica */}
+                <Card className="p-6 rounded-2xl bg-background border-border">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-destructive/10">
+                        <X className="h-5 w-5 text-destructive" />
+                      </div>
+                      <h4 className="text-lg font-semibold">IA Genérica</h4>
+                    </div>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex gap-2">
+                        <span className="text-destructive flex-shrink-0">×</span>
+                        <span>Respostas superficiais e genéricas</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-destructive flex-shrink-0">×</span>
+                        <span>Ignora contexto histórico e nuances</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-destructive flex-shrink-0">×</span>
+                        <span>Não reflete estilo de pensamento único</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-destructive flex-shrink-0">×</span>
+                        <span>Sem terminologia autêntica do especialista</span>
+                      </li>
+                    </ul>
+                  </div>
+                </Card>
+
+                {/* Clone Perfeito */}
+                <Card className="p-6 rounded-2xl bg-accent/5 border-accent/20">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/20">
+                        <Check className="h-5 w-5 text-accent" />
+                      </div>
+                      <h4 className="text-lg font-semibold">Clone Cognitivo EXTRACT</h4>
+                    </div>
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li className="flex gap-2">
+                        <span className="text-accent flex-shrink-0">✓</span>
+                        <span>20 camadas de personalidade e expertise</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-accent flex-shrink-0">✓</span>
+                        <span>Cita casos reais e controvérsias históricas</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-accent flex-shrink-0">✓</span>
+                        <span>Usa padrões de raciocínio autênticos</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-accent flex-shrink-0">✓</span>
+                        <span>Fidelidade cognitiva validada 19-20/20</span>
+                      </li>
+                    </ul>
+                  </div>
+                </Card>
+              </motion.div>
+
+              {/* Framework EXTRACT Badge */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.6, duration: 0.5 }}
+                className="text-center pt-8"
+              >
+                <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-muted border border-border/50">
+                  <Award className="h-5 w-5 text-accent" />
+                  <span className="text-sm font-medium">
+                    Desenvolvido com Framework EXTRACT™ de 20 Pontos
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
+                  Cada especialista inclui: Identidade Central, Terminologia, Padrões de Raciocínio,
+                  Estilo de Comunicação, Contextos de Expertise, Técnicas & Métodos, Limitações,
+                  Meta-Consciência, Citações Famosas, Casos Reais, Posições Controversas, Contexto Temporal
+                </p>
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
