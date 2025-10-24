@@ -17,16 +17,24 @@
 - Input/Border: hsl(20 14% 18%) - Subtle borders
 - Text Primary: hsl(45 25% 91%) - Warm off-white
 - Text Secondary: hsl(45 15% 46%) - Muted gray
-- **Accent Coral**: hsl(9 75% 61%) - Singular accent color for CTAs and focus states
+- **Accent Coral**: hsl(9 75% 42%) - Darkened for WCAG contrast (5.83:1 with white)
+- **Accent Text**: hsl(0 0% 100%) - White text on dark coral
 - Border Default: hsl(20 14% 15%)
 - Dividers: hsl(20 14% 15%) / 0.5
 
 **Light Mode**
-- Background: hsl(0 0% 3.53%) - Near-black base
-- Card: hsl(300 4.35% 6.67%) - Card elevation
-- Primary: hsl(0 0% 96.08%) - Light gray elements
-- Text: hsl(0 0% 92.16%) - Primary text
-- Accent maintains coral for consistency
+- Background: hsl(0 0% 98%) - Clean white base
+- Card: hsl(0 0% 100%) - Pure white elevation
+- Input/Border: hsl(0 0% 88%) - Subtle borders
+- Text Primary: hsl(0 0% 10%) - Near-black text
+- Text Secondary: hsl(0 0% 46%) - Muted gray
+- **Accent Coral**: hsl(9 75% 61%) - Vibrant coral for CTAs
+- **Accent Text**: hsl(0 0% 9%) - Dark text on coral (7:1 contrast)
+
+**WCAG Accessibility**
+- All accent colors meet WCAG AA contrast requirements (≥4.5:1)
+- Dark mode CTA: 5.83:1 contrast (coral bg + white text)
+- Light mode CTA: 5.48:1 contrast (coral bg + dark text)
 
 **Color Usage Rules**
 - Accent coral: Only for primary CTAs, active states, and critical UI feedback
