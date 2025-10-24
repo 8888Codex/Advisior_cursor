@@ -6,6 +6,44 @@ import { MessageSquare, Star, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRipple } from "@/hooks/use-ripple";
+import { cn } from "@/lib/utils";
+
+// Category color mapping (matching Categories page) - covers ALL schema categories
+const CATEGORY_COLORS: Record<string, { text: string; bg: string }> = {
+  marketing: { text: "text-primary", bg: "bg-primary/10 border-primary/30" },
+  growth: { text: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30" },
+  content: { text: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/30" },
+  positioning: { text: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/30" },
+  creative: { text: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/30" },
+  direct_response: { text: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30" },
+  seo: { text: "text-lime-400", bg: "bg-lime-500/10 border-lime-500/30" },
+  social: { text: "text-fuchsia-400", bg: "bg-fuchsia-500/10 border-fuchsia-500/30" },
+  viral: { text: "text-pink-400", bg: "bg-pink-500/10 border-pink-500/30" },
+  product: { text: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/30" },
+  psychology: { text: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-500/30" },
+  branding: { text: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/30" },
+  analytics: { text: "text-teal-400", bg: "bg-teal-500/10 border-teal-500/30" },
+  sales: { text: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
+  sales_enablement: { text: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/30" },
+};
+
+const CATEGORY_NAMES: Record<string, string> = {
+  marketing: "Marketing",
+  growth: "Growth",
+  content: "Content",
+  positioning: "Positioning",
+  creative: "Creative",
+  direct_response: "Direct Response",
+  seo: "SEO",
+  social: "Social",
+  viral: "Viral",
+  product: "Product",
+  psychology: "Psychology",
+  branding: "Branding",
+  analytics: "Analytics",
+  sales: "Sales",
+  sales_enablement: "Sales Enablement",
+};
 
 export interface Expert {
   id: string;
@@ -14,6 +52,7 @@ export interface Expert {
   expertise: string[];
   bio: string;
   avatar: string;
+  category: string;
 }
 
 interface ExpertCardProps {
@@ -151,6 +190,27 @@ export function ExpertCard({
                 <span className="text-xs text-muted-foreground ml-1 font-medium">
                   ({recommendationScore}/100)
                 </span>
+              </motion.div>
+            )}
+
+            {/* Category Badge */}
+            {expert.category && CATEGORY_COLORS[expert.category] && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mt-2"
+              >
+                <Badge 
+                  className={cn(
+                    "text-xs rounded-full px-3 py-0.5 border font-medium",
+                    CATEGORY_COLORS[expert.category].bg,
+                    CATEGORY_COLORS[expert.category].text
+                  )}
+                  data-testid={`badge-category-${expert.id}`}
+                >
+                  {CATEGORY_NAMES[expert.category] || expert.category}
+                </Badge>
               </motion.div>
             )}
           </div>

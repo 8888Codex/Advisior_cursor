@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,15 @@ import { useLocation } from "wouter";
 import { ExpertGridSkeleton } from "@/components/skeletons/SkeletonCard";
 import { motion } from "framer-motion";
 
+interface Category {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  expertCount: number;
+}
+
 interface Recommendation {
   expertId: string;
   expertName: string;
@@ -34,14 +43,32 @@ interface RecommendationsResponse {
 type SortOption = "relevance" | "name-asc" | "name-desc";
 
 export default function Experts() {
+  const [location, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("relevance");
   const [filterExpertise, setFilterExpertise] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showRecommendedOnly, setShowRecommendedOnly] = useState(false);
-  const [, setLocation] = useLocation();
+
+  // Derive selectedCategory from URL location (ensures reload/share URLs work correctly)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlCategory = params.get("category") || "all";
+    setSelectedCategory(urlCategory);
+  }, [location]); // Re-run when location changes (router navigation)
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  // Fetch experts with optional category filter
+  const expertsQueryKey = selectedCategory !== "all" 
+    ? [`/api/experts?category=${selectedCategory}`]
+    : ["/api/experts"];
 
   const { data: experts = [], isLoading } = useQuery<Expert[]>({
-    queryKey: ["/api/experts"],
+    queryKey: expertsQueryKey,
   });
 
   const { data: recommendationsData } = useQuery<RecommendationsResponse>({
@@ -124,12 +151,16 @@ export default function Experts() {
   }, [expertsWithRecommendations, search, filterExpertise, showRecommendedOnly, sortBy, hasProfile]);
 
   const activeFiltersCount = 
+    (selectedCategory !== "all" ? 1 : 0) +
     (filterExpertise !== "all" ? 1 : 0) + 
     (showRecommendedOnly ? 1 : 0);
 
   const clearAllFilters = () => {
+    setSelectedCategory("all");
     setFilterExpertise("all");
     setShowRecommendedOnly(false);
+    // Use wouter router to update URL
+    setLocation('/experts');
   };
 
   const handleConsult = async (expert: Expert) => {
@@ -181,6 +212,33 @@ export default function Experts() {
                   <SelectItem value="name-desc">Nome (Z-A)</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Category Filter Dropdown */}
+              {categories.length > 0 && (
+                <Select 
+                  value={selectedCategory} 
+                  onValueChange={(value) => {
+                    // Use wouter router to update URL (triggers location change and useEffect)
+                    if (value !== "all") {
+                      setLocation(`/experts?category=${value}`);
+                    } else {
+                      setLocation('/experts');
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[200px]" data-testid="select-filter-category">
+                    <SelectValue placeholder="Categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas Categorias</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               {/* Expertise Filter Dropdown */}
               {expertiseCategories.length > 0 && (

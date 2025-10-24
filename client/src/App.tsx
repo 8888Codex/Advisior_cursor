@@ -9,6 +9,7 @@ import { AnimatePresence } from "framer-motion";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Experts from "@/pages/Experts";
+import Categories from "@/pages/Categories";
 import Chat from "@/pages/Chat";
 import Create from "@/pages/Create";
 import AdminExperts from "@/pages/AdminExperts";
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/welcome" component={Welcome} />
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/experts" component={Experts} />
+        <Route path="/categories" component={Categories} />
         <Route path="/chat/:id" component={Chat} />
         <Route path="/create" component={Create} />
         <Route path="/admin/experts" component={AdminExperts} />
