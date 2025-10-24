@@ -79,8 +79,8 @@ export default function Welcome() {
     queryKey: ["/api/experts"],
   });
 
-  // Filter only the 8 high-fidelity legends
-  const legends = experts.filter((e) => e.expertise && e.expertise.length > 0).slice(0, 8);
+  // Show ALL high-fidelity experts (18 marketing legends)
+  const legends = experts.filter((e) => e.expertise && e.expertise.length > 0);
 
   const saveProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
@@ -175,11 +175,11 @@ export default function Welcome() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.3 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border/50"
             >
-              <Sparkles className="h-4 w-4 text-accent" />
-              <span className="text-sm font-medium text-accent">
-                Bem-vindo ao AdvisorIA
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Framework EXTRACT™ • Fidelidade Cognitiva 19/20
               </span>
             </motion.div>
 
@@ -187,17 +187,18 @@ export default function Welcome() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
-                Consultoria de Marketing
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-tight">
+                Consulte Philip Kotler,
                 <br />
-                <span className="text-accent">com os Maiores Gênios</span>
+                Seth Godin e Mais <span className="text-accent">16 Lendas</span>
+                <br />
+                do Marketing. A Qualquer Hora.
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Acesse a sabedoria coletiva de 8 lendas do marketing. De Philip
-                Kotler a Gary Vaynerchuk, cada especialista foi recriado
-                cognitivamente para resolver seus desafios mais complexos.
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                450+ anos de expertise combinada. Respostas tão precisas que você esquece 
+                que está falando com IA. Em português, instantaneamente.
               </p>
             </motion.div>
 
@@ -205,6 +206,7 @@ export default function Welcome() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.5 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
               <Button
                 size="lg"
@@ -225,7 +227,7 @@ export default function Welcome() {
                   </>
                 ) : (
                   <>
-                    Conhecer os Especialistas
+                    Explorar os 18 Especialistas
                     <ChevronRight className="h-5 w-5" />
                   </>
                 )}
@@ -236,9 +238,13 @@ export default function Welcome() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
-              className="text-sm text-muted-foreground"
+              className="flex items-center justify-center gap-4 text-sm text-muted-foreground"
             >
-              Leva apenas 2 minutos
+              <span>18 Especialistas</span>
+              <span className="text-border">•</span>
+              <span>15 Disciplinas</span>
+              <span className="text-border">•</span>
+              <span>Respostas em 30 segundos</span>
             </motion.div>
           </motion.div>
         )}
@@ -389,13 +395,15 @@ export default function Welcome() {
           >
             <Card className="p-8">
               <form onSubmit={handleProfileSubmit} className="space-y-6">
-                <div className="text-center space-y-2 mb-8">
-                  <h2 className="text-3xl font-semibold">
-                    Conte-nos sobre seu negócio
+                <div className="text-center space-y-3 mb-8">
+                  <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+                    Últimas Perguntas para Personalizar
+                    <br />
+                    <span className="text-accent">Sua Consultoria Exclusiva</span>
                   </h2>
-                  <p className="text-muted-foreground">
-                    Personalizaremos sua experiência para entregar insights
-                    mais relevantes
+                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                    Quanto mais soubermos, melhores serão as recomendações. 
+                    Cada especialista ajustará suas respostas ao seu contexto real.
                   </p>
                 </div>
 
@@ -613,11 +621,11 @@ export default function Welcome() {
                   </div>
                 </div>
 
-                <div className="flex gap-4 pt-6">
+                <div className="pt-6 space-y-4">
                   <Button
                     type="submit"
                     size="lg"
-                    className="flex-1 gap-2"
+                    className="w-full gap-2"
                     disabled={saveProfileMutation.isPending || profileData.channels.length === 0}
                     data-testid="button-save-profile"
                   >
@@ -633,11 +641,14 @@ export default function Welcome() {
                       </>
                     ) : (
                       <>
-                        Começar Consultoria
+                        Começar Minha Consultoria Gratuita
                         <ChevronRight className="h-5 w-5" />
                       </>
                     )}
                   </Button>
+                  <p className="text-center text-sm text-muted-foreground">
+                    Sem cartão de crédito necessário • Perguntas ilimitadas • Cancele quando quiser
+                  </p>
                 </div>
               </form>
             </Card>
