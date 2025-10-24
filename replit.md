@@ -29,17 +29,19 @@ Preferred communication style: Simple, everyday language.
 - **Monorepo Structure**: `/client` (React), `/server` (Express), `/python_backend` (FastAPI), and `/shared` (TypeScript types).
 - **Data Flow**: User interaction -> React UI -> TanStack Query -> Express proxy -> FastAPI -> Storage/AsyncAnthropic -> FastAPI -> Express -> React.
 - **Development Workflow**: `npm run dev` starts Express, which spawns the auto-reloading Python backend.
-- **UX/UI Decisions ("Disney-Level Premium" & "Apple Store Sofisticado")**:
-    - **Color Palette**: Vibrante roxo (primary), dourado (accent), cyan (accent-cyan), deep dark mode.
-    - **Visual Effects**: Glassmorphism (backdrop-blur-lg), subtle glow effects, text gradients, animated background gradients (mesh).
-    - **Animations**: Shimmer, 3D hover transforms for cards, pulse-glow, animated gradient borders, coordinated stagger animations with `Framer Motion`.
-    - **Micro-Interactions**: Press effects, ripple animations, skeleton loaders, cinematic toasts, parallax hero, badge spring animations, avatar breathing effect, smooth page transitions.
-    - **Design System**: Standardized border-radius, optimized grid layouts (2-column desktop), refined typography weights, generous spacing, and consistent animation timings (e.g., 0.6s for page transitions).
+- **UX/UI Decisions (Apple-style Minimalist - October 2025 Redesign)**:
+    - **Color Palette**: 95% neutral (grays), 1 accent coral único (hsl 9° 75% 61% light, 42% dark). Rainbow palette ELIMINADA (no emerald, cyan, blue, amber, etc).
+    - **Visual Effects**: Minimalistas - subtle shadows, hover translateY(-2px), NO glassmorphism pesado, NO shimmer/glow/pulse effects.
+    - **Animations**: Apple-style rápido (200-300ms duration, cubic-bezier [0.25, 0.1, 0.25, 1]), stagger delays <100ms, NO teatral.
+    - **Typography**: font-semibold para headings (não bold pesado), hierarchy com 3 níveis de text-muted-foreground.
+    - **Components**: Badges neutros (variant="secondary"), apenas CTAs usam accent coral, NO avatar breathing/gradient borders.
+    - **Design System**: Consistência visual total - accent único em toda aplicação, animações rápidas, espaçamento generoso, rounded-2xl standardizado.
 - **Multi-Category Navigation System**:
-    - **Categories**: 15 distinct categories (marketing, growth, psychology, etc.) with dedicated styling and icons.
-    - **Category Page**: Grid layout with glassmorphism cards and coordinated entry animations.
-    - **Expert Filtering**: Dropdown filter, category badges on cards, and "Limpar Filtros" button.
-    - **URL Sync**: Custom `useURLSearchParam` hook with polling and event listeners for robust UI-URL synchronization.
+    - **Categories**: 15 distinct categories (marketing, growth, psychology, etc.) com ícones neutros e palette consistente.
+    - **Category Page**: Grid 2-column com cards neutros (NO glassmorphism), stagger animations 50ms, hover subtle.
+    - **Category Colors**: TODAS neutras (from-muted to-muted/50), badges secondary variant, ícones text-muted-foreground.
+    - **Expert Filtering**: Dropdown filter, badges neutros, "Limpar Filtros" button.
+    - **URL Sync**: Custom `useURLSearchParam` hook com polling e event listeners.
 - **Personalization System**:
     - **Expert Recommendation**: Scores experts based on user profile, displaying 5-star badges.
     - **Contextual AI Prompt Enrichment**: Injects user business profile into chat interactions.
