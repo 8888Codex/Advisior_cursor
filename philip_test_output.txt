@@ -1,0 +1,106 @@
+======================================================================
+TESTE T.E.S.T.E. - PHILIP KOTLER (Dados Reais)
+======================================================================
+
+[1] Buscando expert ID...
+    ✓ Expert: Philip Kotler (ID: d4f54884...)
+
+[2] Criando conversa...
+    ✓ Conversa criada: ffdfdf0c...
+
+[3] TESTE T - TOM (5 perguntas simples)
+    ------------------------------------------------------------
+    Pergunta 1/5: Qual a diferença entre marketing e vendas?...
+      ✓ Resposta: 2104 chars
+    Pergunta 2/5: Como saber se meu marketing está funcionando?...
+      ✓ Resposta: 3137 chars
+    Pergunta 3/5: Devo investir em Instagram ou LinkedIn?...
+      ✓ Resposta: 3213 chars
+    Pergunta 4/5: Meu produto é bom mas não vende. Por quê?...
+      ✓ Resposta: 3705 chars
+    Pergunta 5/5: Marketing digital é diferente de marketing tradicional?...
+      ✓ Resposta: 4290 chars
+
+    SCORE TOM: 3/5 (60%)
+      Vocabulário específico: 1/1
+      Tom professoral: 1/1
+      Estrutura clara: 1/1
+      Callbacks característicos: 0/1
+      Energia adequada: 0/1
+
+[4] TESTE E - EXPERTISE (pergunta complexa)
+    ------------------------------------------------------------
+    Pergunta: Tenho R$ 50K para lançar produto B2B SaaS. Como alocar ...
+      ✓ Resposta: 4456 chars
+
+    SCORE EXPERTISE: 5/5 (100%)
+      Framework mencionado: 1/1
+      Diagnóstico correto: 1/1
+      Solução estruturada: 1/1
+      Números/métricas: 1/1
+      Ação clara: 1/1
+
+[5] TESTE S - SITUACIONAL (3 contextos)
+    ------------------------------------------------------------
+
+    Contexto: INICIANTE
+      Pergunta: Sou novo em marketing. O que são os 4Ps?...
+      ✓ Resposta: 4885 chars
+
+    Contexto: EXPERT
+      Pergunta: Philip, aplicando STP, identifiquei 3 segmentos: Enterp...
+      ✓ Resposta: 4641 chars
+
+    Contexto: CETICO
+      Pergunta: Marketing é só gastar dinheiro sem garantia. É mais sor...
+      ✓ Resposta: 5345 chars
+
+    SCORE SITUACIONAL: 4.0/5 (80%)
+      Iniciante: 3/5
+      Expert: 4/5
+      Cetico: 5/5
+
+[6] TESTE T - TRIGGERS (keywords)
+    ------------------------------------------------------------
+
+    Trigger 1/2: Preciso segmentar meu mercado mas não sei por onde come...
+      Framework esperado: STP
+      ✓ Resposta: 5830 chars
+
+    Trigger 2/2: Como definir meu mix de marketing para lançamento?...
+      Framework esperado: 4Ps
+      ✓ Resposta: 6243 chars
+
+    SCORE TRIGGERS: 3.5/5 (70%)
+      Trigger 1: 4/5 (STP)
+      Trigger 2: 3/5 (4Ps)
+
+[7] TESTE E - EXTREMOS (limites)
+    ------------------------------------------------------------
+    Pergunta: Philip, como criar growth loop viral tipo Dropbox?...
+      ✓ Resposta: 6109 chars
+
+    SCORE EXTREMOS: 1/5 (20%)
+      Reconhecimento limite: 1/2
+      Recusa educada: 0/1
+      Explicação clara: 0/1
+      Redirecionamento: 0/1
+
+======================================================================
+SCORE FINAL T.E.S.T.E. - PHILIP KOTLER
+======================================================================
+  TOM            :  3.0/5  ( 60.0%)
+  EXPERTISE      :  5.0/5  (100.0%)
+  SITUACIONAL    :  4.0/5  ( 80.0%)
+  TRIGGERS       :  3.5/5  ( 70.0%)
+  EXTREMOS       :  1.0/5  ( 20.0%)
+
+  TOTAL          : 16.5/25 ( 66.0%)
+  NORMALIZADO    : 13.2/20
+
+  CLASSIFICAÇÃO: PRECISA UPGRADE
+======================================================================
+
+✅ Resultados salvos em: philip_kotler_teste_real.json
+   Total de perguntas: 12 = 12
+   Conversation ID: ffdfdf0c-0dce-4beb-b898-5c9d46d595a7
