@@ -7,6 +7,19 @@ class ExpertType(str, Enum):
     HIGH_FIDELITY = "high_fidelity"
     CUSTOM = "custom"
 
+class CategoryType(str, Enum):
+    """Expert specialization categories"""
+    MARKETING = "marketing"          # Traditional marketing strategy (Kotler, Ogilvy, Hopkins, Burnett, Wells, Wanamaker)
+    POSITIONING = "positioning"       # Strategic positioning (Al Ries & Trout)
+    CREATIVE = "creative"             # Creative advertising (Bill Bernbach)
+    DIRECT_RESPONSE = "direct_response"  # Direct response marketing (Dan Kennedy)
+    CONTENT = "content"               # Content marketing (Seth Godin, Ann Handley)
+    SEO = "seo"                       # SEO & digital marketing (Neil Patel)
+    SOCIAL = "social"                 # Social media marketing (Gary Vaynerchuk)
+    GROWTH = "growth"                 # Growth hacking & systems (Sean Ellis, Brian Balfour, Andrew Chen)
+    VIRAL = "viral"                   # Viral marketing (Jonah Berger)
+    PRODUCT = "product"               # Product psychology & habits (Nir Eyal)
+
 class Expert(BaseModel):
     id: str
     name: str
@@ -16,6 +29,7 @@ class Expert(BaseModel):
     systemPrompt: str
     avatar: Optional[str] = None
     expertType: ExpertType = ExpertType.HIGH_FIDELITY
+    category: CategoryType = CategoryType.MARKETING  # Default to marketing
     createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 class ExpertCreate(BaseModel):
@@ -26,6 +40,7 @@ class ExpertCreate(BaseModel):
     systemPrompt: str
     avatar: Optional[str] = None
     expertType: ExpertType = ExpertType.CUSTOM
+    category: CategoryType = CategoryType.MARKETING
 
 class Conversation(BaseModel):
     id: str
@@ -129,3 +144,12 @@ class AutoCloneRequest(BaseModel):
     """Request to auto-clone a cognitive expert from minimal input"""
     targetName: str
     context: Optional[str] = None  # Optional additional context
+
+class CategoryInfo(BaseModel):
+    """Category metadata with expert count"""
+    id: str  # CategoryType value
+    name: str  # Display name in Portuguese
+    description: str  # Short description
+    icon: str  # Lucide icon name suggestion
+    color: str  # Tailwind color class (e.g., "violet", "emerald")
+    expertCount: int  # Number of experts in this category

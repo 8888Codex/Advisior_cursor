@@ -13,7 +13,7 @@ import asyncio
 import httpx
 
 from models import (
-    Expert, ExpertCreate, ExpertType,
+    Expert, ExpertCreate, ExpertType, CategoryType, CategoryInfo,
     Conversation, ConversationCreate,
     Message, MessageCreate, MessageSend, MessageResponse,
     BusinessProfile, BusinessProfileCreate,
@@ -49,11 +49,115 @@ async def startup_event():
 async def root():
     return {"message": "AdvisorIA Marketing Legends API", "status": "running"}
 
+# Category metadata mapping
+CATEGORY_METADATA = {
+    CategoryType.MARKETING: {
+        "name": "Marketing Tradicional",
+        "description": "Estratégias clássicas de marketing, brand building e publicidade",
+        "icon": "Megaphone",
+        "color": "violet"
+    },
+    CategoryType.POSITIONING: {
+        "name": "Posicionamento Estratégico",
+        "description": "Ocupar posição única na mente do consumidor, 22 Leis Imutáveis",
+        "icon": "Target",
+        "color": "blue"
+    },
+    CategoryType.CREATIVE: {
+        "name": "Criatividade Publicitária",
+        "description": "Arte + copy, breakthrough ideas, campanhas que transformam cultura",
+        "icon": "Lightbulb",
+        "color": "amber"
+    },
+    CategoryType.DIRECT_RESPONSE: {
+        "name": "Direct Response",
+        "description": "Copy que converte, funis de vendas, maximização de LTV",
+        "icon": "Mail",
+        "color": "red"
+    },
+    CategoryType.CONTENT: {
+        "name": "Content Marketing",
+        "description": "Storytelling digital, permission marketing, conteúdo que engaja",
+        "icon": "FileText",
+        "color": "indigo"
+    },
+    CategoryType.SEO: {
+        "name": "SEO & Marketing Digital",
+        "description": "Otimização para buscas, marketing orientado por dados",
+        "icon": "Search",
+        "color": "cyan"
+    },
+    CategoryType.SOCIAL: {
+        "name": "Social Media Marketing",
+        "description": "Personal branding, day trading attention, redes sociais",
+        "icon": "Users",
+        "color": "pink"
+    },
+    CategoryType.GROWTH: {
+        "name": "Growth Hacking",
+        "description": "Sistemas de crescimento, loops virais, product-market fit",
+        "icon": "TrendingUp",
+        "color": "emerald"
+    },
+    CategoryType.VIRAL: {
+        "name": "Marketing Viral",
+        "description": "STEPPS framework, word-of-mouth, contagious content",
+        "icon": "Share2",
+        "color": "orange"
+    },
+    CategoryType.PRODUCT: {
+        "name": "Psicologia do Produto",
+        "description": "Habit formation, behavioral design, Hooked Model",
+        "icon": "Brain",
+        "color": "purple"
+    }
+}
+
 # Expert endpoints
 @app.get("/api/experts", response_model=List[Expert])
-async def get_experts():
-    """Get all marketing legend experts"""
-    return await storage.get_experts()
+async def get_experts(category: Optional[str] = None):
+    """
+    Get all marketing legend experts, optionally filtered by category.
+    
+    Query params:
+    - category: Filter by category ID (e.g., "growth", "marketing", "content")
+    """
+    experts = await storage.get_experts()
+    
+    # Filter by category if provided
+    if category:
+        experts = [e for e in experts if e.category.value == category]
+    
+    return experts
+
+@app.get("/api/categories", response_model=List[CategoryInfo])
+async def get_categories():
+    """Get all available categories with expert counts"""
+    experts = await storage.get_experts()
+    
+    # Count experts per category
+    category_counts = {}
+    for expert in experts:
+        cat = expert.category
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+    
+    # Build category info list
+    categories = []
+    for cat_type, metadata in CATEGORY_METADATA.items():
+        count = category_counts.get(cat_type, 0)
+        if count > 0:  # Only return categories with at least one expert
+            categories.append(CategoryInfo(
+                id=cat_type.value,
+                name=metadata["name"],
+                description=metadata["description"],
+                icon=metadata["icon"],
+                color=metadata["color"],
+                expertCount=count
+            ))
+    
+    # Sort by expert count descending, then by name
+    categories.sort(key=lambda x: (-x.expertCount, x.name))
+    return categories
 
 @app.get("/api/experts/{expert_id}", response_model=Expert)
 async def get_expert(expert_id: str):

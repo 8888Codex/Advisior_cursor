@@ -17,6 +17,22 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Category type for expert specializations
+export const categoryTypeEnum = z.enum([
+  "marketing",        // Traditional marketing strategy
+  "positioning",      // Strategic positioning (Al Ries & Trout)
+  "creative",         // Creative advertising (Bill Bernbach)
+  "direct_response",  // Direct response marketing (Dan Kennedy)
+  "content",          // Content marketing (Seth Godin, Ann Handley)
+  "seo",              // SEO & digital marketing (Neil Patel)
+  "social",           // Social media marketing (Gary Vaynerchuk)
+  "growth",           // Growth hacking & systems (Sean Ellis, Brian Balfour, Andrew Chen)
+  "viral",            // Viral marketing (Jonah Berger)
+  "product",          // Product psychology & habits (Nir Eyal)
+]);
+
+export type CategoryType = z.infer<typeof categoryTypeEnum>;
+
 export const experts = pgTable("experts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -25,12 +41,15 @@ export const experts = pgTable("experts", {
   bio: text("bio").notNull(),
   avatar: text("avatar"),
   systemPrompt: text("system_prompt").notNull(),
+  category: text("category").notNull().default("marketing"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertExpertSchema = createInsertSchema(experts).omit({
   id: true,
   createdAt: true,
+}).extend({
+  category: categoryTypeEnum.default("marketing"),
 });
 
 export type InsertExpert = z.infer<typeof insertExpertSchema>;

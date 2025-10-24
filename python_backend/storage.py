@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 from models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
-    Message, MessageCreate, ExpertType, BusinessProfile, BusinessProfileCreate,
+    Message, MessageCreate, ExpertType, CategoryType, BusinessProfile, BusinessProfileCreate,
     CouncilAnalysis
 )
 
@@ -29,6 +29,7 @@ class MemStorage:
             systemPrompt=data.systemPrompt,
             avatar=data.avatar,
             expertType=data.expertType,
+            category=data.category,
         )
         self.experts[expert_id] = expert
         return expert
