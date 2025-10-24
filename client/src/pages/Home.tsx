@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedPage } from "@/components/AnimatedPage";
-import { TrendingUp, Clock, Award, Lightbulb, Sparkles } from "lucide-react";
+import { TrendingUp, Clock, Award, Lightbulb, Sparkles, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Home() {
@@ -129,18 +129,19 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.5 }}
-              className="text-center mt-8"
+              className="text-center mt-8 space-y-3"
             >
               <p className="text-sm text-muted-foreground">
-                Quer análises mais profundas? Consulte nossos especialistas
+                Quer análises mais profundas? Consulte Philip Kotler, Seth Godin e mais 16 lendas
               </p>
               <Button
                 variant="outline"
-                className="mt-3"
+                className="gap-2"
                 onClick={() => setLocation("/experts")}
                 data-testid="button-view-experts"
               >
-                Ver Especialistas
+                Conversar com Especialistas Agora
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </motion.div>
           </div>
@@ -188,13 +189,22 @@ export default function Home() {
             </Card>
           </div>
 
-          <div className="text-center mt-12">
-            <p className="text-lg mb-6 text-muted-foreground">
+          <div className="text-center mt-12 space-y-4">
+            <p className="text-lg text-muted-foreground">
               Pronto para elevar suas decisões estratégicas?
             </p>
-            <Button size="lg" data-testid="button-get-started">
-              Começar Agora
+            <Button 
+              size="lg" 
+              className="gap-2"
+              onClick={() => setLocation("/experts")}
+              data-testid="button-get-started"
+            >
+              Começar Consultoria Gratuita
+              <ChevronRight className="h-4 w-4" />
             </Button>
+            <p className="text-sm text-muted-foreground">
+              Sem cartão de crédito • 18 especialistas disponíveis
+            </p>
           </div>
         </div>
       </section>
