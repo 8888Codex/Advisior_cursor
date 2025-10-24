@@ -25,11 +25,12 @@ export function CouncilAnimation({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         className="text-center"
       >
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Users className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Conselho em Sessão</h2>
+          <Users className="h-6 w-6 text-accent" />
+          <h2 className="text-2xl font-semibold">Conselho em Sessão</h2>
         </div>
         <p className="text-muted-foreground">
           {isStreaming
@@ -42,9 +43,9 @@ export function CouncilAnimation({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Expert Avatars Grid */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Painel de Especialistas</CardTitle>
+              <CardTitle className="font-semibold">Painel de Especialistas</CardTitle>
               <CardDescription>
                 Lendas do marketing analisando seu desafio
               </CardDescription>

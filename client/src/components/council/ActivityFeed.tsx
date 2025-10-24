@@ -49,7 +49,7 @@ export function ActivityFeed({ activities, className = "" }: ActivityFeedProps) 
         </span>
       </div>
 
-      <ScrollArea ref={scrollRef} className="h-[400px] rounded-lg border p-4">
+      <ScrollArea ref={scrollRef} className="h-[400px] rounded-xl border p-4">
         <AnimatePresence mode="popLayout">
           {activities.length === 0 ? (
             <motion.div
@@ -71,8 +71,8 @@ export function ActivityFeed({ activities, className = "" }: ActivityFeedProps) 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`flex gap-3 p-3 rounded-lg ${config.bgColor}`}
+                    transition={{ delay: index * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                    className={`flex gap-3 p-3 rounded-xl ${config.bgColor}`}
                     data-testid={`activity-event-${activity.id}`}
                   >
                     <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${config.color}`} />

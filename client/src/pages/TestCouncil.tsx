@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useCouncilStream } from "@/hooks/useCouncilStream";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CouncilAnimation } from "@/components/council/CouncilAnimation";
+import { motion } from "framer-motion";
 
 interface Expert {
   id: string;
@@ -145,97 +146,125 @@ export default function TestCouncil() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-          <Users className="h-10 w-10" />
+      <motion.div 
+        className="mb-8"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+      >
+        <h1 className="text-4xl font-semibold mb-2 flex items-center gap-3">
+          <Users className="h-10 w-10 text-muted-foreground" />
           Teste de Análise do Conselho
         </h1>
         <p className="text-muted-foreground">
           Teste a funcionalidade do conselho de IA com lendas do marketing
         </p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Seu Desafio de Negócio</CardTitle>
-              <CardDescription>
-                Descreva o problema que você gostaria que o conselho analisasse
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Exemplo: Estamos lançando uma marca de moda sustentável para a Geração Z. Como devemos nos posicionar contra gigantes do fast fashion mantendo valores autênticos?"
-                value={problem}
-                onChange={(e) => setProblem(e.target.value)}
-                className="min-h-[150px] text-base"
-                disabled={analyzeMutation.isPending}
-                data-testid="input-problem"
-              />
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle className="font-semibold">Seu Desafio de Negócio</CardTitle>
+                <CardDescription>
+                  Descreva o problema que você gostaria que o conselho analisasse
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Exemplo: Estamos lançando uma marca de moda sustentável para a Geração Z. Como devemos nos posicionar contra gigantes do fast fashion mantendo valores autênticos?"
+                  value={problem}
+                  onChange={(e) => setProblem(e.target.value)}
+                  className="min-h-[150px] text-base"
+                  disabled={analyzeMutation.isPending}
+                  data-testid="input-problem"
+                />
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* AI Recommendations Section */}
           {loadingRecommendations && debouncedProblem.trim().length >= 10 && (
-            <Card className="border-primary/50 bg-primary/5">
-              <CardContent className="pt-6 pb-6">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">
-                    Analisando seu problema para recomendar especialistas...
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <Card className="border-accent/20 bg-muted/30 rounded-2xl">
+                <CardContent className="pt-6 pb-6">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                    <p className="text-sm text-muted-foreground">
+                      Analisando seu problema para recomendar especialistas...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
           {recommendations.length > 0 && !loadingRecommendations && (
-            <Card className="border-primary/50 bg-primary/5">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <Card className="border-accent/20 bg-muted/30 rounded-2xl">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-accent" />
+                      <CardTitle className="text-lg font-semibold">Sugestões da IA</CardTitle>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleApplySuggestions}
+                      disabled={analyzeMutation.isPending || loadingRecommendations}
+                      data-testid="button-apply-suggestions"
+                    >
+                      Usar Sugestões ({recommendations.length})
+                    </Button>
                   </div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleApplySuggestions}
-                    disabled={analyzeMutation.isPending || loadingRecommendations}
-                    data-testid="button-apply-suggestions"
-                  >
-                    Usar Sugestões ({recommendations.length})
-                  </Button>
-                </div>
-                <CardDescription>
-                  Recomendamos estes especialistas com base no seu problema
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                  <CardDescription>
+                    Recomendamos estes especialistas com base no seu problema
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </motion.div>
           )}
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Selecionar Especialistas</CardTitle>
-                  <CardDescription>
-                    Escolha quais lendas do marketing consultar ({selectedExperts.length}{" "}
-                    selecionado{selectedExperts.length !== 1 ? 's' : ''})
-                  </CardDescription>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="font-semibold">Selecionar Especialistas</CardTitle>
+                    <CardDescription>
+                      Escolha quais lendas do marketing consultar ({selectedExperts.length}{" "}
+                      selecionado{selectedExperts.length !== 1 ? 's' : ''})
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    disabled={loadingExperts || analyzeMutation.isPending}
+                    data-testid="button-select-all"
+                  >
+                    {selectedExperts.length === experts.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                  disabled={loadingExperts || analyzeMutation.isPending}
-                  data-testid="button-select-all"
-                >
-                  {selectedExperts.length === experts.length ? "Desmarcar Todos" : "Selecionar Todos"}
-                </Button>
-              </div>
-            </CardHeader>
+              </CardHeader>
             <CardContent>
               {loadingExperts ? (
                 <div className="flex items-center justify-center py-8">
@@ -244,16 +273,19 @@ export default function TestCouncil() {
               ) : (
                 <TooltipProvider>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {experts.map((expert) => {
+                    {experts.map((expert, index) => {
                       const recommendation = recommendations.find(r => r.expertId === expert.id);
                       const isRecommended = !!recommendation;
                       
                       return (
                         <Tooltip key={expert.id}>
                           <TooltipTrigger asChild>
-                            <div
-                              className={`flex items-start space-x-3 p-3 rounded-lg border hover-elevate cursor-pointer ${
-                                isRecommended ? 'border-primary/50 bg-primary/5' : ''
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3, delay: index * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                              className={`flex items-start space-x-3 p-3 rounded-xl border hover-elevate active-elevate-2 cursor-pointer transition-all ${
+                                isRecommended ? 'border-accent/30 bg-muted/40' : ''
                               }`}
                               onClick={() => handleToggleExpert(expert.id)}
                               data-testid={`expert-card-${expert.id}`}
@@ -263,9 +295,9 @@ export default function TestCouncil() {
                                 disabled={analyzeMutation.isPending}
                                 data-testid={`checkbox-expert-${expert.id}`}
                               />
-                              <Avatar className="h-10 w-10 flex-shrink-0">
+                              <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-accent/20">
                                 <AvatarImage src={expert.avatar} alt={expert.name} className="object-cover" />
-                                <AvatarFallback className="text-xs font-bold">
+                                <AvatarFallback className="text-xs font-semibold">
                                   {expert.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
@@ -275,7 +307,7 @@ export default function TestCouncil() {
                                     {expert.name}
                                   </Label>
                                   {isRecommended && (
-                                    <Badge variant="default" className="text-xs px-1.5 py-0">
+                                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                       Recomendado
                                     </Badge>
                                   )}
@@ -287,7 +319,7 @@ export default function TestCouncil() {
                                         key={i}
                                         className={`h-3 w-3 ${
                                           i < recommendation.relevanceScore
-                                            ? 'fill-primary text-primary'
+                                            ? 'fill-accent text-accent'
                                             : 'text-muted-foreground/30'
                                         }`}
                                       />
@@ -301,7 +333,7 @@ export default function TestCouncil() {
                                   {expert.specialty}
                                 </Badge>
                               </div>
-                            </div>
+                            </motion.div>
                           </TooltipTrigger>
                           {isRecommended && recommendation && (
                             <TooltipContent className="max-w-xs">
@@ -315,15 +347,21 @@ export default function TestCouncil() {
                 </TooltipProvider>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          </motion.div>
 
           {/* Streaming Toggle */}
-          <Card>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Card className="rounded-2xl">
             <CardContent className="pt-6 pb-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="streaming-mode" className="flex items-center gap-2 cursor-pointer">
-                    <Zap className="h-4 w-4 text-primary" />
+                  <Label htmlFor="streaming-mode" className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <Zap className="h-4 w-4 text-accent" />
                     Modo Streaming ao Vivo
                   </Label>
                   <p className="text-sm text-muted-foreground">
@@ -339,10 +377,16 @@ export default function TestCouncil() {
                 />
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          </motion.div>
 
-          <Button
-            onClick={handleSubmit}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Button
+              onClick={handleSubmit}
             disabled={
               !problem.trim() ||
               selectedExperts.length === 0 ||
@@ -363,7 +407,8 @@ export default function TestCouncil() {
                 Consultar Conselho ({selectedExperts.length} especialista{selectedExperts.length !== 1 ? 's' : ''})
               </>
             )}
-          </Button>
+            </Button>
+          </motion.div>
 
           {analyzeMutation.isError && (
             <Card className="border-destructive">
@@ -390,10 +435,10 @@ export default function TestCouncil() {
         {/* Show results (for both streaming and non-streaming after completion) */}
         <div className={`lg:col-span-1 ${useStreaming && (streamState.isStreaming || !streamState.finalAnalysis) ? "hidden" : ""}`}>
           {analysis ? (
-            <Card>
+            <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 font-semibold">
+                  <TrendingUp className="h-5 w-5 text-accent" />
                   Insights do Conselho
                 </CardTitle>
                 <CardDescription>
@@ -413,9 +458,9 @@ export default function TestCouncil() {
                     <div className="space-y-4">
                       <h3 className="font-semibold">💡 Contribuições dos Especialistas</h3>
                       {analysis.contributions.map((contrib, idx) => (
-                        <Card key={idx}>
+                        <Card key={idx} className="rounded-xl">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-base">
+                            <CardTitle className="text-base font-semibold">
                               {contrib.expertName}
                             </CardTitle>
                           </CardHeader>
@@ -457,11 +502,11 @@ export default function TestCouncil() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-dashed">
+            <Card className="border-dashed rounded-2xl">
               <CardContent className="pt-6">
                 <div className="text-center text-muted-foreground py-12">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Envie um problema para ver a análise do conselho</p>
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-sm">Envie um problema para ver a análise do conselho</p>
                 </div>
               </CardContent>
             </Card>

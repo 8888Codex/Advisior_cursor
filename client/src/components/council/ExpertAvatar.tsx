@@ -62,7 +62,7 @@ export function ExpertAvatar({ status, index }: ExpertAvatarProps) {
       transition={{ delay: index * 0.1 }}
       data-testid={`expert-avatar-${status.expertId}`}
     >
-      <Card className={`p-4 relative overflow-hidden ${isActive ? "ring-2 ring-accent" : ""}`}>
+      <Card className={`p-4 relative overflow-hidden rounded-xl ${isActive ? "ring-2 ring-accent/30" : ""}`}>
         {/* Animated background pulse for active experts */}
         {isActive && (
           <motion.div
@@ -113,7 +113,7 @@ export function ExpertAvatar({ status, index }: ExpertAvatarProps) {
                   alt={status.expertName}
                   className="object-cover"
                 />
-                <AvatarFallback className={`text-lg font-bold ${config.bgColor} ${config.color}`}>
+                <AvatarFallback className={`text-lg font-semibold ${config.bgColor} ${config.color}`}>
                   {initials}
                 </AvatarFallback>
               </Avatar>
