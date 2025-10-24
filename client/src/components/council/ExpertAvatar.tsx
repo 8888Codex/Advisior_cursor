@@ -18,20 +18,20 @@ const statusConfig = {
   },
   researching: {
     icon: Search,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
+    color: "text-accent",
+    bgColor: "bg-accent/10",
     label: "Pesquisando",
   },
   analyzing: {
     icon: Sparkles,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
+    color: "text-accent",
+    bgColor: "bg-accent/10",
     label: "Analisando",
   },
   completed: {
     icon: Check,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
+    color: "text-accent",
+    bgColor: "bg-accent/10",
     label: "Concluído",
   },
   failed: {
@@ -62,11 +62,11 @@ export function ExpertAvatar({ status, index }: ExpertAvatarProps) {
       transition={{ delay: index * 0.1 }}
       data-testid={`expert-avatar-${status.expertId}`}
     >
-      <Card className={`p-4 relative overflow-hidden ${isActive ? "ring-2 ring-primary" : ""}`}>
+      <Card className={`p-4 relative overflow-hidden ${isActive ? "ring-2 ring-accent" : ""}`}>
         {/* Animated background pulse for active experts */}
         {isActive && (
           <motion.div
-            className="absolute inset-0 bg-primary/5"
+            className="absolute inset-0 bg-accent/5"
             animate={{ opacity: [0.3, 0.6, 0.3] }}
             transition={{ repeat: Infinity, duration: 2 }}
           />

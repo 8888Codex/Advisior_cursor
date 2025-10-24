@@ -12,13 +12,13 @@ interface ActivityFeedProps {
 const eventConfig = {
   info: {
     icon: Info,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
+    color: "text-accent",
+    bgColor: "bg-accent/10",
   },
   success: {
     icon: CheckCircle2,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
+    color: "text-accent",
+    bgColor: "bg-accent/10",
   },
   error: {
     icon: AlertCircle,

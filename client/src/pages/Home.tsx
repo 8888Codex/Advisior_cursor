@@ -48,28 +48,24 @@ export default function Home() {
       <div className="min-h-screen">
       <Hero />
 
-      {/* Personalized Insights Section - Premium Disney-Level */}
+      {/* Personalized Insights Section - Apple Minimalist */}
       {insightsData?.hasProfile && insightsData.insights.length > 0 && (
-        <section className="relative w-full py-20 md:py-24 overflow-hidden">
-          {/* Subtle gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/50 to-background pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-mesh opacity-50" />
-          
-          <div className="container mx-auto px-4 relative z-10">
+        <section className="relative w-full py-20 md:py-24">
+          <div className="container mx-auto px-4">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.3 }}
               className="text-center mb-12"
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
+                initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full glass mb-8 shimmer"
+                transition={{ duration: 0.25, delay: 0.05 }}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-muted/50 border border-border/50 mb-8"
               >
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent-cyan to-accent">
+                <Sparkles className="h-4 w-4 text-accent" />
+                <span className="text-sm font-medium text-foreground">
                   Personalizado para {insightsData.profileSummary?.companyName}
                 </span>
               </motion.div>
@@ -77,10 +73,10 @@ export default function Home() {
               <motion.h2
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-4xl md:text-5xl font-bold mb-4"
+                transition={{ duration: 0.25, delay: 0.1 }}
+                className="text-4xl md:text-5xl font-semibold mb-4"
               >
-                <span className="text-gradient-premium">Insights</span> para Seu Negócio
+                Insights para Seu Negócio
               </motion.h2>
               
               <motion.p
@@ -97,36 +93,29 @@ export default function Home() {
               {insightsData.insights.map((insight, index) => (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  whileHover={{ scale: 1.01, y: -2 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -2 }}
                   transition={{
-                    duration: 0.6,
-                    delay: 0.3 + index * 0.15,
-                    ease: [0.4, 0, 0.2, 1],
+                    duration: 0.25,
+                    delay: 0.15 + index * 0.05,
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                 >
-                  <Card className="p-8 h-full rounded-3xl glass-strong hover:shadow-lg hover:shadow-primary/8 transition-all duration-600 group relative overflow-hidden">
-                    {/* Ultra subtle gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-accent/3 opacity-0 group-hover:opacity-100 transition-opacity duration-600" />
-                    
-                    <div className="flex items-start gap-4 relative z-10">
-                      <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                        className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:shadow-primary/15 transition-shadow duration-600"
-                      >
-                        <Lightbulb className="h-6 w-6 text-white" />
-                      </motion.div>
+                  <Card className="p-8 h-full rounded-2xl hover:shadow-md transition-all duration-200 group">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                        <Lightbulb className="h-6 w-6 text-accent" />
+                      </div>
                       
                       <div className="flex-1 min-w-0">
                         <Badge 
                           variant="secondary" 
-                          className="mb-3 rounded-full px-3 py-0.5 text-xs shimmer hover:bg-primary/8 hover:text-primary transition-colors duration-300"
+                          className="mb-3 rounded-full px-3 py-0.5 text-xs"
                         >
                           {insight.category}
                         </Badge>
-                        <p className="text-sm leading-relaxed text-foreground/80 font-normal">
+                        <p className="text-sm leading-relaxed text-muted-foreground">
                           {insight.content}
                         </p>
                       </div>
