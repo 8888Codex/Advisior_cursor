@@ -178,13 +178,13 @@ export default function Create() {
   const getStepIcon = (step: CloneStep) => {
     switch (step) {
       case "researching":
-        return <Search className="h-5 w-5 animate-pulse" />;
+        return <Search className="h-4 w-4" />;
       case "analyzing":
-        return <Brain className="h-5 w-5 animate-pulse" />;
+        return <Brain className="h-4 w-4" />;
       case "synthesizing":
-        return <Wand2 className="h-5 w-5 animate-pulse" />;
+        return <Wand2 className="h-4 w-4" />;
       case "complete":
-        return <Check className="h-5 w-5" />;
+        return <Check className="h-4 w-4" />;
       default:
         return null;
     }
@@ -209,26 +209,26 @@ export default function Create() {
 
   return (
     <AnimatedPage>
-      <div className="min-h-screen py-8">
-      <div className="container mx-auto px-4">
+      <div className="min-h-screen py-12">
+      <div className="container mx-auto px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm mb-4">
-              <Sparkles className="h-4 w-4 text-primary" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-1.5 text-sm mb-4">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Clonagem Cognitiva Automática</span>
             </div>
-            <h1 className="text-4xl font-bold mb-4">Criar Seu Especialista</h1>
-            <p className="text-muted-foreground max-w-2xl">
+            <h1 className="text-4xl font-semibold mb-3 tracking-tight">Criar Seu Especialista</h1>
+            <p className="text-muted-foreground max-w-2xl leading-relaxed">
               Digite o nome de quem você quer clonar. Nosso sistema pesquisa automaticamente 
               e cria um clone cognitivo de alta fidelidade usando Framework EXTRACT.
             </p>
           </div>
 
           {!generatedExpert && (
-            <Card className="p-6">
+            <Card className="p-8 rounded-2xl">
               <form onSubmit={handleAutoClone} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="targetName">Quem você quer clonar?</Label>
+                  <Label htmlFor="targetName" className="text-sm font-medium">Quem você quer clonar?</Label>
                   <Input
                     id="targetName"
                     value={targetName}
@@ -237,7 +237,7 @@ export default function Create() {
                     required
                     disabled={isProcessing}
                     data-testid="input-target-name"
-                    className="text-lg"
+                    className="text-base"
                   />
                   <p className="text-sm text-muted-foreground">
                     Pode ser qualquer pessoa pública com informação disponível online
@@ -245,7 +245,7 @@ export default function Create() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="context">Contexto Adicional (Opcional)</Label>
+                  <Label htmlFor="context" className="text-sm font-medium">Contexto Adicional (Opcional)</Label>
                   <Textarea
                     id="context"
                     value={context}
@@ -254,6 +254,7 @@ export default function Create() {
                     rows={3}
                     disabled={isProcessing}
                     data-testid="input-context"
+                    className="resize-none"
                   />
                   <p className="text-sm text-muted-foreground">
                     Adicione contexto para refinar a pesquisa
@@ -261,16 +262,16 @@ export default function Create() {
                 </div>
 
                 {isProcessing && (
-                  <Card className="p-4 bg-primary/5 border-primary/20">
+                  <Card className="p-4 rounded-2xl bg-muted/50 border-border/50">
                     <div className="flex items-center gap-3">
-                      <div className="text-primary">
+                      <div className="text-muted-foreground flex-shrink-0">
                         {getStepIcon(cloneStep)}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{getStepText(cloneStep)}</p>
-                        <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium mb-2">{getStepText(cloneStep)}</p>
+                        <div className="w-full bg-background rounded-full h-1.5 overflow-hidden">
                           <div 
-                            className="bg-primary h-1.5 rounded-full transition-all duration-1000"
+                            className="bg-accent h-1.5 rounded-full transition-all duration-300 ease-out"
                             style={{
                               width: cloneStep === "researching" ? "33%" :
                                      cloneStep === "analyzing" ? "66%" :
@@ -308,25 +309,25 @@ export default function Create() {
 
           {generatedExpert && cloneStep === "complete" && (
             <div className="space-y-6">
-              <Card className="p-6">
-                <div className="flex items-center gap-2 text-primary mb-4">
+              <Card className="p-8 rounded-2xl hover-elevate transition-all duration-200">
+                <div className="flex items-center gap-2 text-muted-foreground mb-6">
                   <Check className="h-5 w-5" />
-                  <h3 className="text-lg font-semibold">Clone Cognitivo Gerado com Sucesso!</h3>
+                  <h3 className="text-lg font-medium">Clone Cognitivo Gerado com Sucesso!</h3>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-24 w-24 ring-2 ring-primary/20">
-                      <AvatarFallback className="text-xl font-semibold">{initials}</AvatarFallback>
+                <div className="space-y-6">
+                  <div className="flex items-start gap-6">
+                    <Avatar className="h-24 w-24 ring-1 ring-border/50">
+                      <AvatarFallback className="text-xl font-medium">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-2xl font-bold mb-1">{generatedExpert.name}</h3>
-                      <p className="text-muted-foreground mb-3">{generatedExpert.title}</p>
+                      <h3 className="text-2xl font-semibold mb-2 tracking-tight">{generatedExpert.name}</h3>
+                      <p className="text-muted-foreground mb-4 leading-relaxed">{generatedExpert.title}</p>
                       
                       {generatedExpert.expertise && generatedExpert.expertise.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {generatedExpert.expertise.map((skill: string, index: number) => (
-                            <Badge key={index} variant="secondary">
+                            <Badge key={index} variant="secondary" className="font-normal">
                               {skill}
                             </Badge>
                           ))}
@@ -340,11 +341,11 @@ export default function Create() {
                   </p>
 
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-primary hover-elevate p-3 rounded-md">
+                    <summary className="cursor-pointer text-sm font-medium text-foreground hover-elevate active-elevate-2 p-4 rounded-xl transition-all duration-200">
                       Ver System Prompt EXTRACT Completo
                     </summary>
-                    <Card className="mt-2 p-4 bg-muted/50">
-                      <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto">
+                    <Card className="mt-3 p-6 bg-muted/30 rounded-2xl">
+                      <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto leading-relaxed">
                         {generatedExpert.systemPrompt}
                       </pre>
                     </Card>
@@ -352,11 +353,11 @@ export default function Create() {
                 </div>
               </Card>
 
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
+              <Card className="p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Testar Clone</h3>
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="text-lg font-medium">Testar Clone</h3>
                   </div>
                   <Button
                     variant="ghost"
@@ -370,9 +371,9 @@ export default function Create() {
 
                 {showTestChat && (
                   <div className="space-y-4">
-                    <div className="border rounded-lg p-4 space-y-3 min-h-[200px] max-h-[400px] overflow-y-auto">
+                    <div className="border border-border/50 rounded-2xl p-4 space-y-3 min-h-[200px] max-h-[400px] overflow-y-auto">
                       {testMessages.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-8">
+                        <p className="text-sm text-muted-foreground text-center py-12 leading-relaxed">
                           Faça uma pergunta para testar a personalidade do clone
                         </p>
                       ) : (
@@ -382,33 +383,34 @@ export default function Create() {
                             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                           >
                             <div
-                              className={`max-w-[80%] rounded-lg p-3 ${
+                              className={`max-w-[80%] rounded-2xl p-4 transition-all duration-200 ${
                                 msg.role === "user"
-                                  ? "bg-primary text-primary-foreground"
+                                  ? "bg-accent text-accent-foreground"
                                   : "bg-muted"
                               }`}
                             >
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                             </div>
                           </div>
                         ))
                       )}
                       {testChatMutation.isPending && (
                         <div className="flex justify-start">
-                          <div className="bg-muted rounded-lg p-3">
+                          <div className="bg-muted rounded-2xl p-4">
                             <Loader2 className="h-4 w-4 animate-spin" />
                           </div>
                         </div>
                       )}
                     </div>
 
-                    <form onSubmit={handleTestSend} className="flex gap-2">
+                    <form onSubmit={handleTestSend} className="flex gap-3">
                       <Input
                         value={testInput}
                         onChange={(e) => setTestInput(e.target.value)}
                         placeholder="Digite sua pergunta..."
                         disabled={testChatMutation.isPending}
                         data-testid="input-test-message"
+                        className="flex-1"
                       />
                       <Button
                         type="submit"
