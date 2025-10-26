@@ -361,18 +361,19 @@ Forneça diretrizes práticas para criação de conteúdo.
         )
         
         # Use Claude to synthesize into structured persona
+        print(f"[RedditResearch] Calling Claude to structure strategic findings...")
         synthesis_response = await self.anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=3000,
-            system="You are a persona synthesis expert. Create comprehensive, actionable persona profiles from research data.",
+            system="You are a JSON extraction expert. You MUST return ONLY valid JSON, no markdown, no explanations.",
             messages=[{
                 "role": "user",
                 "content": f"""
-From the following comprehensive Reddit research findings, create a detailed persona profile:
+Extract structured persona data from these comprehensive findings and return ONLY the JSON object (no markdown, no ```json blocks, no explanations):
 
 {all_findings}
 
-Return ONLY valid JSON in this exact format:
+Required JSON format:
 {{
   "painPoints": ["detailed pain point 1", "detailed pain point 2", ...],
   "goals": ["specific goal 1", "specific goal 2", ...],
