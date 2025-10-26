@@ -1797,6 +1797,118 @@ async def get_council_analysis(analysis_id: str):
         raise HTTPException(status_code=404, detail="Council analysis not found")
     return analysis
 
+# ============================================================================
+# PERSONA BUILDER ENDPOINTS
+# ============================================================================
+
+from models import Persona, PersonaCreate
+from reddit_research import reddit_research
+from datetime import datetime as dt
+
+@app.post("/api/personas", response_model=Persona)
+async def create_persona(data: PersonaCreate):
+    """
+    Create a persona using Reddit research.
+    
+    Modes:
+    - quick: 1-2 min, basic insights (5-7 pain points, goals, values)
+    - strategic: 5-10 min, deep analysis (behavioral patterns, content preferences)
+    """
+    user_id = "default_user"  # TODO: replace with actual user auth
+    
+    try:
+        # Conduct Reddit research based on mode
+        if data.mode == "quick":
+            research_data = await reddit_research.research_quick(
+                target_description=data.targetDescription,
+                industry=data.industry
+            )
+        else:  # strategic
+            research_data = await reddit_research.research_strategic(
+                target_description=data.targetDescription,
+                industry=data.industry,
+                additional_context=data.additionalContext
+            )
+        
+        # Add timestamp to research data
+        research_data["researchData"]["timestamp"] = dt.utcnow().isoformat()
+        
+        # Generate persona name if not provided
+        persona_name = f"Persona: {data.targetDescription[:50]}"
+        
+        # Prepare persona data
+        persona_payload = {
+            "name": persona_name,
+            "researchMode": data.mode,
+            **research_data
+        }
+        
+        # Save to database
+        persona = await storage.create_persona(user_id, persona_payload)
+        
+        return persona
+    
+    except ValueError as e:
+        # Missing API keys
+        error_msg = str(e)
+        if "API_KEY" in error_msg or "api_key" in error_msg.lower():
+            raise HTTPException(
+                status_code=503,
+                detail=f"Service temporarily unavailable: {error_msg}"
+            )
+        raise
+    except Exception as e:
+        print(f"Error creating persona: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create persona: {str(e)}")
+
+@app.get("/api/personas", response_model=List[Persona])
+async def get_personas():
+    """Get all personas for the current user"""
+    user_id = "default_user"
+    return await storage.get_personas(user_id)
+
+@app.get("/api/personas/{persona_id}", response_model=Persona)
+async def get_persona(persona_id: str):
+    """Get a specific persona by ID"""
+    persona = await storage.get_persona(persona_id)
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return persona
+
+@app.patch("/api/personas/{persona_id}", response_model=Persona)
+async def update_persona(persona_id: str, updates: dict):
+    """Update a persona (e.g., edit name, add notes)"""
+    persona = await storage.update_persona(persona_id, updates)
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return persona
+
+@app.delete("/api/personas/{persona_id}")
+async def delete_persona(persona_id: str):
+    """Delete a persona"""
+    success = await storage.delete_persona(persona_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return {"success": True}
+
+@app.get("/api/personas/{persona_id}/download")
+async def download_persona(persona_id: str):
+    """Download persona as JSON"""
+    persona = await storage.get_persona(persona_id)
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    
+    # Convert Pydantic model to dict and return as JSON download
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content=persona.model_dump(mode='json'),
+        headers={
+            "Content-Disposition": f"attachment; filename=persona_{persona_id}.json"
+        }
+    )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

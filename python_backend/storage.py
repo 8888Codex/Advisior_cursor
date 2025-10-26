@@ -4,8 +4,12 @@ import uuid
 from models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
     Message, MessageCreate, ExpertType, CategoryType, BusinessProfile, BusinessProfileCreate,
-    CouncilAnalysis
+    CouncilAnalysis, Persona, PersonaCreate
 )
+import os
+import json
+from datetime import datetime as dt
+import asyncpg
 
 class MemStorage:
     """In-memory storage compatible with frontend API expectations"""
@@ -160,6 +164,200 @@ class MemStorage:
         # Sort by createdAt descending (most recent first)
         analyses.sort(key=lambda x: x.createdAt, reverse=True)
         return analyses
+    
+    # Persona operations (PostgreSQL)
+    async def _get_db_connection(self):
+        """Get PostgreSQL connection from DATABASE_URL"""
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable not set")
+        return await asyncpg.connect(database_url)
+    
+    async def create_persona(self, user_id: str, persona_data: dict) -> Persona:
+        """Create a new persona in PostgreSQL"""
+        conn = await self._get_db_connection()
+        try:
+            persona_id = str(uuid.uuid4())
+            now = datetime.utcnow()
+            
+            row = await conn.fetchrow(
+                """
+                INSERT INTO personas (
+                    id, user_id, name, research_mode,
+                    demographics, psychographics,
+                    pain_points, goals, values,
+                    content_preferences, communities, behavioral_patterns,
+                    research_data,
+                    created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                RETURNING *
+                """,
+                persona_id, user_id,
+                persona_data.get("name", ""),
+                persona_data.get("researchMode", "quick"),
+                json.dumps(persona_data.get("demographics", {})),
+                json.dumps(persona_data.get("psychographics", {})),
+                persona_data.get("painPoints", []),
+                persona_data.get("goals", []),
+                persona_data.get("values", []),
+                json.dumps(persona_data.get("contentPreferences", {})),
+                persona_data.get("communities", []),
+                json.dumps(persona_data.get("behavioralPatterns", {})),
+                json.dumps(persona_data.get("researchData", {})),
+                now, now
+            )
+            
+            return Persona(
+                id=row["id"],
+                userId=row["user_id"],
+                name=row["name"],
+                researchMode=row["research_mode"],
+                demographics=json.loads(row["demographics"]) if row["demographics"] else {},
+                psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
+                painPoints=list(row["pain_points"]) if row["pain_points"] else [],
+                goals=list(row["goals"]) if row["goals"] else [],
+                values=list(row["values"]) if row["values"] else [],
+                contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
+                communities=list(row["communities"]) if row["communities"] else [],
+                behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
+                researchData=json.loads(row["research_data"]) if row["research_data"] else {},
+                createdAt=row["created_at"],
+                updatedAt=row["updated_at"]
+            )
+        finally:
+            await conn.close()
+    
+    async def get_persona(self, persona_id: str) -> Optional[Persona]:
+        """Get a specific persona by ID"""
+        conn = await self._get_db_connection()
+        try:
+            row = await conn.fetchrow("SELECT * FROM personas WHERE id = $1", persona_id)
+            if not row:
+                return None
+            
+            return Persona(
+                id=row["id"],
+                userId=row["user_id"],
+                name=row["name"],
+                researchMode=row["research_mode"],
+                demographics=json.loads(row["demographics"]) if row["demographics"] else {},
+                psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
+                painPoints=list(row["pain_points"]) if row["pain_points"] else [],
+                goals=list(row["goals"]) if row["goals"] else [],
+                values=list(row["values"]) if row["values"] else [],
+                contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
+                communities=list(row["communities"]) if row["communities"] else [],
+                behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
+                researchData=json.loads(row["research_data"]) if row["research_data"] else {},
+                createdAt=row["created_at"],
+                updatedAt=row["updated_at"]
+            )
+        finally:
+            await conn.close()
+    
+    async def get_personas(self, user_id: str) -> List[Persona]:
+        """Get all personas for a user"""
+        conn = await self._get_db_connection()
+        try:
+            rows = await conn.fetch(
+                "SELECT * FROM personas WHERE user_id = $1 ORDER BY created_at DESC",
+                user_id
+            )
+            
+            personas = []
+            for row in rows:
+                personas.append(Persona(
+                    id=row["id"],
+                    userId=row["user_id"],
+                    name=row["name"],
+                    researchMode=row["research_mode"],
+                    demographics=json.loads(row["demographics"]) if row["demographics"] else {},
+                    psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
+                    painPoints=list(row["pain_points"]) if row["pain_points"] else [],
+                    goals=list(row["goals"]) if row["goals"] else [],
+                    values=list(row["values"]) if row["values"] else [],
+                    contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
+                    communities=list(row["communities"]) if row["communities"] else [],
+                    behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
+                    researchData=json.loads(row["research_data"]) if row["research_data"] else {},
+                    createdAt=row["created_at"],
+                    updatedAt=row["updated_at"]
+                ))
+            
+            return personas
+        finally:
+            await conn.close()
+    
+    async def update_persona(self, persona_id: str, updates: dict) -> Optional[Persona]:
+        """Update a persona"""
+        conn = await self._get_db_connection()
+        try:
+            now = datetime.utcnow()
+            
+            # Build dynamic UPDATE query based on provided fields
+            set_clauses = ["updated_at = $1"]
+            params = [now]
+            param_num = 2
+            
+            field_mapping = {
+                "name": "name",
+                "demographics": "demographics",
+                "psychographics": "psychographics",
+                "painPoints": "pain_points",
+                "goals": "goals",
+                "values": "values",
+                "contentPreferences": "content_preferences",
+                "communities": "communities",
+                "behavioralPatterns": "behavioral_patterns",
+                "researchData": "research_data"
+            }
+            
+            for field_camel, field_snake in field_mapping.items():
+                if field_camel in updates:
+                    value = updates[field_camel]
+                    # JSON fields need to be stringified
+                    if field_snake in ["demographics", "psychographics", "content_preferences", "behavioral_patterns", "research_data"]:
+                        value = json.dumps(value)
+                    
+                    set_clauses.append(f"{field_snake} = ${param_num}")
+                    params.append(value)
+                    param_num += 1
+            
+            params.append(persona_id)
+            query = f"UPDATE personas SET {', '.join(set_clauses)} WHERE id = ${param_num} RETURNING *"
+            
+            row = await conn.fetchrow(query, *params)
+            if not row:
+                return None
+            
+            return Persona(
+                id=row["id"],
+                userId=row["user_id"],
+                name=row["name"],
+                researchMode=row["research_mode"],
+                demographics=json.loads(row["demographics"]) if row["demographics"] else {},
+                psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
+                painPoints=list(row["pain_points"]) if row["pain_points"] else [],
+                goals=list(row["goals"]) if row["goals"] else [],
+                values=list(row["values"]) if row["values"] else [],
+                contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
+                communities=list(row["communities"]) if row["communities"] else [],
+                behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
+                researchData=json.loads(row["research_data"]) if row["research_data"] else {},
+                createdAt=row["created_at"],
+                updatedAt=row["updated_at"]
+            )
+        finally:
+            await conn.close()
+    
+    async def delete_persona(self, persona_id: str) -> bool:
+        """Delete a persona"""
+        conn = await self._get_db_connection()
+        try:
+            result = await conn.execute("DELETE FROM personas WHERE id = $1", persona_id)
+            return result == "DELETE 1"
+        finally:
+            await conn.close()
 
 # Global storage instance
 storage = MemStorage()

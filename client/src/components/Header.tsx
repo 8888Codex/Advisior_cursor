@@ -29,6 +29,11 @@ export function Header() {
               Conselho Estratégico
             </span>
           </Link>
+          <Link href="/personas">
+            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-personas">
+              Persona Builder
+            </span>
+          </Link>
           <Link href="/create">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-create">
               Criar Especialista

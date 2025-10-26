@@ -153,3 +153,40 @@ class CategoryInfo(BaseModel):
     icon: str  # Lucide icon name suggestion
     color: str  # Tailwind color class (e.g., "violet", "emerald")
     expertCount: int  # Number of experts in this category
+
+class Persona(BaseModel):
+    """User persona created from strategic research"""
+    id: str
+    userId: str
+    name: str
+    researchMode: Literal["quick", "strategic"]
+    
+    # Core Demographics
+    demographics: dict = {}
+    
+    # Psychographics
+    psychographics: dict = {}
+    
+    # Pain Points & Goals
+    painPoints: List[str] = []
+    goals: List[str] = []
+    values: List[str] = []
+    
+    # Content & Behavioral Patterns
+    contentPreferences: dict = {}
+    communities: List[str] = []
+    behavioralPatterns: dict = {}
+    
+    # Raw Research Data (Reddit, YouTube, Perplexity)
+    researchData: dict = {}
+    
+    # Timestamps
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
+class PersonaCreate(BaseModel):
+    """Request payload for persona creation"""
+    mode: Literal["quick", "strategic"]
+    targetDescription: str  # "Empreendedores de e-commerce no Brasil"
+    industry: Optional[str] = None
+    additionalContext: Optional[str] = None
