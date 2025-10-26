@@ -3,11 +3,24 @@
 ## Overview
 AdvisorIA is a premium AI consultancy platform offering expert advice through cognitive clones of 18 specialists across 15 disciplines. It leverages the "Framework EXTRACT de 12 Camadas" with Anthropic's Claude to create ultra-realistic AI personalities. The platform features a React/TypeScript frontend, an Express.js proxy, and a Python/FastAPI backend with asynchronous AI integration, aiming to provide a specialized multi-category consulting experience.
 
-## Recent Changes (October 2025 - Marketing Copy Overhaul)
-- **Welcome Page Redesign**: Hero section com copy persuasiva ("Converse com as Maiores Lendas do Marketing"), nova seção "Como Funciona" explicando clonagem cognitiva em 3 passos, comparação IA Genérica vs Clone Perfeito, tour expandido para 18 especialistas (antes 8).
-- **Marketing Page Criada**: Página dedicada `/marketing` showcasing as 18 lendas com timeline de impacto (1967-Hoje, 57 anos), seção "Perguntas Concretas" (18 exemplos reais), grid completo de especialistas, comparação Framework EXTRACT detalhada.
-- **CTAs Globais Otimizados**: Textos genéricos substituídos por copy específica e persuasiva em Welcome.tsx e Home.tsx, micro-copy que remove objeções, promessas alinhadas com comportamento real validado.
-- **Copy Marketing-Quality**: Toda copy aproveitando expertise das 18 lendas do marketing presentes na plataforma, persuasiva mas honesta, números verificáveis ("18 Especialistas • 15 Disciplinas"), foco em benefícios reais vs features técnicas.
+## Recent Changes (October 2025 - Landing Page Unificada "Experiência Disney")
+- **Landing Page Consolidada**: Welcome.tsx + Marketing.tsx fundidos em Landing.tsx única na raiz (`/`), criando jornada linear encantadora com storytelling emocional de ponta a ponta.
+- **Estrutura da Landing** (8 seções sequenciais):
+  1. Hero: "Democratizando o Acesso a Mentalidades Estratégicas de Alto Nível" com 2 CTAs primários
+  2. Impact Stats: 18 Lendas / 450+ Anos / 95% Fidelidade (social proof visual)
+  3. Timeline de Impacto: 4 eras (1967-Hoje) com lendas e contribuições históricas
+  4. Como Funciona: 3 passos + comparação IA Genérica vs Clone + Badge "Como Se Estivessem Vivos na Sua Frente"
+  5. Tour Interativo: 18 especialistas com carrossel, progress bar, navegação frente/trás
+  6. Perguntas Concretas: 6 especialistas × 3 perguntas (18 casos de uso)
+  7. Formulário Inline: "Personalize Sua Experiência" → conversão suave para /home
+  8. CTA Final: "Começar Minha Jornada Premium" (celebratório)
+- **Copy 100% Emocional**: Removido jargão técnico ("Framework EXTRACT de 20 pontos") → substituído por benefícios ("Como Se Estivessem Vivos na Sua Frente"). Framework permanece 20 pontos internamente, mas apresentado ao usuário via emoção.
+- **Roteamento Simplificado**:
+  - `/` → Landing.tsx (público, jornada completa Disney)
+  - `/home` → Home.tsx (grid autenticado, preservado)
+  - `/welcome` e `/marketing` → REMOVIDOS (redirects automáticos para /)
+- **Navegação Atualizada**: Header limpo (Logo, Especialistas, Categorias, Criar Especialista) sem link obsoleto para /marketing.
+- **Validação E2E**: Jornada completa testada - landing → tour → formulário → /home → chat funcionando perfeitamente, animações fluidas <300ms, conversão suave.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
