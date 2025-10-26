@@ -457,7 +457,7 @@ export default function TestCouncil() {
 
                     <div className="space-y-4">
                       <h3 className="font-semibold">💡 Contribuições dos Especialistas</h3>
-                      {analysis.contributions.map((contrib, idx) => (
+                      {analysis.contributions.map((contrib: { expertName: string; keyInsights: string[]; recommendations: string[] }, idx: number) => (
                         <Card key={idx} className="rounded-xl">
                           <CardHeader className="pb-3">
                             <CardTitle className="text-base font-semibold">
@@ -469,7 +469,7 @@ export default function TestCouncil() {
                               <div>
                                 <p className="text-sm font-medium mb-1">Principais Insights:</p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
-                                  {contrib.keyInsights.map((insight, i) => (
+                                  {contrib.keyInsights.map((insight: string, i: number) => (
                                     <li key={i} className="flex gap-2">
                                       <span>•</span>
                                       <span>{insight}</span>
@@ -484,7 +484,7 @@ export default function TestCouncil() {
                                   Recomendações:
                                 </p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
-                                  {contrib.recommendations.map((rec, i) => (
+                                  {contrib.recommendations.map((rec: string, i: number) => (
                                     <li key={i} className="flex gap-2">
                                       <span>→</span>
                                       <span>{rec}</span>

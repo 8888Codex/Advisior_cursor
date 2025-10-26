@@ -1682,6 +1682,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                 })
                 
                 try:
+                    print(f"[Council Stream] Starting analysis for {expert.name}")
                     contribution = await council_orchestrator._get_expert_analysis(
                         expert=expert,
                         problem=data.problem,
@@ -1689,6 +1690,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                         research_findings=research_findings
                     )
                     contributions.append(contribution)
+                    print(f"[Council Stream] Completed analysis for {expert.name}")
                     
                     yield sse_event("expert_completed", {
                         "expertId": expert.id,
@@ -1697,6 +1699,9 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                         "recommendationCount": len(contribution.recommendations)
                     })
                 except Exception as e:
+                    print(f"[Council Stream] Expert {expert.name} failed: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
                     yield sse_event("expert_failed", {
                         "expertId": expert.id,
                         "expertName": expert.name,
@@ -1712,11 +1717,13 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                 "message": "Synthesizing council consensus..."
             })
             
+            print(f"[Council Stream] Synthesizing consensus from {len(contributions)} contributions")
             consensus = await council_orchestrator._synthesize_consensus(
                 problem=data.problem,
                 contributions=contributions,
                 research_findings=research_findings
             )
+            print(f"[Council Stream] Consensus generated successfully")
             
             # Create final analysis object
             from models import CouncilAnalysis, AgentContribution
@@ -1736,6 +1743,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
             await storage.save_council_analysis(analysis)
             
             # Send final complete event
+            print(f"[Council Stream] Sending analysis_complete event")
             yield sse_event("analysis_complete", {
                 "analysisId": analysis.id,
                 "analysis": {
@@ -1754,8 +1762,12 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                     "consensus": analysis.consensus
                 }
             })
+            print(f"[Council Stream] Stream completed successfully")
             
         except Exception as e:
+            print(f"[Council Stream] Fatal error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             yield sse_event("error", {
                 "message": f"Analysis failed: {str(e)}"
             })
