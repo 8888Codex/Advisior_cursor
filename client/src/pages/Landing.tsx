@@ -167,7 +167,7 @@ export default function Landing() {
               >
                 <Sparkles className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  Consultoria Estratégica de Elite com IA
+                  18 Lendas do Marketing Mundial
                 </span>
               </motion.div>
 
@@ -177,9 +177,9 @@ export default function Landing() {
                 transition={{ duration: 0.3, delay: 0.05 }}
                 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-tight"
               >
-                Democratizando o Acesso
+                <span className="text-accent">450+ Anos de Expertise</span> em Marketing.
                 <br />
-                a <span className="text-accent">Mentalidades Estratégicas</span> de Alto Nível
+                Agora em Uma Conversa.
               </motion.h1>
 
               <motion.p
@@ -188,9 +188,7 @@ export default function Landing() {
                 transition={{ duration: 0.3, delay: 0.1 }}
                 className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
               >
-                Consulte clones digitais de especialistas renomados ou crie seus
-                próprios consultores de IA personalizados para resolver seus desafios
-                de negócios mais complexos.
+                De Philip Kotler a Gary Vaynerchuk. Consulte as maiores mentes do marketing como se estivessem vivos na sua frente.
               </motion.p>
 
               <motion.div
