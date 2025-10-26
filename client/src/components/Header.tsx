@@ -14,14 +14,9 @@ export function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/experts">
+          <Link href="/home">
             <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-experts">
               Especialistas
-            </span>
-          </Link>
-          <Link href="/marketing">
-            <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-marketing">
-              As 18 Lendas
             </span>
           </Link>
           <Link href="/categories">

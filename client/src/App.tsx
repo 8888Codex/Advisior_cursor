@@ -7,16 +7,21 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Header } from "@/components/Header";
 import { AnimatePresence } from "framer-motion";
 import NotFound from "@/pages/not-found";
+import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Experts from "@/pages/Experts";
 import Categories from "@/pages/Categories";
-import Marketing from "@/pages/Marketing";
 import Chat from "@/pages/Chat";
 import Create from "@/pages/Create";
 import AdminExperts from "@/pages/AdminExperts";
 import Onboarding from "@/pages/Onboarding";
 import TestCouncil from "@/pages/TestCouncil";
-import Welcome from "@/pages/Welcome";
+
+function Redirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  setLocation(to);
+  return null;
+}
 
 function Router() {
   const [location] = useLocation();
@@ -24,11 +29,16 @@ function Router() {
   return (
     <AnimatePresence mode="wait">
       <Switch location={location} key={location}>
-        <Route path="/" component={Home} />
-        <Route path="/welcome" component={Welcome} />
+        <Route path="/" component={Landing} />
+        <Route path="/home" component={Home} />
+        <Route path="/welcome">
+          <Redirect to="/" />
+        </Route>
+        <Route path="/marketing">
+          <Redirect to="/" />
+        </Route>
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/experts" component={Experts} />
-        <Route path="/marketing" component={Marketing} />
         <Route path="/categories" component={Categories} />
         <Route path="/chat/:id" component={Chat} />
         <Route path="/create" component={Create} />
