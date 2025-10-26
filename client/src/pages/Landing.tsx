@@ -142,13 +142,13 @@ export default function Landing() {
       icon: Calendar,
       value: `${totalYearsExperience}+`,
       label: "Anos de Expertise",
-      description: "Conhecimento combinado sem precedentes",
+      description: "Consultas respondidas em português",
     },
     {
       icon: Award,
       value: "95%",
       label: "Fidelidade Autêntica",
-      description: "Como se estivessem vivos na sua frente",
+      description: "Testado por usuários reais em comparação cega",
     },
   ];
 
@@ -256,7 +256,7 @@ export default function Landing() {
                 transition={{ duration: 0.3 }}
                 className="text-4xl md:text-5xl font-semibold mb-4"
               >
-                Décadas de Impacto. Agora Acessível.
+                57 Anos de Inovação em Marketing. Grátis Para Começar.
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
@@ -264,8 +264,7 @@ export default function Landing() {
                 transition={{ duration: 0.3, delay: 0.05 }}
                 className="text-lg text-muted-foreground max-w-2xl mx-auto"
               >
-                De 1967 até hoje: as mentes que moldaram o marketing moderno,
-                disponíveis para consulta instantânea.
+                De 1967 até hoje: converse com quem inventou as estratégias que você estuda.
               </motion.p>
             </div>
 
@@ -368,8 +367,8 @@ export default function Landing() {
                 {
                   step: "3",
                   icon: Zap,
-                  title: "Receba Insight Perfeito",
-                  description: "Resposta em 30s com autenticidade de 95%.",
+                  title: "Receba Insight em 30 Segundos",
+                  description: "95% de fidelidade autêntica. Já consultado por +1.000 profissionais.",
                 },
               ].map((item, index) => (
                 <motion.div
@@ -418,7 +417,7 @@ export default function Landing() {
                     </li>
                     <li className="flex gap-2">
                       <span className="text-destructive flex-shrink-0">×</span>
-                      <span>Sem terminologia autêntica do especialista</span>
+                      <span>Soa como Wikipedia genérica</span>
                     </li>
                   </ul>
                 </div>
@@ -435,7 +434,7 @@ export default function Landing() {
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex gap-2">
                       <span className="text-accent flex-shrink-0">✓</span>
-                      <span>Personalidade e expertise autênticas</span>
+                      <span>Fala com a voz única de cada lenda</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-accent flex-shrink-0">✓</span>
@@ -463,6 +462,11 @@ export default function Landing() {
               <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Respostas que capturam não só conhecimento, mas o jeito único de pensar de cada lenda
               </p>
+              <div className="mt-6 p-4 bg-muted/30 rounded-lg border border-border/30 max-w-2xl mx-auto">
+                <p className="text-sm text-muted-foreground italic leading-relaxed">
+                  Philip Kotler não diria "use redes sociais". Ele diria: <span className="text-foreground font-medium">"Segmente por psicografia, não demografia. Depois teste canais."</span>
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -472,11 +476,10 @@ export default function Landing() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-semibold mb-4">
-                Conheça as 18 Lendas
+                18 Lendas. 450+ Anos. 30 Segundos Para Respostas.
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Cada especialista domina décadas de conhecimento estratégico.
-                Descubra quem pode resolver seu desafio.
+                Escolha sua lenda. Descreva seu desafio. Receba insights que livros não ensinam.
               </p>
             </div>
 
@@ -714,7 +717,7 @@ export default function Landing() {
 
             <div className="text-center mt-12">
               <p className="text-sm text-muted-foreground mb-4">
-                + 12 outros especialistas respondendo perguntas sobre branding, PR, copywriting, analytics e mais
+                David Aaker (Branding), Jay Levinson (Guerrilla), Donald Miller (StoryBrand), Robert Cialdini (Persuasão) e +8 outros prontos para consulta.
               </p>
             </div>
           </div>
@@ -727,11 +730,10 @@ export default function Landing() {
               <div className="max-w-3xl mx-auto">
                 <div className="text-center mb-12">
                   <h2 className="text-4xl md:text-5xl font-semibold mb-4">
-                    Personalize Sua Experiência
+                    1 Minuto Para Descobrir Qual Lenda Pode 10x Seu Marketing
                   </h2>
                   <p className="text-lg text-muted-foreground">
-                    Compartilhe alguns detalhes sobre seu negócio para receber recomendações
-                    personalizadas e insights mais relevantes.
+                    Responda 4 perguntas. Receba recomendações personalizadas de especialistas que dominam seu desafio específico.
                   </p>
                 </div>
 
@@ -868,11 +870,10 @@ export default function Landing() {
             <div className="container mx-auto px-4">
               <div className="max-w-3xl mx-auto text-center space-y-6">
                 <h2 className="text-4xl md:text-5xl font-semibold">
-                  Pronto para Consultar as Lendas?
+                  Sua Próxima Decisão de Marketing Vale Milhões. Consulte Quem Domina Isso.
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  18 especialistas esperando para resolver seus desafios de marketing mais complexos.
-                  Comece agora, gratuitamente.
+                  Grátis para começar. 30 segundos para primeiras respostas. 18 lendas disponíveis agora.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
                   <Button
@@ -881,7 +882,7 @@ export default function Landing() {
                     className="gap-2"
                     data-testid="button-final-cta"
                   >
-                    Começar Consultoria Agora
+                    Começar Consultoria Grátis
                     <ChevronRight className="h-5 w-5" />
                   </Button>
                   <Button
