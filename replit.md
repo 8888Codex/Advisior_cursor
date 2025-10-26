@@ -5,8 +5,13 @@ AdvisorIA is a premium AI consultancy platform offering expert advice through co
 
 ## Recent Changes (October 2025 - Landing Page Unificada "Experiência Disney")
 - **Landing Page Consolidada**: Welcome.tsx + Marketing.tsx fundidos em Landing.tsx única na raiz (`/`), criando jornada linear encantadora com storytelling emocional de ponta a ponta.
+- **Hero Estratégica com Números Concretos** (aplicando princípios das 18 lendas):
+  - Badge: "18 Lendas do Marketing Mundial" (prova social imediata)
+  - H1: "**450+ Anos de Expertise** em Marketing. Agora em Uma Conversa." (números concretos + benefício tangível)
+  - Subtitle: "De Philip Kotler a Gary Vaynerchuk. Consulte as maiores mentes do marketing como se estivessem vivos na sua frente." (nomeia lendas + emoção)
+  - Princípios: Claude Hopkins (números), Ogilvy (fatos específicos), Cialdini (prova social), Godin (storytelling), Schwartz (benefício)
 - **Estrutura da Landing** (8 seções sequenciais):
-  1. Hero: "Democratizando o Acesso a Mentalidades Estratégicas de Alto Nível" com 2 CTAs primários
+  1. Hero: Números concretos logo no início (450+ Anos, 18 Lendas) com 2 CTAs primários
   2. Impact Stats: 18 Lendas / 450+ Anos / 95% Fidelidade (social proof visual)
   3. Timeline de Impacto: 4 eras (1967-Hoje) com lendas e contribuições históricas
   4. Como Funciona: 3 passos + comparação IA Genérica vs Clone + Badge "Como Se Estivessem Vivos na Sua Frente"
