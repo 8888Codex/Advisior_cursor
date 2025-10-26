@@ -51,6 +51,9 @@ export default function Personas() {
     }) => {
       const response = await apiRequest("/api/personas", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
       return response;

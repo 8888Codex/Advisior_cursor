@@ -74,42 +74,70 @@ Analise o público-alvo '{target_description}' {context} e identifique:
 Foque em dados concretos e insights acionáveis baseados em discussões reais do Reddit.
         """
         
-        # Call Perplexity
+        # Call Perplexity with error handling
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.perplexity_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.1-sonar-large-128k-online",
+            try:
+                request_payload = {
+                    "model": "sonar",  # Lightweight model for quick mode
                     "messages": [
                         {"role": "system", "content": "Você é um especialista em pesquisa de audiência no Reddit brasileiro. Forneça insights concretos e acionáveis."},
                         {"role": "user", "content": query}
                     ],
-                    "temperature": 0.2,
-                    "return_citations": True
+                    "temperature": 0.2
                 }
-            )
-            
-            result = response.json()
-            findings = result["choices"][0]["message"]["content"]
-            citations = result.get("citations", [])
+                
+                print(f"[RedditResearch] Calling Perplexity API...")
+                print(f"[RedditResearch] Request payload: {request_payload}")
+                print(f"[RedditResearch] Using API key: {self.perplexity_api_key[:10]}... (first 10 chars)")
+                
+                response = await client.post(
+                    "https://api.perplexity.ai/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.perplexity_api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json=request_payload
+                )
+                
+                print(f"[RedditResearch] Perplexity response status: {response.status_code}")
+                response.raise_for_status()
+                result = response.json()
+                print(f"[RedditResearch] Perplexity response keys: {result.keys()}")
+                
+                # Defensive: validate response structure
+                if "choices" not in result or not result["choices"]:
+                    print(f"[RedditResearch] Unexpected Perplexity response: {result}")
+                    raise ValueError(f"Perplexity API returned invalid response structure: missing 'choices'. Response: {result}")
+                
+                findings = result["choices"][0]["message"]["content"]
+                citations = result.get("citations", [])
+                print(f"[RedditResearch] Successfully extracted {len(findings)} chars of findings and {len(citations)} citations")
+                
+            except httpx.HTTPStatusError as e:
+                print(f"[RedditResearch] Perplexity API HTTP error: {e.response.status_code}")
+                print(f"[RedditResearch] Response body: {e.response.text}")
+                raise ValueError(f"Perplexity API error {e.response.status_code}: {e.response.text}")
+            except httpx.TimeoutException:
+                print(f"[RedditResearch] Perplexity API timeout after 60s")
+                raise ValueError("Perplexity API timeout - try again later")
+            except Exception as e:
+                print(f"[RedditResearch] Unexpected error calling Perplexity: {str(e)}")
+                raise
         
         # Use Claude to structure findings into persona format
+        print(f"[RedditResearch] Calling Claude to structure findings...")
         structured_response = await self.anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2000,
-            system="You are a persona synthesis expert. Extract structured data from research findings.",
+            system="You are a JSON extraction expert. You MUST return ONLY valid JSON, no markdown, no explanations.",
             messages=[{
                 "role": "user",
                 "content": f"""
-From the following Reddit research findings, extract structured persona data:
+Extract structured persona data from these findings and return ONLY the JSON object (no markdown, no ```json blocks, no explanations):
 
 {findings}
 
-Return ONLY valid JSON in this exact format:
+Required JSON format:
 {{
   "painPoints": ["point 1", "point 2", ...],
   "goals": ["goal 1", "goal 2", ...],
@@ -117,8 +145,8 @@ Return ONLY valid JSON in this exact format:
   "communities": ["r/subreddit1", "r/subreddit2", ...],
   "demographics": {{
     "ageRange": "25-35",
-    "location": "Brasil - principais capitais",
-    "occupation": "Empreendedores digitais"
+    "location": "Brasil",
+    "occupation": "occupation"
   }},
   "psychographics": {{
     "interests": ["interest 1", "interest 2"],
@@ -129,10 +157,27 @@ Return ONLY valid JSON in this exact format:
             }]
         )
         
-        # Parse Claude's JSON response
+        # Parse Claude's JSON response with error handling
         import json
+        import re
         response_text = structured_response.content[0].text  # type: ignore
-        persona_data = json.loads(response_text)
+        print(f"[RedditResearch] Claude response length: {len(response_text)} chars")
+        print(f"[RedditResearch] Claude response preview: {response_text[:200]}...")
+        
+        # Try to extract JSON from markdown if needed
+        try:
+            persona_data = json.loads(response_text)
+        except json.JSONDecodeError:
+            # Try to extract JSON from markdown code blocks
+            print(f"[RedditResearch] Failed to parse as pure JSON, trying to extract from markdown...")
+            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_text)
+            if json_match:
+                json_str = json_match.group(1)
+                persona_data = json.loads(json_str)
+                print(f"[RedditResearch] Successfully extracted JSON from markdown")
+            else:
+                print(f"[RedditResearch] Full Claude response: {response_text}")
+                raise ValueError(f"Claude returned invalid JSON: {response_text[:500]}")
         
         # Add research metadata
         persona_data["researchData"] = {
@@ -238,27 +283,44 @@ Forneça diretrizes práticas para criação de conteúdo.
         
         async def query_perplexity(query: str) -> tuple[str, list]:
             async with httpx.AsyncClient(timeout=90.0) as client:
-                response = await client.post(
-                    "https://api.perplexity.ai/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.perplexity_api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "llama-3.1-sonar-large-128k-online",
-                        "messages": [
-                            {"role": "system", "content": "Você é um especialista em pesquisa de audiência. Forneça insights concretos baseados em dados reais do Reddit."},
-                            {"role": "user", "content": query}
-                        ],
-                        "temperature": 0.2,
-                        "return_citations": True
-                    }
-                )
-                
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                citations = result.get("citations", [])
-                return content, citations
+                try:
+                    response = await client.post(
+                        "https://api.perplexity.ai/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.perplexity_api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": "sonar-pro",  # Advanced model for strategic mode
+                            "messages": [
+                                {"role": "system", "content": "Você é um especialista em pesquisa de audiência. Forneça insights concretos baseados em dados reais do Reddit."},
+                                {"role": "user", "content": query}
+                            ],
+                            "temperature": 0.2
+                        }
+                    )
+                    
+                    response.raise_for_status()
+                    result = response.json()
+                    
+                    # Defensive: validate response structure
+                    if "choices" not in result or not result["choices"]:
+                        print(f"[RedditResearch Strategic] Unexpected Perplexity response: {result}")
+                        raise ValueError(f"Perplexity API returned invalid response: missing 'choices'")
+                    
+                    content = result["choices"][0]["message"]["content"]
+                    citations = result.get("citations", [])
+                    return content, citations
+                    
+                except httpx.HTTPStatusError as e:
+                    print(f"[RedditResearch Strategic] Perplexity API HTTP error: {e.response.status_code}")
+                    raise ValueError(f"Perplexity API error: {e.response.status_code}")
+                except httpx.TimeoutException:
+                    print(f"[RedditResearch Strategic] Perplexity API timeout")
+                    raise ValueError("Perplexity API timeout - try again later")
+                except Exception as e:
+                    print(f"[RedditResearch Strategic] Error calling Perplexity: {str(e)}")
+                    raise
         
         # Run all queries concurrently
         results = await asyncio.gather(

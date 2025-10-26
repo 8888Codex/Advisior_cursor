@@ -208,7 +208,7 @@ class MemStorage:
             )
             
             return Persona(
-                id=row["id"],
+                id=str(row["id"]),  # Convert UUID to string
                 userId=row["user_id"],
                 name=row["name"],
                 researchMode=row["research_mode"],
@@ -221,8 +221,8 @@ class MemStorage:
                 communities=list(row["communities"]) if row["communities"] else [],
                 behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
                 researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                createdAt=row["created_at"],
-                updatedAt=row["updated_at"]
+                createdAt=row["created_at"].isoformat() if hasattr(row["created_at"], 'isoformat') else str(row["created_at"]),
+                updatedAt=row["updated_at"].isoformat() if hasattr(row["updated_at"], 'isoformat') else str(row["updated_at"])
             )
         finally:
             await conn.close()
@@ -236,7 +236,7 @@ class MemStorage:
                 return None
             
             return Persona(
-                id=row["id"],
+                id=str(row["id"]),  # Convert UUID to string
                 userId=row["user_id"],
                 name=row["name"],
                 researchMode=row["research_mode"],
@@ -249,8 +249,8 @@ class MemStorage:
                 communities=list(row["communities"]) if row["communities"] else [],
                 behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
                 researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                createdAt=row["created_at"],
-                updatedAt=row["updated_at"]
+                createdAt=row["created_at"].isoformat() if hasattr(row["created_at"], 'isoformat') else str(row["created_at"]),
+                updatedAt=row["updated_at"].isoformat() if hasattr(row["updated_at"], 'isoformat') else str(row["updated_at"])
             )
         finally:
             await conn.close()
@@ -267,7 +267,7 @@ class MemStorage:
             personas = []
             for row in rows:
                 personas.append(Persona(
-                    id=row["id"],
+                    id=str(row["id"]),  # Convert UUID to string
                     userId=row["user_id"],
                     name=row["name"],
                     researchMode=row["research_mode"],
@@ -331,7 +331,7 @@ class MemStorage:
                 return None
             
             return Persona(
-                id=row["id"],
+                id=str(row["id"]),  # Convert UUID to string
                 userId=row["user_id"],
                 name=row["name"],
                 researchMode=row["research_mode"],
@@ -344,8 +344,8 @@ class MemStorage:
                 communities=list(row["communities"]) if row["communities"] else [],
                 behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
                 researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                createdAt=row["created_at"],
-                updatedAt=row["updated_at"]
+                createdAt=row["created_at"].isoformat() if hasattr(row["created_at"], 'isoformat') else str(row["created_at"]),
+                updatedAt=row["updated_at"].isoformat() if hasattr(row["updated_at"], 'isoformat') else str(row["updated_at"])
             )
         finally:
             await conn.close()
