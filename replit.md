@@ -3,7 +3,18 @@
 ## Overview
 AdvisorIA is a premium AI consultancy platform offering expert advice through cognitive clones of 18 specialists across 15 disciplines. It leverages the "Framework EXTRACT de 12 Camadas" with Anthropic's Claude to create ultra-realistic AI personalities. The platform features a React/TypeScript frontend, an Express.js proxy, and a Python/FastAPI backend with asynchronous AI integration, aiming to provide a specialized multi-category consulting experience.
 
-## Recent Changes (October 2025 - Landing Page Unificada "Experiência Disney")
+## Recent Changes (October 2025)
+
+### Feature 2: Persona Builder Implementado ✅ (Outubro 2025)
+- **PostgreSQL Database**: Tabela `personas` com 13 campos (demographics, psychographics, painPoints, goals, values, communities, behavioralPatterns, researchData, etc)
+- **Reddit Research Engine**: Perplexity API ('sonar' model) pesquisa comunidades reais do Reddit + Claude estrutura insights em JSON
+- **Backend Completo**: FastAPI endpoints CRUD (`POST /api/personas`, `GET /api/personas`, `GET /api/personas/:id`, `PUT /api/personas/:id`, `GET /api/personas/:id/download`)
+- **Frontend /personas**: Formulário Quick vs Strategic mode, exibição de personas criadas, edição inline, download JSON
+- **Validado E2E**: Persona criada com sucesso via curl - Perplexity retorna insights (4000+ chars), Claude estrutura em JSON válido, PostgreSQL persiste dados
+- **Error Handling Robusto**: Content-Type headers, Perplexity model migration ('sonar'), UUID/datetime conversions, Claude JSON parsing com fallback para markdown extraction
+- **Pendente**: Task 10 (Feature 2.6) - Integrar persona context no chat (future enhancement)
+
+### Landing Page Unificada "Experiência Disney" (Outubro 2025)
 - **Landing Page Consolidada**: Welcome.tsx + Marketing.tsx fundidos em Landing.tsx única na raiz (`/`), criando jornada linear encantadora com storytelling emocional de ponta a ponta.
 - **Hero Estratégica com Números Concretos** (aplicando princípios das 18 lendas):
   - Badge: "18 Lendas do Marketing Mundial" (prova social imediata)
