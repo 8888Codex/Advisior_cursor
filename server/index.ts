@@ -8,8 +8,12 @@ import { seedExperts } from "./seed";
 
 const app = express();
 
-// Start Python backend automatically
+// Start Python backend automatically (disabled if PY_EXTERNAL is provided)
 function startPythonBackend() {
+  if (process.env.PY_EXTERNAL) {
+    log(`Skipping local Python spawn. Using external backend at ${process.env.PY_EXTERNAL}`);
+    return undefined;
+  }
   const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
   log(`Starting Python backend on port ${PY_PORT}...`);
   const pythonHost = process.platform === 'darwin' ? '127.0.0.1' : '0.0.0.0';
@@ -44,8 +48,9 @@ const pythonBackend = startPythonBackend();
 // Proxy all /api requests to Python backend BEFORE any other middleware
 // This ensures the request body is not consumed by express.json()
 const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
+const PY_TARGET = process.env.PY_EXTERNAL || `http://localhost:${PY_PORT}`;
 app.use('/api', createProxyMiddleware({
-  target: `http://localhost:${PY_PORT}`,
+  target: PY_TARGET,
   changeOrigin: true,
   followRedirects: true,
   pathRewrite: function (path, req) {
@@ -69,7 +74,7 @@ declare module 'http' {
 }
 app.use(express.json({
   verify: (req, _res, buf) => {
-    req.rawBody = buf;
+    (req as any).rawBody = buf;
   }
 }));
 app.use(express.urlencoded({ extended: false }));
@@ -83,7 +88,7 @@ app.use((req, res, next) => {
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+  } as any;
 
   res.on("finish", () => {
     const duration = Date.now() - start;
@@ -114,8 +119,8 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const status = (err as any).status || (err as any).statusCode || 500;
+    const message = (err as any).message || "Internal Server Error";
 
     res.status(status).json({ message });
     throw err;
@@ -137,6 +142,6 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   const host = process.platform === 'darwin' ? 'localhost' : '0.0.0.0';
   server.listen(port, host, () => {
-    log(`serving on port ${port} (host: ${host})`);
+    log(`serving on port ${port} (host: ${host}) with PY_TARGET=${PY_TARGET}`);
   });
 })();
