@@ -17,8 +17,8 @@ const eventConfig = {
   },
   success: {
     icon: CheckCircle2,
-    color: "text-accent",
-    bgColor: "bg-accent/10",
+    color: "text-green-600",
+    bgColor: "bg-green-500/10",
   },
   error: {
     icon: AlertCircle,

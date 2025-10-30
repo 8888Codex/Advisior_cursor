@@ -4,8 +4,9 @@ Contextualizes market research using BusinessProfile data
 """
 import os
 import httpx
+import asyncio
 from typing import List, Dict, Optional, Any
-from models import BusinessProfile
+from python_backend.models import BusinessProfile
 
 class PerplexityResearch:
     """Wrapper for Perplexity API with business context and lazy initialization"""
@@ -61,38 +62,89 @@ class PerplexityResearch:
         # Build contextualized research query
         query = self._build_research_query(problem, profile)
         
-        # Call Perplexity API
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                self.base_url,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "Você é um analista de pesquisa de mercado. SEMPRE responda em português brasileiro. "
-                                "Forneça insights factuais e baseados em dados com estatísticas específicas, tendências e exemplos. "
-                                "Foque em dados recentes (2024-2025). "
-                                "Inclua análise competitiva e benchmarks do setor quando relevante."
-                            )
-                        },
-                        {
-                            "role": "user",
-                            "content": query
-                        }
-                    ],
-                    "temperature": 0.2,
-                    "search_recency_filter": "month",
-                    "return_related_questions": False
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
+        # Call Perplexity API with retry logic
+        retry_count = 0
+        max_retries = 3
+        backoff_factor = 1.5
+        last_error = None
+        
+        # Try multiple models if needed
+        models_to_try = [self.model, "sonar-reasoning", "sonar", "sonar-pro"]
+        
+        for model in models_to_try:
+            retry_count = 0
+            while retry_count <= max_retries:
+                try:
+                    print(f"[PerplexityResearch] Trying model {model}, attempt {retry_count+1}/{max_retries+1}")
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        response = await client.post(
+                            self.base_url,
+                            headers={
+                                "Authorization": f"Bearer {self.api_key}",
+                                "Content-Type": "application/json"
+                            },
+                            json={
+                                "model": model,
+                                "messages": [
+                                    {
+                                        "role": "system",
+                                        "content": (
+                                            "Você é um analista de pesquisa de mercado. SEMPRE responda em português brasileiro. "
+                                            "Forneça insights factuais e baseados em dados com estatísticas específicas, tendências e exemplos. "
+                                            "Foque em dados recentes (2024-2025). "
+                                            "Inclua análise competitiva e benchmarks do setor quando relevante."
+                                        )
+                                    },
+                                    {
+                                        "role": "user",
+                                        "content": query
+                                    }
+                                ],
+                                "temperature": 0.2,
+                                "search_recency_filter": "month",
+                                "return_related_questions": False
+                            }
+                        )
+                        response.raise_for_status()
+                        data = response.json()
+                        print(f"[PerplexityResearch] Successfully used model {model}")
+                        # Success! Break out of both loops
+                        break
+                except httpx.HTTPStatusError as e:
+                    print(f"[PerplexityResearch] HTTP error with model {model}: {e.response.status_code} - {e.response.text}")
+                    # If it's a resource_exhausted error, we should propagate it immediately
+                    if "resource_exhausted" in e.response.text.lower():
+                        print("[PerplexityResearch] Resource exhausted error detected, raising immediately")
+                        raise
+                    last_error = e
+                    retry_count += 1
+                    if retry_count <= max_retries:
+                        wait_time = backoff_factor ** retry_count
+                        print(f"[PerplexityResearch] Waiting {wait_time:.1f}s before retry")
+                        await asyncio.sleep(wait_time)
+                    continue
+                except Exception as e:
+                    print(f"[PerplexityResearch] Unexpected error with model {model}: {str(e)}")
+                    last_error = e
+                    retry_count += 1
+                    if retry_count <= max_retries:
+                        wait_time = backoff_factor ** retry_count
+                        print(f"[PerplexityResearch] Waiting {wait_time:.1f}s before retry")
+                        await asyncio.sleep(wait_time)
+                    continue
+            
+            # If we got data successfully, break out of the model loop
+            if 'data' in locals():
+                break
+        
+        # If we've tried all models and retries and still failed
+        if 'data' not in locals():
+            if last_error:
+                # If it's an HTTPStatusError, pass it through
+                if isinstance(last_error, httpx.HTTPStatusError):
+                    raise last_error
+                raise ValueError(f"All Perplexity API attempts failed: {str(last_error)}")
+            raise ValueError("Failed to get data from Perplexity API after all attempts")
         
         # Extract findings and citations
         findings = data["choices"][0]["message"]["content"]

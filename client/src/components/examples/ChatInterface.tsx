@@ -10,6 +10,7 @@ export default function ChatInterfaceExample() {
     expertise: ["Estratégia Corporativa", "M&A", "Transformação"],
     bio: "Especialista em transformações organizacionais",
     avatar: strategistAvatar,
+    category: "marketing" as const,
   };
 
   const suggestions = [

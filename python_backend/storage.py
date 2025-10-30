@@ -1,39 +1,137 @@
 from typing import Dict, List, Optional
 from datetime import datetime
 import uuid
-from models import (
+from python_backend.models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
     Message, MessageCreate, ExpertType, CategoryType, BusinessProfile, BusinessProfileCreate,
-    CouncilAnalysis, Persona, PersonaCreate
+    CouncilAnalysis, Persona, PersonaCreate, User, UserPreferences, UserPreferencesUpdate
 )
+
+# Import modern persona storage
+# from storage_persona_modern import PersonaModernStorage
+from python_backend.models_persona import PersonaModern
 import os
 import json
 from datetime import datetime as dt
 import asyncpg
 
+from python_backend.postgres_storage import PostgresStorage
+
 class MemStorage:
-    """In-memory storage compatible with frontend API expectations"""
+    """In-memory storage for development and testing."""
     
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(MemStorage, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+
     def __init__(self):
-        self.experts: Dict[str, Expert] = {}
-        self.conversations: Dict[str, Conversation] = {}
-        self.messages: Dict[str, Message] = {}
-        self.profiles: Dict[str, BusinessProfile] = {}  # userId -> BusinessProfile
-        self.council_analyses: Dict[str, CouncilAnalysis] = {}  # analysisId -> CouncilAnalysis
+        if not hasattr(self, '_initialized'):
+            self.users: Dict[str, User] = {}
+            self.user_emails: Dict[str, str] = {}
+            self.experts: Dict[str, Expert] = {}
+            self.conversations: Dict[str, Conversation] = {}
+            self.messages: Dict[str, Message] = {}
+            self.profiles: Dict[str, BusinessProfile] = {}
+            self.council_analyses: Dict[str, CouncilAnalysis] = {}
+            self.personas: Dict[str, Persona] = {}
+            self.user_preferences: Dict[str, UserPreferences] = {}  # user_id -> preferences
+            # self._persona_modern_storage = PersonaModernStorage()
+            self._initialized = True
+            self._legends_seeded = False
+            print("Initialized in-memory storage (MemStorage).")
     
-    # Expert operations
-    async def create_expert(self, data: ExpertCreate) -> Expert:
-        expert_id = str(uuid.uuid4())
+    # =============================================================================
+    # USER OPERATIONS
+    # =============================================================================
+    
+    async def create_user(self, email: str, password_hash: str, name: Optional[str] = None) -> User:
+        """Create a new user"""
+        user_id = str(uuid.uuid4())
+        user = User(
+            id=user_id,
+            email=email,
+            password=password_hash,  # Already hashed
+            name=name
+        )
+        self.users[user_id] = user
+        self.user_emails[email.lower()] = user_id
+        return user
+    
+    async def get_user(self, user_id: str) -> Optional[User]:
+        """Get user by ID"""
+        return self.users.get(user_id)
+    
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
+        user_id = self.user_emails.get(email.lower())
+        if user_id:
+            return self.users.get(user_id)
+        return None
+    
+    async def update_user(self, user_id: str, **updates) -> Optional[User]:
+        """Update user fields"""
+        user = self.users.get(user_id)
+        if not user:
+            return None
+        
+        for key, value in updates.items():
+            if hasattr(user, key) and value is not None:
+                setattr(user, key, value)
+        
+        user.updated_at = datetime.utcnow()
+        return user
+    
+    # =============================================================================
+    # USER PREFERENCES OPERATIONS
+    # =============================================================================
+    
+    async def get_user_preferences(self, user_id: str) -> Optional[UserPreferences]:
+        """Get user preferences by user ID"""
+        return self.user_preferences.get(user_id)
+    
+    async def save_user_preferences(self, user_id: str, preferences: UserPreferencesUpdate) -> UserPreferences:
+        """Save or update user preferences"""
+        existing = self.user_preferences.get(user_id)
+        
+        if existing:
+            # Update existing preferences
+            update_data = preferences.dict(exclude_unset=True)
+            for key, value in update_data.items():
+                if value is not None:
+                    setattr(existing, key, value)
+            existing.updated_at = datetime.utcnow()
+            return existing
+        else:
+            # Create new preferences
+            new_prefs = UserPreferences(
+                user_id=user_id,
+                **preferences.dict(exclude_unset=True)
+            )
+            self.user_preferences[user_id] = new_prefs
+            return new_prefs
+    
+    async def delete_user_preferences(self, user_id: str) -> bool:
+        """Delete user preferences"""
+        if user_id in self.user_preferences:
+            del self.user_preferences[user_id]
+            return True
+        return False
+    
+    # =============================================================================
+    # EXPERT OPERATIONS
+    # =============================================================================
+    
+    async def create_expert(self, data: ExpertCreate, expert_id: Optional[str] = None) -> Expert:
+        if expert_id is None:
+            expert_id = str(uuid.uuid4())
+            
         expert = Expert(
-            id=expert_id,
-            name=data.name,
-            title=data.title,
-            bio=data.bio,
-            expertise=data.expertise,
-            systemPrompt=data.systemPrompt,
-            avatar=data.avatar,
-            expertType=data.expertType,
-            category=data.category,
+            id=expert_id, name=data.name, title=data.title, bio=data.bio,
+            expertise=data.expertise, systemPrompt=data.systemPrompt, avatar=data.avatar,
+            expertType=data.expertType, category=data.category
         )
         self.experts[expert_id] = expert
         return expert
@@ -174,119 +272,108 @@ class MemStorage:
         return await asyncpg.connect(database_url)
     
     async def create_persona(self, user_id: str, persona_data: dict) -> Persona:
-        """Create a new persona in PostgreSQL"""
-        conn = await self._get_db_connection()
+        """Create a new persona (temporary in-memory version)"""
         try:
+            # Inicializar dicionário de personas se não existir
+            if not hasattr(self, 'personas'):
+                self.personas = {}
+            
+            # Gerar ID único
             persona_id = str(uuid.uuid4())
             now = datetime.utcnow()
             
-            row = await conn.fetchrow(
-                """
-                INSERT INTO personas (
-                    id, user_id, name, research_mode,
-                    demographics, psychographics,
-                    pain_points, goals, values,
-                    content_preferences, communities, behavioral_patterns,
-                    research_data,
-                    created_at, updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                RETURNING *
-                """,
-                persona_id, user_id,
-                persona_data.get("name", ""),
-                persona_data.get("researchMode", "quick"),
-                json.dumps(persona_data.get("demographics", {})),
-                json.dumps(persona_data.get("psychographics", {})),
-                persona_data.get("painPoints", []),
-                persona_data.get("goals", []),
-                persona_data.get("values", []),
-                json.dumps(persona_data.get("contentPreferences", {})),
-                persona_data.get("communities", []),
-                json.dumps(persona_data.get("behavioralPatterns", {})),
-                json.dumps(persona_data.get("researchData", {})),
-                now, now
+            # Criar objeto Persona
+            persona = Persona(
+                id=persona_id,
+                userId=user_id,
+                name=persona_data.get('name', 'Unnamed Persona'),
+                researchMode=persona_data.get('researchMode', 'quick'),
+                
+                # Research data
+                demographics=persona_data.get('demographics', {}),
+                psychographics=persona_data.get('psychographics', {}),
+                painPoints=persona_data.get('painPoints', []),
+                goals=persona_data.get('goals', []),
+                values=persona_data.get('values', []),
+                contentPreferences=persona_data.get('contentPreferences', {}),
+                communities=persona_data.get('communities', []),
+                behavioralPatterns=persona_data.get('behavioralPatterns', {}),
+                
+                # Full research data
+                researchData=persona_data.get('researchData', {}),
+                
+                # Timestamps
+                createdAt=now.isoformat(),
+                updatedAt=now.isoformat()
             )
             
-            return Persona(
-                id=str(row["id"]),  # Convert UUID to string
-                userId=row["user_id"],
-                name=row["name"],
-                researchMode=row["research_mode"],
-                demographics=json.loads(row["demographics"]) if row["demographics"] else {},
-                psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
-                painPoints=list(row["pain_points"]) if row["pain_points"] else [],
-                goals=list(row["goals"]) if row["goals"] else [],
-                values=list(row["values"]) if row["values"] else [],
-                contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
-                communities=list(row["communities"]) if row["communities"] else [],
-                behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
-                researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                createdAt=row["created_at"].isoformat() if hasattr(row["created_at"], 'isoformat') else str(row["created_at"]),
-                updatedAt=row["updated_at"].isoformat() if hasattr(row["updated_at"], 'isoformat') else str(row["updated_at"])
-            )
-        finally:
-            await conn.close()
+            # Armazenar em memória (temporário até migração para PostgreSQL)
+            self.personas[persona_id] = persona
+            
+            print(f"[INFO] Persona criada em memória: {persona_id}")
+            return persona
+            
+        except Exception as e:
+            print(f"[ERROR] Erro ao criar persona: {str(e)}")
+            raise
     
     async def get_persona(self, persona_id: str) -> Optional[Persona]:
-        """Get a specific persona by ID"""
-        conn = await self._get_db_connection()
+        """Get a specific persona by ID (temporary in-memory version)"""
         try:
-            row = await conn.fetchrow("SELECT * FROM personas WHERE id = $1", persona_id)
-            if not row:
-                return None
+            # Verificar se o dicionário de personas existe
+            if not hasattr(self, 'personas'):
+                self.personas = {}
             
-            return Persona(
-                id=str(row["id"]),  # Convert UUID to string
-                userId=row["user_id"],
-                name=row["name"],
-                researchMode=row["research_mode"],
-                demographics=json.loads(row["demographics"]) if row["demographics"] else {},
-                psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
-                painPoints=list(row["pain_points"]) if row["pain_points"] else [],
-                goals=list(row["goals"]) if row["goals"] else [],
-                values=list(row["values"]) if row["values"] else [],
-                contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
-                communities=list(row["communities"]) if row["communities"] else [],
-                behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
-                researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                createdAt=row["created_at"].isoformat() if hasattr(row["created_at"], 'isoformat') else str(row["created_at"]),
-                updatedAt=row["updated_at"].isoformat() if hasattr(row["updated_at"], 'isoformat') else str(row["updated_at"])
-            )
-        finally:
-            await conn.close()
+            # Retornar persona do dicionário se existir
+            return self.personas.get(persona_id)
+        except Exception as e:
+            print(f"[ERROR] Erro ao buscar persona: {str(e)}")
+            return None
     
     async def get_personas(self, user_id: str) -> List[Persona]:
-        """Get all personas for a user"""
-        conn = await self._get_db_connection()
+        """Get all personas for a user (temporary in-memory version)"""
         try:
-            rows = await conn.fetch(
-                "SELECT * FROM personas WHERE user_id = $1 ORDER BY created_at DESC",
-                user_id
-            )
+            # Verificar se o dicionário de personas existe
+            if not hasattr(self, 'personas'):
+                self.personas = {}
             
-            personas = []
-            for row in rows:
-                personas.append(Persona(
-                    id=str(row["id"]),  # Convert UUID to string
-                    userId=row["user_id"],
-                    name=row["name"],
-                    researchMode=row["research_mode"],
-                    demographics=json.loads(row["demographics"]) if row["demographics"] else {},
-                    psychographics=json.loads(row["psychographics"]) if row["psychographics"] else {},
-                    painPoints=list(row["pain_points"]) if row["pain_points"] else [],
-                    goals=list(row["goals"]) if row["goals"] else [],
-                    values=list(row["values"]) if row["values"] else [],
-                    contentPreferences=json.loads(row["content_preferences"]) if row["content_preferences"] else {},
-                    communities=list(row["communities"]) if row["communities"] else [],
-                    behavioralPatterns=json.loads(row["behavioral_patterns"]) if row["behavioral_patterns"] else {},
-                    researchData=json.loads(row["research_data"]) if row["research_data"] else {},
-                    createdAt=row["created_at"],
-                    updatedAt=row["updated_at"]
-                ))
+            # Filtrar personas pelo user_id
+            personas = [
+                persona for persona in self.personas.values()
+                if persona.userId == user_id
+            ]
+            
+            # Ordenar por data de criação (mais recentes primeiro)
+            personas.sort(key=lambda p: p.createdAt, reverse=True)
             
             return personas
-        finally:
-            await conn.close()
+        except Exception as e:
+            print(f"[ERROR] Erro ao listar personas: {str(e)}")
+            return []
+    
+    # =============================================================================
+    # MODERN PERSONA OPERATIONS - Delegate to PersonaModernStorage
+    # =============================================================================
+    
+    async def create_persona_modern(self, user_id: str, persona: PersonaModern) -> PersonaModern:
+        """Create a new modern persona"""
+        return await self._persona_modern_storage.create_persona_modern(user_id, persona)
+    
+    async def get_persona_modern(self, persona_id: str) -> Optional[PersonaModern]:
+        """Get a specific modern persona by ID"""
+        return await self._persona_modern_storage.get_persona_modern(persona_id)
+    
+    async def get_personas_modern(self, user_id: str) -> List[PersonaModern]:
+        """Get all modern personas for a user"""
+        return await self._persona_modern_storage.get_personas_modern(user_id)
+    
+    async def update_persona_modern(self, persona_id: str, updates: dict) -> Optional[PersonaModern]:
+        """Update a modern persona"""
+        return await self._persona_modern_storage.update_persona_modern(persona_id, updates)
+    
+    async def delete_persona_modern(self, persona_id: str) -> bool:
+        """Delete a modern persona"""
+        return await self._persona_modern_storage.delete_persona_modern(persona_id)
     
     async def update_persona(self, persona_id: str, updates: dict) -> Optional[Persona]:
         """Update a persona"""
@@ -359,5 +446,20 @@ class MemStorage:
         finally:
             await conn.close()
 
-# Global storage instance
-storage = MemStorage()
+
+def get_storage_instance():
+    """
+    Factory function to get the appropriate storage instance.
+    - If DATABASE_URL is set, it returns a PostgresStorage instance.
+    - Otherwise, it returns a singleton MemStorage instance.
+    """
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        print("DATABASE_URL found. Initializing PostgresStorage.")
+        return PostgresStorage(dsn=database_url)
+    else:
+        print("DATABASE_URL not found. Using in-memory storage (MemStorage).")
+        return MemStorage()
+
+# Global storage instance, determined at startup.
+storage = get_storage_instance()

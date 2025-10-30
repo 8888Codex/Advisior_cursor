@@ -1,7 +1,50 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr, validator
 from typing import List, Optional, Literal
 from datetime import datetime
 from enum import Enum
+import re
+
+# =============================================================================
+# USER MODELS
+# =============================================================================
+
+class User(BaseModel):
+    """User account model"""
+    id: str
+    email: EmailStr
+    password: str  # This will be hashed
+    name: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserCreate(BaseModel):
+    """User creation model"""
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+
+class UserPreferences(BaseModel):
+    """User preferences for conversation style and content"""
+    user_id: str
+    style_preference: Optional[Literal["objetivo", "detalhado"]] = None
+    focus_preference: Optional[Literal["ROI-first", "brand-first"]] = None
+    tone_preference: Optional[Literal["prático", "estratégico"]] = None
+    communication_preference: Optional[Literal["bullets", "blocos"]] = None
+    conversation_style: Optional[Literal["coach", "consultor", "direto"]] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserPreferencesUpdate(BaseModel):
+    """Update user preferences"""
+    style_preference: Optional[Literal["objetivo", "detalhado"]] = None
+    focus_preference: Optional[Literal["ROI-first", "brand-first"]] = None
+    tone_preference: Optional[Literal["prático", "estratégico"]] = None
+    communication_preference: Optional[Literal["bullets", "blocos"]] = None
+    conversation_style: Optional[Literal["coach", "consultor", "direto"]] = None
+
+# =============================================================================
+# EXPERT MODELS
+# =============================================================================
 
 class ExpertType(str, Enum):
     HIGH_FIDELITY = "high_fidelity"
@@ -41,6 +84,28 @@ class ExpertCreate(BaseModel):
     avatar: Optional[str] = None
     expertType: ExpertType = ExpertType.CUSTOM
     category: CategoryType = CategoryType.MARKETING
+    
+    @validator('name', 'title', 'bio')
+    def sanitize_html(cls, v):
+        """Remove HTML tags from text fields to prevent XSS"""
+        if v:
+            # Remove HTML tags
+            v = re.sub(r'<[^>]*>', '', v)
+        return v
+    
+    @validator('name')
+    def validate_name_length(cls, v):
+        """Validate name length"""
+        if len(v) > 100:
+            raise ValueError('Name must be less than 100 characters')
+        return v
+    
+    @validator('title')
+    def validate_title_length(cls, v):
+        """Validate title length"""
+        if len(v) > 150:
+            raise ValueError('Title must be less than 150 characters')
+        return v
 
 class Conversation(BaseModel):
     id: str

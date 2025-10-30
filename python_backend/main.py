@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
@@ -11,31 +11,86 @@ import io
 import json
 import asyncio
 import httpx
+from dotenv import load_dotenv, find_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-from models import (
+# Load environment variables - find_dotenv searches parent directories automatically
+env_file = find_dotenv(usecwd=True)
+if env_file:
+    load_dotenv(env_file)
+    print(f"[ENV] Loaded .env from: {env_file}")
+    # Verify API key is loaded
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        print(f"[ENV] ✅ ANTHROPIC_API_KEY loaded: {anthropic_key[:20]}...")
+    else:
+        print("[ENV] ❌ ANTHROPIC_API_KEY not found in environment!")
+else:
+    print("[ENV] Warning: .env file not found!")
+
+from python_backend.models import (
     Expert, ExpertCreate, ExpertType, CategoryType, CategoryInfo,
     Conversation, ConversationCreate,
     Message, MessageCreate, MessageSend, MessageResponse,
     BusinessProfile, BusinessProfileCreate,
     CouncilAnalysis, CouncilAnalysisCreate,
     RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation,
-    AutoCloneRequest
+    AutoCloneRequest, UserPreferencesUpdate
 )
-from storage import storage
-from crew_agent import LegendAgentFactory
-from seed import seed_legends
-from crew_council import council_orchestrator
+from python_backend.storage import storage
+from python_backend.crew_agent import LegendAgentFactory
+from python_backend.seed import seed_legends
+from python_backend.crew_council import council_orchestrator
+
+# Importar roteadores
+from python_backend.routers import experts as experts_router
+from python_backend.routers import conversations as conversations_router
+
+# Authentication imports
+from python_backend.auth import (
+    UserRegister, UserLogin, Token,
+    get_password_hash, verify_password,
+    create_access_token, get_current_user,
+    get_current_user_optional
+)
+
+# Import modern persona models
+from python_backend.models_persona import PersonaModern, PersonaModernCreate
 
 app = FastAPI(title="AdvisorIA - Marketing Legends API")
 
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS middleware for frontend integration
+# TODO: Em produção, substituir por domínios específicos
+ALLOWED_ORIGINS = [
+    "http://localhost:5000",  # Development
+    "http://127.0.0.1:5000",  # Development alternative
+    # Em produção, adicionar: "https://advisoria.seudominio.com"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend URL
+    allow_origins=ALLOWED_ORIGINS if os.getenv("NODE_ENV") == "production" else ["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
+
+# Include routers BEFORE startup
+# Import and include modern persona router
+from python_backend.personas_modern import router as personas_modern_router
+app.include_router(personas_modern_router)
+
+# Include experts and conversations routers
+app.include_router(experts_router.router)
+app.include_router(conversations_router.router)
 
 # Initialize with seeded legends
 @app.on_event("startup")
@@ -47,7 +102,164 @@ async def startup_event():
 # Health check
 @app.get("/")
 async def root():
-    return {"message": "AdvisorIA Marketing Legends API", "status": "running"}
+    return {"message": "AdvisorIA - Marketing Legends API", "status": "running"}
+
+# =============================================================================
+# AUTHENTICATION ENDPOINTS
+# =============================================================================
+
+@app.post("/api/auth/register", response_model=Token, status_code=201)
+async def register(user_data: UserRegister):
+    """
+    Register a new user account.
+    
+    - **email**: User's email address (must be unique)
+    - **password**: Strong password (min 8 characters)
+    - **name**: Optional user name
+    """
+    # Check if user already exists
+    existing_user = await storage.get_user_by_email(user_data.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Hash password
+    hashed_password = get_password_hash(user_data.password)
+    
+    # Create user
+    user = await storage.create_user(
+        email=user_data.email,
+        password_hash=hashed_password,
+        name=user_data.name
+    )
+    
+    # Generate JWT token
+    access_token = create_access_token(
+        data={"sub": user.id, "email": user.email}
+    )
+    
+    return Token(
+        access_token=access_token,
+        user_id=user.id,
+        email=user.email
+    )
+
+@app.post("/api/auth/login", response_model=Token)
+async def login(credentials: UserLogin):
+    """
+    Login with email and password.
+    
+    Returns JWT access token to be used in Authorization header:
+    `Authorization: Bearer <token>`
+    """
+    # Get user by email
+    user = await storage.get_user_by_email(credentials.email)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password"
+        )
+    
+    # Verify password
+    if not verify_password(credentials.password, user.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password"
+        )
+    
+    # Generate JWT token
+    access_token = create_access_token(
+        data={"sub": user.id, "email": user.email}
+    )
+    
+    return Token(
+        access_token=access_token,
+        user_id=user.id,
+        email=user.email
+    )
+
+@app.get("/api/auth/me")
+async def get_current_user_info(user_id: str = Depends(get_current_user)):
+    """
+    Get current authenticated user information.
+    
+    Requires: Bearer token in Authorization header
+    """
+    user = await storage.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "created_at": user.created_at
+    }
+
+# =============================================================================
+# END AUTHENTICATION ENDPOINTS
+# =============================================================================
+
+# =============================================================================
+# USER PREFERENCES ENDPOINTS
+# =============================================================================
+
+@app.get("/api/user/preferences")
+async def get_user_preferences(user_id: str = Depends(get_current_user)):
+    """
+    Get user preferences.
+    
+    Requires: Bearer token in Authorization header
+    Returns: UserPreferences or empty dict if none exist
+    """
+    preferences = await storage.get_user_preferences(user_id)
+    if preferences:
+        # Return as dict without user_id (already known from token)
+        return {
+            "style_preference": preferences.style_preference,
+            "focus_preference": preferences.focus_preference,
+            "tone_preference": preferences.tone_preference,
+            "communication_preference": preferences.communication_preference,
+            "conversation_style": preferences.conversation_style,
+            "updated_at": preferences.updated_at,
+        }
+    return {}
+
+@app.put("/api/user/preferences")
+async def update_user_preferences(
+    preferences_update: UserPreferencesUpdate,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Update user preferences.
+    
+    Requires: Bearer token in Authorization header
+    """
+    preferences = await storage.save_user_preferences(user_id, preferences_update)
+    return {
+        "style_preference": preferences.style_preference,
+        "focus_preference": preferences.focus_preference,
+        "tone_preference": preferences.tone_preference,
+        "communication_preference": preferences.communication_preference,
+        "conversation_style": preferences.conversation_style,
+        "updated_at": preferences.updated_at,
+    }
+
+@app.delete("/api/user/preferences")
+async def delete_user_preferences(user_id: str = Depends(get_current_user)):
+    """
+    Delete user preferences.
+    
+    Requires: Bearer token in Authorization header
+    """
+    deleted = await storage.delete_user_preferences(user_id)
+    return {"deleted": deleted}
+
+# =============================================================================
+# END USER PREFERENCES ENDPOINTS
+# =============================================================================
 
 # Category metadata mapping
 CATEGORY_METADATA = {
@@ -113,71 +325,22 @@ CATEGORY_METADATA = {
     }
 }
 
-# Expert endpoints
-@app.get("/api/experts", response_model=List[Expert])
-async def get_experts(category: Optional[str] = None):
-    """
-    Get all marketing legend experts, optionally filtered by category.
-    
-    Query params:
-    - category: Filter by category ID (e.g., "growth", "marketing", "content")
-    """
-    experts = await storage.get_experts()
-    
-    # Filter by category if provided
-    if category:
-        experts = [e for e in experts if e.category.value == category]
-    
-    return experts
+# Expert endpoints - These are now moved to python_backend/routers/experts.py
+# @app.get("/api/experts", response_model=List[Expert])
+# ... (conteúdo removido) ...
 
-@app.get("/api/categories", response_model=List[CategoryInfo])
-async def get_categories():
-    """Get all available categories with expert counts"""
-    experts = await storage.get_experts()
-    
-    # Count experts per category
-    category_counts = {}
-    for expert in experts:
-        cat = expert.category
-        category_counts[cat] = category_counts.get(cat, 0) + 1
-    
-    # Build category info list
-    categories = []
-    for cat_type, metadata in CATEGORY_METADATA.items():
-        count = category_counts.get(cat_type, 0)
-        if count > 0:  # Only return categories with at least one expert
-            categories.append(CategoryInfo(
-                id=cat_type.value,
-                name=metadata["name"],
-                description=metadata["description"],
-                icon=metadata["icon"],
-                color=metadata["color"],
-                expertCount=count
-            ))
-    
-    # Sort by expert count descending, then by name
-    categories.sort(key=lambda x: (-x.expertCount, x.name))
-    return categories
+# @app.get("/api/categories", response_model=List[CategoryInfo])
+# ... (conteúdo removido) ...
 
-@app.get("/api/experts/{expert_id}", response_model=Expert)
-async def get_expert(expert_id: str):
-    """Get a specific expert by ID"""
-    expert = await storage.get_expert(expert_id)
-    if not expert:
-        raise HTTPException(status_code=404, detail="Expert not found")
-    return expert
+# @app.get("/api/experts/{expert_id}", response_model=Expert)
+# ... (conteúdo removido) ...
 
-@app.post("/api/experts", response_model=Expert, status_code=201)
-async def create_expert(data: ExpertCreate):
-    """Create a new custom expert (cognitive clone)"""
-    try:
-        expert = await storage.create_expert(data)
-        return expert
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create expert: {str(e)}")
+# @app.post("/api/experts", response_model=Expert, status_code=201)
+# ... (conteúdo removido) ...
 
 @app.post("/api/experts/auto-clone", response_model=ExpertCreate, status_code=200)
-async def auto_clone_expert(data: AutoCloneRequest):
+@limiter.limit("3/hour")  # Max 3 clones por hora (custo alto de API)
+async def auto_clone_expert(request: Request, data: AutoCloneRequest):
     """
     Auto-clone a cognitive expert from minimal input.
     
@@ -971,134 +1134,10 @@ async def upload_expert_avatar(expert_id: str, file: UploadFile = File(...)):
         # Ensure file is closed
         await file.close()
 
-# Conversation endpoints
-@app.get("/api/conversations", response_model=List[Conversation])
-async def get_conversations(expertId: Optional[str] = None):
-    """Get conversations, optionally filtered by expert"""
-    return await storage.get_conversations(expertId)
-
-@app.get("/api/conversations/{conversation_id}", response_model=Conversation)
-async def get_conversation(conversation_id: str):
-    """Get a specific conversation"""
-    conversation = await storage.get_conversation(conversation_id)
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return conversation
-
-@app.post("/api/conversations", response_model=Conversation, status_code=201)
-async def create_conversation(data: ConversationCreate):
-    """Create a new conversation with an expert"""
-    try:
-        # Verify expert exists
-        expert = await storage.get_expert(data.expertId)
-        if not expert:
-            raise HTTPException(status_code=404, detail="Expert not found")
-        
-        conversation = await storage.create_conversation(data)
-        return conversation
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create conversation: {str(e)}")
-
-# Message endpoints
-@app.get("/api/conversations/{conversation_id}/messages", response_model=List[Message])
-async def get_messages(conversation_id: str):
-    """Get all messages in a conversation"""
-    messages = await storage.get_messages(conversation_id)
-    return messages
-
-@app.post("/api/conversations/{conversation_id}/messages", response_model=MessageResponse, status_code=201)
-async def send_message(conversation_id: str, data: MessageSend):
-    """Send a message and get AI response from the marketing legend"""
-    try:
-        # Validate conversation exists
-        conversation = await storage.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
-        # Get expert
-        expert = await storage.get_expert(conversation.expertId)
-        if not expert:
-            raise HTTPException(status_code=404, detail="Expert not found")
-        
-        # Get conversation history BEFORE saving the new user message
-        # This way we pass all previous messages to the agent
-        all_messages = await storage.get_messages(conversation_id)
-        history = [
-            {"role": msg.role, "content": msg.content}
-            for msg in all_messages
-        ]
-        
-        # Get user's business profile for context injection
-        user_id = "default_user"
-        profile = await storage.get_business_profile(user_id)
-        
-        # Enrich system prompt with profile context if available
-        enriched_system_prompt = expert.systemPrompt
-        if profile:
-            # Safe access to profile fields with defaults
-            channels_str = ', '.join(profile.channels) if profile.channels else 'Não especificado'
-            profile_context = f"""
-
----
-[CONTEXTO DO NEGÓCIO DO CLIENTE]:
-• Empresa: {profile.companyName}
-• Indústria: {profile.industry}
-• Tamanho: {profile.companySize}
-• Público-alvo: {profile.targetAudience}
-• Produtos: {profile.mainProducts}
-• Canais: {channels_str}
-• Orçamento: {profile.budgetRange}
-• Objetivo Principal: {profile.primaryGoal}
-• Desafio Principal: {profile.mainChallenge}
-• Timeline: {profile.timeline}
-
-INSTRUÇÃO IMPORTANTE: Use essas informações para oferecer conselhos mais específicos e relevantes ao negócio do cliente. NÃO mencione explicitamente que você recebeu essas informações - simplesmente use-as naturalmente para contextualizar suas recomendações e análises.
----
-"""
-            enriched_system_prompt = expert.systemPrompt + profile_context
-        
-        # Create agent for this expert with enriched system prompt
-        agent = LegendAgentFactory.create_agent(
-            expert_name=expert.name,
-            system_prompt=enriched_system_prompt
-        )
-        
-        # Get AI response with original user message
-        # The profile context is now in the system prompt, so it persists across all messages
-        ai_response = await agent.chat(history, data.content)
-        
-        # Now save user message AFTER getting AI response
-        # IMPORTANT: Always save the ORIGINAL user message (data.content), not the enriched version
-        # This keeps the UI clean while the AI gets the context
-        user_message = await storage.create_message(MessageCreate(
-            conversationId=conversation_id,
-            role="user",
-            content=data.content  # Original message, NOT user_message_content
-        ))
-        
-        # Save assistant message
-        assistant_message = await storage.create_message(MessageCreate(
-            conversationId=conversation_id,
-            role="assistant",
-            content=ai_response
-        ))
-        
-        return MessageResponse(
-            userMessage=user_message,
-            assistantMessage=assistant_message
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error processing message: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to process message: {str(e)}")
-
 # Business Profile endpoints
 @app.post("/api/profile", response_model=BusinessProfile)
-async def save_profile(data: BusinessProfileCreate):
+@limiter.limit("20/day")  # Max 20 atualizações de perfil por dia
+async def save_profile(request: Request, data: BusinessProfileCreate):
     """Create or update business profile"""
     # For now, use a default user_id until we add authentication
     user_id = "default_user"
@@ -1534,7 +1573,8 @@ E-mail Marketing: [insight específico aqui]
 
 # Council Analysis endpoints
 @app.post("/api/council/analyze", response_model=CouncilAnalysis)
-async def create_council_analysis(data: CouncilAnalysisCreate):
+@limiter.limit("5/hour")  # Max 5 análises de conselho por hora (muito custoso)
+async def create_council_analysis(request: Request, data: CouncilAnalysisCreate):
     """
     Run collaborative analysis by council of marketing legend experts.
     
@@ -1565,15 +1605,15 @@ async def create_council_analysis(data: CouncilAnalysisCreate):
                 raise HTTPException(status_code=400, detail="No experts available for analysis")
         
         # Run council analysis
-        analysis = await council_orchestrator.analyze(
+        analysis = await council_orchestrator.analyze_problem(
+            user_id=user_id,
             problem=data.problem,
             experts=experts,
-            profile=profile,
-            user_id=user_id
+            profile=profile
         )
         
-        # Save analysis
-        await storage.save_council_analysis(analysis)
+        # Save analysis (temporarily disabled until table is created)
+        # await storage.save_council_analysis(analysis)
         
         return analysis
     
@@ -1587,7 +1627,18 @@ async def create_council_analysis(data: CouncilAnalysisCreate):
                 status_code=503,
                 detail=f"Service temporarily unavailable: {error_msg}"
             )
-        raise
+        raise HTTPException(status_code=400, detail=f"Error in council analysis: {error_msg}")
+    except httpx.HTTPStatusError as e:
+        print(f"[ERROR] API HTTP error: {e.response.status_code} - {e.response.text}")
+        if "resource_exhausted" in e.response.text.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="Limite de recursos atingido. Por favor, aguarde um momento e tente novamente."
+            )
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"API error: {e.response.text}"
+        )
     except Exception as e:
         print(f"Error creating council analysis: {str(e)}")
         import traceback
@@ -1595,7 +1646,8 @@ async def create_council_analysis(data: CouncilAnalysisCreate):
         raise HTTPException(status_code=500, detail=f"Failed to create council analysis: {str(e)}")
 
 @app.post("/api/council/analyze-stream")
-async def create_council_analysis_stream(data: CouncilAnalysisCreate):
+@limiter.limit("5/hour")  # Max 5 análises de conselho por hora (muito custoso)
+async def create_council_analysis_stream(request: Request, data: CouncilAnalysisCreate):
     """
     Run collaborative analysis with Server-Sent Events streaming.
     
@@ -1671,7 +1723,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                     })
             
             # Analyze with each expert (emitting events for each)
-            from crew_council import council_orchestrator
+            from python_backend.crew_council import council_orchestrator
             
             # Process experts sequentially for event emission
             for expert in experts:
@@ -1726,7 +1778,7 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
             print(f"[Council Stream] Consensus generated successfully")
             
             # Create final analysis object
-            from models import CouncilAnalysis, AgentContribution
+            from python_backend.models import CouncilAnalysis, AgentContribution
             import uuid
             
             analysis = CouncilAnalysis(
@@ -1739,8 +1791,8 @@ async def create_council_analysis_stream(data: CouncilAnalysisCreate):
                 consensus=consensus
             )
             
-            # Save analysis
-            await storage.save_council_analysis(analysis)
+            # Save analysis (temporarily disabled until table is created)
+            # await storage.save_council_analysis(analysis)
             
             # Send final complete event
             print(f"[Council Stream] Sending analysis_complete event")
@@ -1801,52 +1853,82 @@ async def get_council_analysis(analysis_id: str):
 # PERSONA BUILDER ENDPOINTS
 # ============================================================================
 
-from models import Persona, PersonaCreate
-from reddit_research import reddit_research
+from python_backend.models_persona import PersonaModern, PersonaModernCreate
+from python_backend.reddit_research import reddit_research
 from datetime import datetime as dt
 
-@app.post("/api/personas", response_model=Persona)
-async def create_persona(data: PersonaCreate):
+@app.post("/api/personas", response_model=PersonaModern)
+@limiter.limit("10/hour")  # Max 10 personas criadas por hora
+async def create_persona(request: Request, data: PersonaModernCreate):
     """
-    Create a persona using Reddit research.
+    Create a modern persona using JTBD + BAG frameworks.
+    
+    Frameworks:
+    - JTBD (Jobs to Be Done): Functional, emotional and social jobs
+    - BAG (Behaviors, Aspirations, Goals): Behavioral patterns and aspirations
+    - Quantified Pain Points: Measurable impact and costs
+    - Modern Journey: Touchpoints and content preferences
     
     Modes:
-    - quick: 1-2 min, basic insights (5-7 pain points, goals, values)
-    - strategic: 5-10 min, deep analysis (behavioral patterns, content preferences)
+    - quick: 1-2 min, basic insights
+    - strategic: 5-10 min, deep analysis with quantified data
     """
     user_id = "default_user"  # TODO: replace with actual user auth
     
     try:
         # Conduct Reddit research based on mode
-        if data.mode == "quick":
-            research_data = await reddit_research.research_quick(
-                target_description=data.targetDescription,
-                industry=data.industry
-            )
-        else:  # strategic
-            research_data = await reddit_research.research_strategic(
-                target_description=data.targetDescription,
-                industry=data.industry,
-                additional_context=data.additionalContext
-            )
+        try:
+            if data.mode == "quick":
+                research_data = await reddit_research.research_quick(
+                    target_description=data.targetDescription,
+                    industry=data.industry
+                )
+            else:  # strategic
+                research_data = await reddit_research.research_strategic(
+                    target_description=data.targetDescription,
+                    industry=data.industry,
+                    additional_context=data.additionalContext
+                )
+        except Exception as research_error:
+            print(f"Error in research: {str(research_error)}")
+            raise HTTPException(status_code=500, detail=f"Error in persona research: {str(research_error)}")
         
-        # Add timestamp to research data
-        research_data["researchData"]["timestamp"] = dt.utcnow().isoformat()
-        
-        # Generate persona name if not provided
+        # Generate persona name
         persona_name = f"Persona: {data.targetDescription[:50]}"
         
-        # Prepare persona data
-        persona_payload = {
+        # Create persona ID and timestamps
+        import uuid
+        persona_id = str(uuid.uuid4())
+        now = dt.utcnow()
+        
+        # Prepare persona data with PersonaModern structure
+        persona_data = {
+            "id": persona_id,
+            "userId": user_id,
             "name": persona_name,
             "researchMode": data.mode,
-            **research_data
+            "created_at": now,
+            "updated_at": now
         }
         
-        # Save to database
-        persona = await storage.create_persona(user_id, persona_payload)
+        # Merge with research data
+        persona_data.update(research_data)
         
-        return persona
+        # Convert goals from objects to strings if needed
+        if "goals" in persona_data and isinstance(persona_data["goals"], list):
+            if persona_data["goals"] and isinstance(persona_data["goals"][0], dict):
+                persona_data["goals"] = [
+                    g.get("description", str(g)) if isinstance(g, dict) else str(g)
+                    for g in persona_data["goals"]
+                ]
+        
+        # Create PersonaModern instance
+        persona = PersonaModern(**persona_data)
+        
+        # Save to database
+        saved_persona = await storage.create_persona_modern(user_id, persona)
+        
+        return saved_persona
     
     except ValueError as e:
         # Missing API keys
@@ -1856,47 +1938,58 @@ async def create_persona(data: PersonaCreate):
                 status_code=503,
                 detail=f"Service temporarily unavailable: {error_msg}"
             )
-        raise
+        raise HTTPException(status_code=400, detail=f"Error in persona research: {error_msg}")
+    except httpx.HTTPStatusError as e:
+        print(f"[ERROR] Perplexity/Anthropic API HTTP error: {e.response.status_code} - {e.response.text}")
+        if "resource_exhausted" in e.response.text.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="Limite de recursos atingido. Por favor, aguarde um momento e tente novamente."
+            )
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Perplexity/Anthropic API error: {e.response.text}"
+        )
     except Exception as e:
         print(f"Error creating persona: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to create persona: {str(e)}")
 
-@app.get("/api/personas", response_model=List[Persona])
+@app.get("/api/personas", response_model=List[PersonaModern])
 async def get_personas():
-    """Get all personas for the current user"""
+    """Get all modern personas for the current user"""
     user_id = "default_user"
-    return await storage.get_personas(user_id)
+    return await storage.get_personas_modern(user_id)
 
-@app.get("/api/personas/{persona_id}", response_model=Persona)
+@app.get("/api/personas/{persona_id}", response_model=PersonaModern)
 async def get_persona(persona_id: str):
-    """Get a specific persona by ID"""
-    persona = await storage.get_persona(persona_id)
+    """Get a specific modern persona by ID"""
+    persona = await storage.get_persona_modern(persona_id)
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
     return persona
 
-@app.patch("/api/personas/{persona_id}", response_model=Persona)
+@app.patch("/api/personas/{persona_id}", response_model=PersonaModern)
 async def update_persona(persona_id: str, updates: dict):
-    """Update a persona (e.g., edit name, add notes)"""
-    persona = await storage.update_persona(persona_id, updates)
+    """Update a modern persona (e.g., edit name, add notes)"""
+    persona = await storage.update_persona_modern(persona_id, updates)
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
     return persona
 
 @app.delete("/api/personas/{persona_id}")
 async def delete_persona(persona_id: str):
-    """Delete a persona"""
-    success = await storage.delete_persona(persona_id)
+    """Delete a modern persona"""
+    success = await storage.delete_persona_modern(persona_id)
     if not success:
         raise HTTPException(status_code=404, detail="Persona not found")
     return {"success": True}
 
 @app.get("/api/personas/{persona_id}/download")
 async def download_persona(persona_id: str):
-    """Download persona as JSON"""
-    persona = await storage.get_persona(persona_id)
+    """Download modern persona as JSON"""
+    persona = await storage.get_persona_modern(persona_id)
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
     
@@ -1908,6 +2001,55 @@ async def download_persona(persona_id: str):
             "Content-Disposition": f"attachment; filename=persona_{persona_id}.json"
         }
     )
+
+# =============================================================================
+# DIAGNOSTIC ENDPOINT
+# =============================================================================
+@app.get("/api/debug/system-check")
+async def system_check():
+    """Temporary endpoint for diagnosing the seeding issue."""
+    print("--- Running System Check ---")
+    
+    # 1. Check if DATABASE_URL is loaded
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        print("❌ DATABASE_URL is NOT loaded in the environment.")
+        raise HTTPException(status_code=500, detail="DATABASE_URL not found.")
+    
+    print(f"✅ DATABASE_URL is loaded: postgresql://...@{db_url.split('@')[-1]}")
+    
+    # 2. Check storage type
+    storage_type = type(storage).__name__
+    print(f"✅ Storage instance type: {storage_type}")
+    if storage_type != "PostgresStorage":
+        raise HTTPException(status_code=500, detail=f"Incorrect storage type. Expected PostgresStorage, got {storage_type}")
+
+    # 3. Check database connection and count experts
+    try:
+        if not storage.pool:
+            await storage.connect()
+        
+        async with storage.pool.acquire() as connection:
+            count_record = await connection.fetchrow("SELECT COUNT(*) as expert_count FROM experts;")
+            expert_count = count_record['expert_count']
+            print(f"✅ Database query successful. Found {expert_count} experts.")
+            
+            # 4. Fetch first 5 experts to verify data
+            first_experts_records = await connection.fetch("SELECT id, name FROM experts LIMIT 5;")
+            first_experts = [dict(rec) for rec in first_experts_records]
+            print(f"✅ First 5 experts in DB: {first_experts}")
+
+    except Exception as e:
+        print(f"❌ Database connection or query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection/query failed: {e}")
+
+    return {
+        "status": "OK",
+        "storage_type": storage_type,
+        "database_url_loaded": True,
+        "expert_count": expert_count,
+        "first_5_experts": first_experts,
+    }
 
 if __name__ == "__main__":
     import uvicorn

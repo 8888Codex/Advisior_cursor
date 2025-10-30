@@ -8,6 +8,7 @@ const defaultExperts: InsertExpert[] = [
     expertise: ["Estratégia Corporativa", "M&A", "Transformação Organizacional"],
     bio: "Com 25 anos de experiência em consultoria estratégica para Fortune 500, Dr. Thompson especializou-se em transformações organizacionais e fusões & aquisições complexas.",
     avatar: "/avatars/strategist.png",
+    category: "marketing",
     systemPrompt: `Você é Dr. Michael Thompson, um estrategista de negócios sênior com 25 anos de experiência em consultoria para Fortune 500. 
 
 Seu estilo de consultoria é:
@@ -30,6 +31,7 @@ Mantenha um tom profissional, confiante e consultivo. Use exemplos de casos reai
     expertise: ["Marketing Digital", "Branding", "Growth Hacking"],
     bio: "Líder em estratégias de marketing digital que impulsionaram o crescimento de startups unicórnios e marcas globais estabelecidas.",
     avatar: "/avatars/marketing.png",
+    category: "growth",
     systemPrompt: `Você é Ana Costa, especialista em marketing digital com expertise em crescimento acelerado e branding.
 
 Seu estilo de consultoria é:
@@ -52,6 +54,7 @@ Mantenha um tom energético, inovador e prático. Use cases de sucesso do mercad
     expertise: ["Finanças Corporativas", "Valuation", "Reestruturação"],
     bio: "Especialista em modelagem financeira e reestruturação empresarial, com histórico de sucesso em turnarounds corporativos.",
     avatar: "/avatars/financial.png",
+    category: "marketing",
     systemPrompt: `Você é Patricia Almeida, consultora financeira estratégica especializada em finanças corporativas e reestruturação.
 
 Seu estilo de consultoria é:
@@ -74,6 +77,7 @@ Mantenha um tom analítico, confiável e prudente. Use terminologia financeira p
     expertise: ["Transformação Digital", "IA & Automação", "Cloud Strategy"],
     bio: "Pioneiro em implementações de IA empresarial e arquiteturas cloud que transformaram operações de empresas globais.",
     avatar: "/avatars/tech.png",
+    category: "marketing",
     systemPrompt: `Você é Ricardo Santos, consultor de inovação tecnológica especializado em transformação digital e IA.
 
 Seu estilo de consultoria é:
@@ -96,6 +100,7 @@ Mantenha um tom inovador, técnico mas acessível. Use exemplos de empresas que 
     expertise: ["Lean & Six Sigma", "Process Optimization", "Supply Chain"],
     bio: "Black Belt Six Sigma com expertise em otimização de processos e cadeia de suprimentos para indústrias complexas.",
     avatar: "/avatars/operations.png",
+    category: "marketing",
     systemPrompt: `Você é Mariana Silva, especialista em excelência operacional com certificação Black Belt Six Sigma.
 
 Seu estilo de consultoria é:
@@ -118,6 +123,7 @@ Mantenha um tom prático, orientado a resultados e colaborativo. Use metodologia
     expertise: ["Liderança", "Cultura Organizacional", "Change Management"],
     bio: "Mentor de CEOs e líderes C-level com foco em desenvolvimento de liderança transformacional e gestão de mudanças culturais.",
     avatar: "/avatars/leadership.png",
+    category: "marketing",
     systemPrompt: `Você é Dr. Carlos Mendes, coach de liderança executiva e especialista em cultura organizacional.
 
 Seu estilo de consultoria é:

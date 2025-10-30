@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -16,13 +17,18 @@ import { useCouncilStream } from "@/hooks/useCouncilStream";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CouncilAnimation } from "@/components/council/CouncilAnimation";
 import { motion } from "framer-motion";
+import { ExpertSelector } from "@/components/council/ExpertSelector";
+import { CouncilResultDisplay } from "@/components/council/CouncilResultDisplay";
+import { PreferencesSettings } from "@/components/settings/PreferencesSettings";
 
 interface Expert {
   id: string;
   name: string;
-  tagline: string;
-  specialty: string;
+  title: string;
+  expertise: string[];
+  bio: string;
   avatar?: string;
+  category?: string;
 }
 
 interface ExpertRecommendation {
@@ -162,7 +168,8 @@ export default function TestCouncil() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        {/* Forms on the left */}
+        <div className="lg:col-span-3 space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -244,110 +251,15 @@ export default function TestCouncil() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="font-semibold">Selecionar Especialistas</CardTitle>
-                    <CardDescription>
-                      Escolha quais lendas do marketing consultar ({selectedExperts.length}{" "}
-                      selecionado{selectedExperts.length !== 1 ? 's' : ''})
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    disabled={loadingExperts || analyzeMutation.isPending}
-                    data-testid="button-select-all"
-                  >
-                    {selectedExperts.length === experts.length ? "Desmarcar Todos" : "Selecionar Todos"}
-                  </Button>
-                </div>
-              </CardHeader>
-            <CardContent>
-              {loadingExperts ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <TooltipProvider>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {experts.map((expert, index) => {
-                      const recommendation = recommendations.find(r => r.expertId === expert.id);
-                      const isRecommended = !!recommendation;
-                      
-                      return (
-                        <Tooltip key={expert.id}>
-                          <TooltipTrigger asChild>
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: index * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                              className={`flex items-start space-x-3 p-3 rounded-xl border hover-elevate active-elevate-2 cursor-pointer transition-all ${
-                                isRecommended ? 'border-accent/30 bg-muted/40' : ''
-                              }`}
-                              onClick={() => handleToggleExpert(expert.id)}
-                              data-testid={`expert-card-${expert.id}`}
-                            >
-                              <Checkbox
-                                checked={selectedExperts.includes(expert.id)}
-                                disabled={analyzeMutation.isPending}
-                                data-testid={`checkbox-expert-${expert.id}`}
-                              />
-                              <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-accent/20">
-                                <AvatarImage src={expert.avatar} alt={expert.name} className="object-cover" />
-                                <AvatarFallback className="text-xs font-semibold">
-                                  {expert.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Label className="font-semibold cursor-pointer">
-                                    {expert.name}
-                                  </Label>
-                                  {isRecommended && (
-                                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                      Recomendado
-                                    </Badge>
-                                  )}
-                                </div>
-                                {isRecommended && recommendation && (
-                                  <div className="flex items-center gap-0.5 mb-1">
-                                    {Array.from({ length: 5 }).map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`h-3 w-3 ${
-                                          i < recommendation.relevanceScore
-                                            ? 'fill-accent text-accent'
-                                            : 'text-muted-foreground/30'
-                                        }`}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                  {expert.tagline}
-                                </p>
-                                <Badge variant="secondary" className="mt-1 text-xs">
-                                  {expert.specialty}
-                                </Badge>
-                              </div>
-                            </motion.div>
-                          </TooltipTrigger>
-                          {isRecommended && recommendation && (
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-sm">{recommendation.justification}</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                </TooltipProvider>
-              )}
-            </CardContent>
-            </Card>
+            <ExpertSelector
+              experts={experts}
+              selectedExperts={selectedExperts}
+              recommendations={recommendations}
+              loadingExperts={loadingExperts}
+              isAnalyzing={isAnalyzing}
+              onToggleExpert={handleToggleExpert}
+              onSelectAll={handleSelectAll}
+            />
           </motion.div>
 
           {/* Streaming Toggle */}
@@ -378,6 +290,28 @@ export default function TestCouncil() {
               </div>
             </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Preferences Settings */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full gap-2">
+                  <Settings className="h-4 w-4" />
+                  Configurar Preferências de Conversa
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Preferências de Conversa</DialogTitle>
+                </DialogHeader>
+                <PreferencesSettings isAuthenticated={false} />
+              </DialogContent>
+            </Dialog>
           </motion.div>
 
           <motion.div
@@ -414,7 +348,7 @@ export default function TestCouncil() {
             <Card className="border-destructive">
               <CardContent className="pt-6">
                 <p className="text-destructive">
-                  ❌ Erro: {(analyzeMutation.error as Error).message}
+                  ❌ Erro na análise: {(analyzeMutation.error as Error).message}
                 </p>
               </CardContent>
             </Card>
@@ -423,7 +357,7 @@ export default function TestCouncil() {
 
         {/* Show CouncilAnimation when streaming */}
         {useStreaming && (streamState.isStreaming || streamState.expertStatusArray.length > 0) && (
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 mt-8">
             <CouncilAnimation
               expertStatuses={streamState.expertStatusArray}
               activityFeed={streamState.activityFeed}
@@ -433,85 +367,8 @@ export default function TestCouncil() {
         )}
 
         {/* Show results (for both streaming and non-streaming after completion) */}
-        <div className={`lg:col-span-1 ${useStreaming && (streamState.isStreaming || !streamState.finalAnalysis) ? "hidden" : ""}`}>
-          {analysis ? (
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 font-semibold">
-                  <TrendingUp className="h-5 w-5 text-accent" />
-                  Insights do Conselho
-                </CardTitle>
-                <CardDescription>
-                  Análise de {analysis.contributions.length} especialista{analysis.contributions.length !== 1 ? 's' : ''}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] pr-4">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-semibold mb-2">📋 Consenso Estratégico</h3>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {analysis.consensus}
-                      </p>
-                    </div>
+        <CouncilResultDisplay analysis={analysis} isStreaming={useStreaming && (streamState.isStreaming || !streamState.finalAnalysis)} />
 
-                    <div className="space-y-4">
-                      <h3 className="font-semibold">💡 Contribuições dos Especialistas</h3>
-                      {analysis.contributions.map((contrib: { expertName: string; keyInsights: string[]; recommendations: string[] }, idx: number) => (
-                        <Card key={idx} className="rounded-xl">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-semibold">
-                              {contrib.expertName}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {contrib.keyInsights.length > 0 && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Principais Insights:</p>
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                  {contrib.keyInsights.map((insight: string, i: number) => (
-                                    <li key={i} className="flex gap-2">
-                                      <span>•</span>
-                                      <span>{insight}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {contrib.recommendations.length > 0 && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">
-                                  Recomendações:
-                                </p>
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                  {contrib.recommendations.map((rec: string, i: number) => (
-                                    <li key={i} className="flex gap-2">
-                                      <span>→</span>
-                                      <span>{rec}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-dashed rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="text-center text-muted-foreground py-12">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                  <p className="text-sm">Envie um problema para ver a análise do conselho</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
     </div>
   );

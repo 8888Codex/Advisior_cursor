@@ -10,9 +10,11 @@ const app = express();
 
 // Start Python backend automatically
 function startPythonBackend() {
-  log("Starting Python backend on port 5001...");
-  const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '5001', '--reload'], {
-    cwd: 'python_backend',
+  const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
+  log(`Starting Python backend on port ${PY_PORT}...`);
+  const pythonHost = process.platform === 'darwin' ? '127.0.0.1' : '0.0.0.0';
+  const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'python_backend.main:app', '--host', pythonHost, '--port', String(PY_PORT), '--reload'], {
+    cwd: '.',
     stdio: ['ignore', 'pipe', 'pipe']
   });
   
@@ -41,9 +43,23 @@ const pythonBackend = startPythonBackend();
 
 // Proxy all /api requests to Python backend BEFORE any other middleware
 // This ensures the request body is not consumed by express.json()
+const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
 app.use('/api', createProxyMiddleware({
-  target: 'http://localhost:5001/api',
+  target: `http://localhost:${PY_PORT}`,
   changeOrigin: true,
+  followRedirects: true,
+  pathRewrite: function (path, req) {
+    // http-proxy-middleware removes the mount path (/api) by default
+    // We need to add it back since Python backend expects /api/...
+    return '/api' + path;
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Ensure trailing slash for FastAPI compatibility on POST to conversations
+    const path = proxyReq.path;
+    if (req.method === 'POST' && path === '/api/conversations') {
+      proxyReq.path = '/api/conversations/';
+    }
+  },
 }));
 
 declare module 'http' {
@@ -119,11 +135,8 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  const host = process.platform === 'darwin' ? 'localhost' : '0.0.0.0';
+  server.listen(port, host, () => {
+    log(`serving on port ${port} (host: ${host})`);
   });
 })();

@@ -10,6 +10,7 @@ export default function ExpertCardExample() {
     expertise: ["Estratégia Corporativa", "M&A", "Transformação"],
     bio: "Com 25 anos de experiência em consultoria estratégica para Fortune 500, Dr. Thompson especializou-se em transformações organizacionais e fusões & aquisições complexas.",
     avatar: strategistAvatar,
+    category: "marketing" as const,
   };
 
   return (

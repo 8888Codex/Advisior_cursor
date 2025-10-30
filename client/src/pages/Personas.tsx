@@ -1,4 +1,4 @@
-import { useState } from "react";
+qimport { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,31 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Download, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ResourceExhaustedError } from "@/components/ResourceExhaustedError";
 
 interface Persona {
   id: string;
   userId: string;
   name: string;
   researchMode: "quick" | "strategic";
+  job_statement: string;
+  situational_contexts: string[];
+  functional_jobs: string[];
+  emotional_jobs: string[];
+  social_jobs: string[];
+  behaviors: Record<string, any>;
+  aspirations: string[];
+  goals: any[]; // Can be strings or objects
+  pain_points_quantified: any[];
+  decision_criteria: Record<string, any>;
   demographics: Record<string, any>;
-  psychographics: Record<string, any>;
-  painPoints: string[];
-  goals: string[];
+  psychographics?: Record<string, any>;
+  painPoints?: string[]; // Legacy field
   values: string[];
+  touchpoints: any[];
   contentPreferences: Record<string, any>;
   communities: string[];
-  behavioralPatterns: Record<string, any>;
+  behavioralPatterns?: Record<string, any>;
   researchData: Record<string, any>;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +46,7 @@ export default function Personas() {
   const [industry, setIndustry] = useState("");
   const [additionalContext, setAdditionalContext] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  const [resourceExhaustedError, setResourceExhaustedError] = useState(false);
 
   // Fetch personas
   const { data: personas = [], isLoading: loadingPersonas } = useQuery<Persona[]>({
@@ -70,6 +82,16 @@ export default function Personas() {
       setAdditionalContext("");
     },
     onError: (error: any) => {
+      // Verificar se é um erro de recursos esgotados
+      if (error.message && (
+          error.message.includes('resource_exhausted') || 
+          error.message.includes('Limite de recursos') ||
+          error.message.includes('Connection failed')
+      )) {
+        setResourceExhaustedError(true);
+        return;
+      }
+      
       toast({
         title: "Erro ao criar persona",
         description: error.message || "Tente novamente mais tarde.",
@@ -218,23 +240,32 @@ export default function Personas() {
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  data-testid="button-create-persona"
-                  className="w-full"
-                  disabled={createPersonaMutation.isPending}
-                >
-                  {createPersonaMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {mode === "quick" ? "Pesquisando..." : "Analisando..."}
-                    </>
-                  ) : (
-                    "Criar Persona"
-                  )}
-                </Button>
+                {resourceExhaustedError ? (
+                  <ResourceExhaustedError 
+                    onRetry={() => {
+                      setResourceExhaustedError(false);
+                      handleSubmit(new Event('submit') as any);
+                    }} 
+                  />
+                ) : (
+                  <Button
+                    type="submit"
+                    data-testid="button-create-persona"
+                    className="w-full"
+                    disabled={createPersonaMutation.isPending}
+                  >
+                    {createPersonaMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {mode === "quick" ? "Pesquisando..." : "Analisando..."}
+                      </>
+                    ) : (
+                      "Criar Persona"
+                    )}
+                  </Button>
+                )}
 
-                {createPersonaMutation.isPending && (
+                {!resourceExhaustedError && createPersonaMutation.isPending && (
                   <p className="text-sm text-muted-foreground text-center">
                     {mode === "quick"
                       ? "Pesquisando comunidades e extraindo insights..."
@@ -317,16 +348,16 @@ export default function Personas() {
                     <CardContent>
                       <div className="space-y-2 text-sm">
                         <div>
+                          <span className="text-muted-foreground">Job Statement:</span>{" "}
+                          {persona.job_statement ? "Sim" : "Não"}
+                        </div>
+                        <div>
                           <span className="text-muted-foreground">Pain Points:</span>{" "}
-                          {persona.painPoints.length}
+                          {persona.pain_points_quantified?.length || persona.painPoints?.length || 0}
                         </div>
                         <div>
                           <span className="text-muted-foreground">Goals:</span>{" "}
-                          {persona.goals.length}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Communities:</span>{" "}
-                          {persona.communities.length}
+                          {persona.goals?.length || 0}
                         </div>
                       </div>
                     </CardContent>
@@ -345,6 +376,16 @@ export default function Personas() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Job Statement */}
+                    {selectedPersona.job_statement && (
+                      <div>
+                        <h3 className="font-semibold mb-2">Job Statement</h3>
+                        <div className="bg-muted/50 p-4 rounded-md text-sm">
+                          <p className="text-muted-foreground">{selectedPersona.job_statement}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Demographics */}
                     {selectedPersona.demographics && Object.keys(selectedPersona.demographics).length > 0 && (
                       <div>
@@ -363,11 +404,18 @@ export default function Personas() {
                     )}
 
                     {/* Pain Points */}
-                    {selectedPersona.painPoints.length > 0 && (
+                    {((selectedPersona.pain_points_quantified && selectedPersona.pain_points_quantified.length > 0) || (selectedPersona.painPoints && selectedPersona.painPoints.length > 0)) && (
                       <div>
                         <h3 className="font-semibold mb-2">Pain Points</h3>
-                        <ul className="list-disc list-inside space-y-1 text-sm">
-                          {selectedPersona.painPoints.map((point, idx) => (
+                        <ul className="list-disc list-inside space-y-2 text-sm">
+                          {selectedPersona.pain_points_quantified?.map((point: any, idx: number) => (
+                            <li key={idx} className="text-muted-foreground">
+                              <strong>{typeof point === 'object' ? point.description : point}</strong>
+                              {typeof point === 'object' && point.impact && (
+                                <span className="block text-xs mt-1">Impacto: {point.impact}</span>
+                              )}
+                            </li>
+                          )) || selectedPersona.painPoints?.map((point, idx) => (
                             <li key={idx} className="text-muted-foreground">
                               {point}
                             </li>
@@ -377,13 +425,13 @@ export default function Personas() {
                     )}
 
                     {/* Goals */}
-                    {selectedPersona.goals.length > 0 && (
+                    {selectedPersona.goals?.length > 0 && (
                       <div>
                         <h3 className="font-semibold mb-2">Objetivos</h3>
                         <ul className="list-disc list-inside space-y-1 text-sm">
-                          {selectedPersona.goals.map((goal, idx) => (
+                          {selectedPersona.goals.map((goal: any, idx: number) => (
                             <li key={idx} className="text-muted-foreground">
-                              {goal}
+                              {typeof goal === 'string' ? goal : goal.description || JSON.stringify(goal)}
                             </li>
                           ))}
                         </ul>

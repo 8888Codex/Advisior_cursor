@@ -1,3 +1,27 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Builds
+dist/
+build/
+.next/
+
+# Environment
+.env
+python_backend/.env
+.local/
+
+# OS/Editors
+.DS_Store
+*.log
+*.pid
+
+# Python
+__pycache__/
+*.pyc
+
 node_modules
 dist
 .DS_Store
