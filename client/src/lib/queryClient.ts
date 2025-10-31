@@ -1,17 +1,47 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const DEFAULT_TIMEOUT_MS = 30000; // 30 segundos
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     try {
       const text = await res.text();
-      // Verificar se é um erro de resource_exhausted
-      if (text.includes('resource_exhausted')) {
-        throw new Error('Limite de recursos atingido. Por favor, aguarde um momento e tente novamente.');
-      } else {
-        throw new Error(`${res.status}: ${text || res.statusText}`);
+      let errorMessage = text || res.statusText;
+      
+      // Tentar parsear JSON para mensagem estruturada
+      try {
+        const json = JSON.parse(text);
+        if (json.message) {
+          errorMessage = json.message;
+        } else if (json.error) {
+          errorMessage = json.error;
+        } else if (json.detail) {
+          errorMessage = json.detail;
+        }
+      } catch {
+        // Não é JSON, usar texto como está
       }
+      
+      // Verificar códigos de erro específicos
+      if (text.includes('resource_exhausted') || errorMessage.includes('resource_exhausted')) {
+        throw new Error('Limite de recursos atingido. Por favor, aguarde um momento e tente novamente.');
+      }
+      
+      if (res.status === 401) {
+        throw new Error('Não autorizado. Verifique suas credenciais.');
+      }
+      
+      if (res.status === 429) {
+        throw new Error('Muitas requisições. Aguarde um momento antes de tentar novamente.');
+      }
+      
+      if (res.status >= 500) {
+        throw new Error(`Erro do servidor (${res.status}). Tente novamente mais tarde.`);
+      }
+      
+      throw new Error(`${res.status}: ${errorMessage}`);
     } catch (e) {
-      if (e instanceof Error && e.message.includes('resource_exhausted')) {
+      if (e instanceof Error) {
         throw e;
       }
       throw new Error(`${res.status}: ${res.statusText}`);
@@ -21,26 +51,39 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(
   url: string,
-  options?: RequestInit,
+  options?: RequestInit & { timeout?: number },
 ): Promise<Response> {
+  const timeout = options?.timeout ?? DEFAULT_TIMEOUT_MS;
+  
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
     const res = await fetch(url, {
       ...options,
+      signal: controller.signal,
       credentials: "include",
     });
-
+    
+    clearTimeout(timeoutId);
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
     if (error instanceof Error) {
-      // Verificar se é um erro de rede ou conexão
+      // Timeout
+      if (error.name === 'AbortError' || error.message.includes('aborted')) {
+        throw new Error(`Requisição expirou após ${timeout}ms. Tente novamente.`);
+      }
+      
+      // Erro de rede/conexão
       if (error.message.includes('Failed to fetch') || 
           error.message.includes('NetworkError') ||
-          error.message.includes('Connection failed')) {
+          error.message.includes('Connection failed') ||
+          error.message.includes('Network request failed')) {
         throw new Error('Erro de conexão. Verifique sua internet ou VPN e tente novamente.');
       }
       
-      // Verificar se é um erro de resource_exhausted
+      // Erro de resource_exhausted (já tratado em throwIfResNotOk, mas garantir)
       if (error.message.includes('resource_exhausted')) {
         throw new Error('Limite de recursos atingido. Por favor, aguarde um momento e tente novamente.');
       }
@@ -60,13 +103,20 @@ export async function apiRequestJson<T = any>(
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
+  timeout?: number;
 }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+  ({ on401: unauthorizedBehavior, timeout = DEFAULT_TIMEOUT_MS }) =>
   async ({ queryKey }) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
       const res = await fetch(queryKey.join("/") as string, {
         credentials: "include",
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         return null;
@@ -76,14 +126,20 @@ export const getQueryFn: <T>(options: {
       return await res.json();
     } catch (error) {
       if (error instanceof Error) {
-        // Verificar se é um erro de rede ou conexão
+        // Timeout
+        if (error.name === 'AbortError' || error.message.includes('aborted')) {
+          throw new Error(`Requisição expirou após ${timeout}ms. Tente novamente.`);
+        }
+        
+        // Erro de rede/conexão
         if (error.message.includes('Failed to fetch') || 
             error.message.includes('NetworkError') ||
-            error.message.includes('Connection failed')) {
+            error.message.includes('Connection failed') ||
+            error.message.includes('Network request failed')) {
           throw new Error('Erro de conexão. Verifique sua internet ou VPN e tente novamente.');
         }
         
-        // Verificar se é um erro de resource_exhausted
+        // Erro de resource_exhausted
         if (error.message.includes('resource_exhausted')) {
           throw new Error('Limite de recursos atingido. Por favor, aguarde um momento e tente novamente.');
         }

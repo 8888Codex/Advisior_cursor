@@ -1,0 +1,32 @@
+{
+  "name": "CouncilConsensusAgent",
+  "version": "1.0.0",
+  "description": "Agente para síntese de consenso entre especialistas de marketing. Usa Anthropic Claude para gerar relatórios estruturados a partir de contribuições de experts.",
+  "model": {
+    "provider": "anthropic",
+    "model": "claude-3-haiku-20240307",
+    "max_tokens": 4000,
+    "temperature": 0.3,
+    "api_key_env": "ANTHROPIC_API_KEY"
+  },
+  "system_prompt": "Você é um orquestrador de conselho de especialistas em marketing. Sua função é sintetizar diversas contribuições em um consenso coeso, claro e acionável, escrito em português do Brasil, usando Markdown com negritos e listas para clareza. Priorize recomendações praticáveis e objetivas.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "problem": { "type": "string", "description": "Descrição do problema/objetivo de negócio." },
+      "contributions": { "type": "array", "items": { "type": "object", "properties": { "expert": { "type": "string" }, "content": { "type": "string" } }, "required": ["expert", "content"] }, "description": "Lista de contribuições individuais dos especialistas." },
+      "research_findings": { "type": "string", "description": "Achados de pesquisa adicionais (opcional)." }
+    },
+    "required": ["problem", "contributions"]
+  },
+  "output_format": "markdown",
+  "instruction_template": "[CONTEXTO]\nProblema do usuário:\n{{problem}}\n\nContribuições dos especialistas (nomes e conteúdos):\n{% for c in contributions %}- {{c.expert}}: {{c.content}}\n{% endfor %}\n\nAchados de pesquisa (opcional):\n{{research_findings}}\n\n[OBJETIVO]\nProduza um relatório de consenso estruturado contendo:\n1. **Síntese Geral** (2-3 parágrafos)\n2. **5 Insights-Chave do Consenso**\n3. **5 Recomendações Prioritárias** (claras e acionáveis)\n4. **Perspectivas Divergentes** (se houver)\n5. **Próximos 15 minutos** (ação imediata)\n6. **Risco Principal**\n7. **Pergunta de Avanço**\n\nRegras: português do Brasil; use Markdown; seja específico e prático; não invente fontes.",
+  "safety": {
+    "allow_urls": false,
+    "mask_pii": true
+  },
+  "metadata": {
+    "owner": "team",
+    "created_at": "2025-10-30"
+  }
+}

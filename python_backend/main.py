@@ -83,6 +83,12 @@ app.add_middleware(
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
 
+# Health check endpoint - simples e rápido para monitoramento
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint para monitoramento e CI/CD"""
+    return {"status": "ok", "service": "AdvisorIA API"}
+
 # Include routers BEFORE startup
 # Import and include modern persona router
 from python_backend.personas_modern import router as personas_modern_router

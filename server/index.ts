@@ -14,7 +14,7 @@ function startPythonBackend() {
     log(`Skipping local Python spawn. Using external backend at ${process.env.PY_EXTERNAL}`);
     return undefined;
   }
-  const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
+  const PY_PORT = parseInt(process.env.PY_PORT || '5100', 10);
   log(`Starting Python backend on port ${PY_PORT}...`);
   const pythonHost = process.platform === 'darwin' ? '127.0.0.1' : '0.0.0.0';
   const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'python_backend.main:app', '--host', pythonHost, '--port', String(PY_PORT), '--reload'], {
@@ -47,24 +47,27 @@ const pythonBackend = startPythonBackend();
 
 // Proxy all /api requests to Python backend BEFORE any other middleware
 // This ensures the request body is not consumed by express.json()
-const PY_PORT = parseInt(process.env.PY_PORT || '5001', 10);
+const PY_PORT = parseInt(process.env.PY_PORT || '5100', 10);
 const PY_TARGET = process.env.PY_EXTERNAL || `http://localhost:${PY_PORT}`;
 app.use('/api', createProxyMiddleware({
   target: PY_TARGET,
   changeOrigin: true,
   followRedirects: true,
-  pathRewrite: function (path, req) {
+  pathRewrite: function (path) {
     // http-proxy-middleware removes the mount path (/api) by default
     // We need to add it back since Python backend expects /api/...
     return '/api' + path;
   },
-  onProxyReq: (proxyReq, req, res) => {
-    // Ensure trailing slash for FastAPI compatibility on POST to conversations
-    const path = proxyReq.path;
-    if (req.method === 'POST' && path === '/api/conversations') {
-      proxyReq.path = '/api/conversations/';
-    }
-  },
+  // Cast para permitir handler específico sem quebrar tipos em versões diferentes
+  ...( {
+    onProxyReq: (proxyReq: any, req: any) => {
+      // Ensure trailing slash for FastAPI compatibility on POST to conversations
+      const currentPath = (proxyReq as any).path as string;
+      if (req.method === 'POST' && currentPath === '/api/conversations') {
+        (proxyReq as any).path = '/api/conversations/';
+      }
+    },
+  } as any),
 }));
 
 declare module 'http' {
@@ -79,30 +82,53 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// Middleware para logging estruturado de requisições /api
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  } as any;
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  (req as any).requestId = requestId;
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      const status = res.statusCode;
+      const isError = status >= 400;
+      const isSlow = duration > 1000;
+      
+      let logLine = `${req.method} ${path} ${status} in ${duration}ms`;
+      
+      // Adicionar indicadores visuais para erros e requisições lentas
+      if (isError) {
+        logLine = `⚠️  ${logLine}`;
+      } else if (isSlow) {
+        logLine = `🐌 ${logLine}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      
+      // Para erros 5xx, logar JSON estruturado com request-id
+      if (status >= 500) {
+        const logData = {
+          requestId,
+          method: req.method,
+          path,
+          status,
+          duration,
+          timestamp: new Date().toISOString(),
+        };
+        console.error(`[ERROR] ${JSON.stringify(logData)}`);
+      } else if (isError || isSlow) {
+        // Para outros erros ou requisições lentas, logar linha formatada
+        if (logLine.length > 100) {
+          logLine = logLine.slice(0, 99) + "…";
+        }
+        log(logLine);
+      } else {
+        // Log normal truncado para requisições OK
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+        log(logLine);
       }
-
-      log(logLine);
     }
   });
 
@@ -139,8 +165,8 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  const host = process.platform === 'darwin' ? 'localhost' : '0.0.0.0';
+  const port = parseInt(process.env.PORT || '3000', 10);
+  const host = '0.0.0.0';
   server.listen(port, host, () => {
     log(`serving on port ${port} (host: ${host}) with PY_TARGET=${PY_TARGET}`);
   });

@@ -121,3 +121,64 @@ export const insertBusinessProfileSchema = z.object({
 
 export type BusinessProfile = z.infer<typeof businessProfileSchema>;
 export type InsertBusinessProfile = z.infer<typeof insertBusinessProfileSchema>;
+
+// Persona schemas - compartilhados entre frontend e backend
+export const researchModeEnum = z.enum(["quick", "strategic"]);
+
+export const personaGoalSchema = z.union([
+  z.string(),
+  z.object({
+    description: z.string(),
+    priority: z.number().optional(),
+    timeframe: z.string().optional(),
+  }),
+]);
+
+export const personaPainPointSchema = z.union([
+  z.string(),
+  z.object({
+    description: z.string(),
+    impact: z.string().optional(),
+    frequency: z.string().optional(),
+  }),
+]);
+
+export const personaSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  researchMode: researchModeEnum,
+  job_statement: z.string(),
+  situational_contexts: z.array(z.string()),
+  functional_jobs: z.array(z.string()),
+  emotional_jobs: z.array(z.string()),
+  social_jobs: z.array(z.string()),
+  behaviors: z.record(z.any()),
+  aspirations: z.array(z.string()),
+  goals: z.array(personaGoalSchema),
+  pain_points_quantified: z.array(personaPainPointSchema),
+  decision_criteria: z.record(z.any()),
+  demographics: z.record(z.any()),
+  psychographics: z.record(z.any()).optional(),
+  painPoints: z.array(z.string()).optional(), // Legacy field
+  values: z.array(z.string()),
+  touchpoints: z.array(z.any()),
+  contentPreferences: z.record(z.any()),
+  communities: z.array(z.string()),
+  behavioralPatterns: z.record(z.any()).optional(),
+  researchData: z.record(z.any()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const createPersonaSchema = z.object({
+  mode: researchModeEnum,
+  targetDescription: z.string().min(1, "Descrição do público-alvo é obrigatória"),
+  industry: z.string().optional(),
+  additionalContext: z.string().optional(),
+});
+
+export type Persona = z.infer<typeof personaSchema>;
+export type CreatePersona = z.infer<typeof createPersonaSchema>;
+export type PersonaGoal = z.infer<typeof personaGoalSchema>;
+export type PersonaPainPoint = z.infer<typeof personaPainPointSchema>;

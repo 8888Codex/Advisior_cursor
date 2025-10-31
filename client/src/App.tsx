@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Header } from "@/components/Header";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { GlobalErrorProvider, useGlobalError } from "@/hooks/useGlobalError";
 import { AnimatePresence } from "framer-motion";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
@@ -52,16 +54,39 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const { error, clearError } = useGlobalError();
+
+  return (
+    <>
+      {error && (
+        <div className="container mx-auto px-4 pt-4">
+          <ErrorBanner
+            title={error.title}
+            message={error.message}
+            onRetry={error.onRetry}
+            retryLabel={error.retryLabel}
+            onDismiss={clearError}
+          />
+        </div>
+      )}
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <Router />
+      </div>
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <div className="min-h-screen bg-background text-foreground">
-            <Header />
-            <Router />
-          </div>
-          <Toaster />
+          <GlobalErrorProvider>
+            <AppContent />
+            <Toaster />
+          </GlobalErrorProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
