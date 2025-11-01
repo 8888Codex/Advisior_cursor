@@ -19,6 +19,8 @@ import AdminExperts from "@/pages/AdminExperts";
 import Onboarding from "@/pages/Onboarding";
 import TestCouncil from "@/pages/TestCouncil";
 import Personas from "@/pages/Personas";
+import FeaturesAnalysis from "@/pages/FeaturesAnalysis";
+import CouncilChat from "@/pages/CouncilChat";
 
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
@@ -47,7 +49,9 @@ function Router() {
         <Route path="/create" component={Create} />
         <Route path="/admin/experts" component={AdminExperts} />
         <Route path="/test-council" component={TestCouncil} />
-      <Route path="/personas" component={Personas} />
+        <Route path="/council-chat/:id" component={CouncilChat} />
+        <Route path="/personas" component={Personas} />
+        <Route path="/features" component={FeaturesAnalysis} />
         <Route component={NotFound} />
       </Switch>
     </AnimatePresence>

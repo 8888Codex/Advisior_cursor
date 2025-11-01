@@ -1,0 +1,76 @@
+name: Validar Sistema
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Instalar dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Validar importações e integridade
+      run: python3 validate_imports.py
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Verificar sintaxe Python
+      run: |
+        pip install flake8
+        flake8 python_backend --count --select=E9,F63,F7,F82 --show-source --statistics
+    
+    - name: Testar servidor FastAPI
+      run: |
+        timeout 10 python3 -m uvicorn python_backend.main:app --host 127.0.0.1 --port 8000 &
+        sleep 5
+        curl -f http://localhost:8000/api/health || exit 1
+
+  validate-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Configurar Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: client/package-lock.json
+    
+    - name: Instalar dependências
+      working-directory: ./client
+      run: npm ci
+    
+    - name: Verificar TypeScript
+      working-directory: ./client
+      run: npx tsc --noEmit
+    
+    - name: Build frontend
+      working-directory: ./client
+      run: npm run build
+

@@ -11,9 +11,10 @@ async def seed_legends(storage: Union[MemStorage, PostgresStorage]):
     Seed the database with the 18 legendary marketing experts.
     This version is idempotent and safe to run multiple times.
     """
-    # Use a flag on MemStorage for dev hot-reloads, but DB check is the source of truth
-    if isinstance(storage, MemStorage) and getattr(storage, '_legends_seeded', False):
-        return
+    # Always seed - the startup event handles clearing if needed
+    # This ensures experts are always available
+    existing_experts = await storage.get_experts()
+    print(f"[Seed] Found {len(existing_experts)} existing experts before seeding")
 
     print("Seeding marketing legends into the database...")
 
@@ -84,7 +85,9 @@ async def seed_legends(storage: Union[MemStorage, PostgresStorage]):
         print(f"✅ Successfully created {experts_created} new marketing legends.")
     else:
         print("✅ All marketing legends already exist in the database.")
-
-    # Set the in-memory flag after seeding to prevent re-runs in dev mode
-    if isinstance(storage, MemStorage):
-        storage._legends_seeded = True
+    
+    # Verificar total final
+    final_count = len(await storage.get_experts())
+    print(f"📊 Total de experts no storage: {final_count}")
+    if final_count < 18:
+        print(f"⚠️  WARNING: Expected 18 experts, but found {final_count}!")

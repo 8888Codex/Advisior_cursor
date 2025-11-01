@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ type SortOption = "relevance" | "name-asc" | "name-desc";
 
 export default function Experts() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("relevance");
   const [filterExpertise, setFilterExpertise] = useState<string>("all");
@@ -63,8 +64,16 @@ export default function Experts() {
     ? [`/api/experts?category=${selectedCategory}`]
     : ["/api/experts"];
 
-  const { data: experts = [], isLoading } = useQuery<Expert[]>({
+  const { data: experts = [], isLoading, error } = useQuery<Expert[]>({
     queryKey: expertsQueryKey,
+    retry: 2,
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error("[Experts] Erro ao buscar experts:", error);
+    },
+    onSuccess: (data) => {
+      console.log(`[Experts] ${data.length} experts carregados`);
+    },
   });
 
   const { data: recommendationsData } = useQuery<RecommendationsResponse>({
@@ -284,6 +293,61 @@ export default function Experts() {
 
           {isLoading ? (
             <ExpertGridSkeleton count={6} />
+          ) : error ? (
+            <div className="text-center py-16">
+              <p className="text-destructive mb-4">
+                Erro ao carregar especialistas: {error instanceof Error ? error.message : "Erro desconhecido"}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => queryClient.invalidateQueries({ queryKey: expertsQueryKey })}
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+          ) : experts.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-destructive mb-2 font-semibold">
+                Nenhum especialista encontrado
+              </p>
+              <p className="text-muted-foreground mb-4">
+                Verifique se o servidor está rodando e se os experts foram seedados corretamente.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => queryClient.invalidateQueries({ queryKey: expertsQueryKey })}
+              >
+                Recarregar Especialistas
+              </Button>
+            </div>
+          ) : filteredAndSortedExperts.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mb-4">
+                Nenhum especialista encontrado com os filtros aplicados.
+              </p>
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                >
+                  Limpar Filtros
+                </Button>
+              )}
+            </div>
+          ) : filteredAndSortedExperts.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mb-4">
+                Nenhum especialista encontrado com os filtros aplicados.
+              </p>
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                >
+                  Limpar Filtros
+                </Button>
+              )}
+            </div>
           ) : (
             <>
               {hasProfile && (
@@ -337,26 +401,6 @@ export default function Experts() {
                   </motion.div>
                 ))}
               </motion.div>
-
-              {filteredAndSortedExperts.length === 0 && (
-                <div className="text-center py-16">
-                  <p className="text-muted-foreground">
-                    {search || filterExpertise !== "all" || showRecommendedOnly
-                      ? "Nenhum especialista encontrado com os filtros aplicados"
-                      : "Nenhum especialista disponível"}
-                  </p>
-                  {activeFiltersCount > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearAllFilters}
-                      className="mt-4"
-                    >
-                      Limpar Filtros
-                    </Button>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>

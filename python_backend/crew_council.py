@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from uuid import uuid4
 
 from fastapi import HTTPException
+from dotenv import load_dotenv, find_dotenv
 from python_backend.prompts.template_master import (
     DEFAULT_PT_BR,
     DEFAULT_FRAMEWORK_NAMING,
@@ -19,9 +20,13 @@ from python_backend.prompts.template_master import (
 from anthropic import AsyncAnthropic
 import httpx
 
-from python_backend.models import Expert, BusinessProfile, CouncilAnalysis, AgentContribution
+from python_backend.models import Expert, CouncilAnalysis, ExpertContribution, Persona, ActionPlan, Phase, Action
 from python_backend.storage import storage
 
+# Carregar .env quando o módulo é importado
+_env_file = find_dotenv(usecwd=True)
+if _env_file:
+    load_dotenv(_env_file, override=True)
 
 class CouncilOrchestrator:
     """
@@ -30,9 +35,18 @@ class CouncilOrchestrator:
     
     def __init__(self):
         """Initialize the council orchestrator with API clients"""
-        self.anthropic_client = AsyncAnthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY")
-        )
+        # Garantir que .env está carregado
+        _env_file = find_dotenv(usecwd=True)
+        if _env_file:
+            load_dotenv(_env_file, override=True)
+        
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+        if not anthropic_key:
+            print("[CouncilOrchestrator] ⚠️  ANTHROPIC_API_KEY não encontrada. Council analysis será desabilitado.")
+            print("[CouncilOrchestrator] Para habilitar, adicione ANTHROPIC_API_KEY=sk-ant-... no arquivo .env")
+            self.anthropic_client = None
+        else:
+            self.anthropic_client = AsyncAnthropic(api_key=anthropic_key)
         # Limit concurrent API calls to avoid rate limiting (reduced to 1 for rate limit safety)
         self.semaphore = asyncio.Semaphore(1)
         # Add delay between calls to stay within rate limits
@@ -47,7 +61,8 @@ class CouncilOrchestrator:
         problem: str,
         experts: List[Expert],
         research_findings: Optional[str] = None,
-        profile: Optional[BusinessProfile] = None,
+        profile: Optional[dict] = None,
+        persona: Optional[Persona] = None,
         citations: Optional[List[Dict[str, str]]] = None
     ) -> CouncilAnalysis:
         """
@@ -69,6 +84,12 @@ class CouncilOrchestrator:
         
         if not problem or len(problem.strip()) < 10:
             raise HTTPException(status_code=400, detail="Problem description is too short")
+        
+        if not self.anthropic_client:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviço de análise de conselho indisponível. Configure ANTHROPIC_API_KEY no arquivo .env"
+            )
         
         # Load persistent user preferences and merge with session preferences
         persistent_prefs = await self._load_user_preferences(user_id)
@@ -94,6 +115,7 @@ class CouncilOrchestrator:
                 problem=problem,
                 research_findings=research_findings,
                 profile=profile,
+                persona=persona,
                 user_id=user_id
             )
             tasks.append(task)
@@ -120,18 +142,38 @@ class CouncilOrchestrator:
         consensus = await self._synthesize_consensus(
             problem=problem,
             contributions=contributions,
-            research_findings=research_findings
+            research_findings=research_findings,
+            persona=persona
         )
+        
+        # Step 4: Generate action plan based on consensus and persona
+        action_plan = None
+        try:
+            await asyncio.sleep(self.call_delay)
+            action_plan = await self._generate_action_plan(
+                problem=problem,
+                consensus=consensus,
+                contributions=contributions,
+                persona=persona,
+                profile=profile
+            )
+        except Exception as e:
+            print(f"[CouncilOrchestrator] Erro ao gerar plano de ação: {e}")
+            import traceback
+            traceback.print_exc()
+            # Continue without action plan - não é crítico
         
         # Build final analysis
         analysis = CouncilAnalysis(
             id=analysis_id,
             userId=user_id,
             problem=problem,
+            personaId=persona.id if persona else None,
             profileId=profile.id if profile else None,
             marketResearch=research_findings,
             contributions=contributions,
             consensus=consensus,
+            actionPlan=action_plan,
             citations=citations or []
         )
         
@@ -144,7 +186,7 @@ class CouncilOrchestrator:
         error_detail: str,
         attempted_action: str = "obter análise",
         fallback_action: str = "tente novamente em alguns minutos"
-    ) -> AgentContribution:
+    ) -> ExpertContribution:
         """
         Constrói uma contribuição padronizada de erro/recuperação seguindo o padrão:
         "Não consegui X por Y; tentei Z; proponho W"
@@ -179,7 +221,7 @@ class CouncilOrchestrator:
         
         full_message = f"{base_message} {attempted} {proposal}"
         
-        return AgentContribution(
+        return ExpertContribution(
             expertId=expert.id,
             expertName=expert.name,
             analysis=full_message,
@@ -192,9 +234,10 @@ class CouncilOrchestrator:
         expert: Expert,
         problem: str,
         research_findings: Optional[str],
-        profile: Optional[BusinessProfile],
+        profile: Optional[dict],
+        persona: Optional[Persona] = None,
         user_id: Optional[str] = None
-    ) -> AgentContribution:
+    ) -> ExpertContribution:
         """
         Get analysis from a single expert using their cognitive clone.
         Uses semaphore to limit concurrent API calls and prevent rate limiting.
@@ -207,7 +250,7 @@ class CouncilOrchestrator:
             user_id: Optional user ID for session preferences
         
         Returns:
-            AgentContribution with expert's unique perspective
+            ExpertContribution with expert's unique perspective
         """
         async with self.semaphore:
             # Add delay before each API call to avoid rate limits
@@ -222,6 +265,24 @@ class CouncilOrchestrator:
             try:
                 # Build context-rich prompt
                 context_parts = []
+                
+                # Add persona context if available (CRÍTICO para personalização)
+                if persona:
+                    persona_context = f"""**CLIENTE IDEAL - PERSONA:**
+- Nome: {persona.name}
+- Demográficos: {json.dumps(persona.demographics, ensure_ascii=False, indent=2) if isinstance(persona.demographics, dict) else persona.demographics}
+- Objetivos: {', '.join(persona.goals[:5]) if persona.goals else 'Não especificados'}
+- Pain Points (Dores): {', '.join(persona.painPoints[:5]) if persona.painPoints else 'Não especificados'}
+- Valores: {', '.join(persona.values[:5]) if persona.values else 'Não especificados'}
+- Preferências de Conteúdo: {json.dumps(persona.contentPreferences, ensure_ascii=False, indent=2) if isinstance(persona.contentPreferences, dict) else persona.contentPreferences}
+- Comportamentos: {json.dumps(persona.behavioralPatterns, ensure_ascii=False, indent=2) if isinstance(persona.behavioralPatterns, dict) else persona.behavioralPatterns}
+
+**INSTRUÇÃO CRÍTICA:** Todas as suas recomendações DEVE ser específicas para este perfil de cliente ideal. 
+Ajuste linguagem, canais, estratégias e táticas para ressoar com esta persona específica.
+Considere os pain points e objetivos desta persona em cada recomendação.
+
+"""
+                    context_parts.append(persona_context)
                 
                 # Add business context if available
                 if profile:
@@ -253,13 +314,35 @@ class CouncilOrchestrator:
 {problem}
 
 **Sua Tarefa:**
-Como {expert.name}, forneça sua análise especializada para este problema. Estruture sua resposta da seguinte forma:
+Como {expert.name}, forneça sua análise especializada para este problema. Estruture sua resposta EXATAMENTE da seguinte forma:
 
-1.  **Análise Principal (Core Analysis)**: Sua perspectiva única sobre o problema (2-3 parágrafos).
-2.  **Principais Insights (Key Insights)**: 3-5 insights críticos em formato de lista (bullet points).
-3.  **Recomendações Acionáveis (Actionable Recommendations)**: 3-5 recomendações táticas e específicas em formato de lista (bullet points).
+## Análise Principal
 
-Utilize seus frameworks, metodologias e filosofias de assinatura. Seja autêntico aos seus padrões cognitivos e estilo de comunicação. Responda sempre em português do Brasil (pt-BR)."""
+[Sua perspectiva única sobre o problema em 2-3 parágrafos. Seja específico e use seus frameworks característicos.]
+
+## Principais Insights
+
+- [Insight 1: Deve ser específico, acionável e relacionado ao problema]
+- [Insight 2: Aplique sua metodologia única]
+- [Insight 3: Conecte ao contexto do negócio]
+- [Insight 4: Seja prático e direto]
+- [Insight 5: Use sua terminologia característica]
+
+## Recomendações Acionáveis
+
+- [Recomendação 1: Específica, mensurável e com prazo claro]
+- [Recomendação 2: Baseada em seus frameworks proprietários]
+- [Recomendação 3: Priorizada por impacto]
+- [Recomendação 4: Conectada aos objetivos do negócio]
+- [Recomendação 5: Acionável imediatamente]
+
+**INSTRUÇÕES CRÍTICAS:**
+- Use EXATAMENTE os títulos acima: "## Análise Principal", "## Principais Insights", "## Recomendações Acionáveis"
+- Cada seção de insights e recomendações DEVE ter pelo menos 3 itens e preferencialmente 5
+- Use bullet points com "-" (hífen) para listas
+- Seja autêntico ao seu estilo cognitivo e use seus frameworks característicos
+- Responda SEMPRE em português do Brasil (pt-BR)
+- Seja específico, não genérico"""
                 
                 # Call Claude with expert's system prompt (with timeout)
                 retry_count = 0
@@ -307,7 +390,7 @@ Utilize seus frameworks, metodologias e filosofias de assinatura. Seja autêntic
                     insights = self._extract_bullet_points(response_text, "Principais Insights")
                     recommendations = self._extract_bullet_points(response_text, "Recomendações Acionáveis")
                     
-                    return AgentContribution(
+                    return ExpertContribution(
                         expertId=expert.id,
                         expertName=expert.name,
                         analysis=response_text,
@@ -351,81 +434,159 @@ Utilize seus frameworks, metodologias e filosofias de assinatura. Seja autêntic
     def _extract_bullet_points(self, text: str, section_title: str) -> List[str]:
         """
         Extracts bullet points from a specific section of the AI's response.
-        This new version is more robust against formatting variations.
+        Improved version with better pattern matching.
         """
         try:
-            # Define the known sections in order to find boundaries
+            # Normalize text - remove extra whitespace
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            
+            # Define the known sections in order
             section_titles_map = {
-                "Análise Principal": "Core Analysis",
-                "Principais Insights": "Key Insights",
-                "Recomendações Acionáveis": "Actionable Recommendations",
+                "Análise Principal": ["Análise Principal", "Core Analysis", "## Análise Principal"],
+                "Principais Insights": ["Principais Insights", "Key Insights", "## Principais Insights"],
+                "Recomendações Acionáveis": ["Recomendações Acionáveis", "Actionable Recommendations", "## Recomendações Acionáveis"],
             }
             section_titles = list(section_titles_map.keys())
             
-            # Create a regex pattern that matches either the Portuguese or English title
-            title_pt = section_title
-            title_en = section_titles_map.get(title_pt, title_pt) # Fallback to pt title if not found
-            # Escape titles for regex and create a pattern to match either
-            pattern_str = f"({re.escape(title_pt)}|{re.escape(title_en)})"
-
-            # Find the starting position of the target section
-            start_regex = re.compile(rf'(\d+\.\s*)?(\*\*)?{pattern_str}(\*\*)?:?', re.IGNORECASE)
-            start_match = start_regex.search(text)
+            # Get all possible title variations for the target section
+            target_variations = section_titles_map.get(section_title, [section_title])
+            target_variations.extend([f"## {st}" for st in target_variations])
+            target_variations.extend([f"**{st}**" for st in target_variations])
+            target_variations.extend([f"### {st}" for st in target_variations])
             
-            if not start_match:
-                # This is a fallback message if the section title itself isn't in the response.
-                return [f"A seção '{section_title}' não foi encontrada na resposta do especialista."]
-
-            start_index = start_match.end()
+            # Find the starting position - try multiple patterns
+            start_index = None
+            for variation in target_variations:
+                # Try markdown header pattern (## or ###)
+                pattern1 = re.compile(rf'##+\s*{re.escape(variation.replace("## ", "").replace("### ", ""))}\s*:?\s*\n', re.IGNORECASE)
+                match = pattern1.search(text)
+                if match:
+                    start_index = match.end()
+                    break
+                
+                # Try numbered or bold pattern
+                pattern2 = re.compile(rf'(?:^\d+\.\s*)?(\*\*)?{re.escape(variation.replace("## ", "").replace("### ", "").replace("**", ""))}(\*\*)?:?\s*\n', re.IGNORECASE | re.MULTILINE)
+                match = pattern2.search(text)
+                if match:
+                    start_index = match.end()
+                    break
+            
+            if start_index is None:
+                print(f"[CouncilOrchestrator] Seção '{section_title}' não encontrada. Tentando busca mais ampla...")
+                # Fallback: busca mais ampla
+                for variation in target_variations:
+                    clean_variation = variation.replace("## ", "").replace("### ", "").replace("**", "")
+                    if clean_variation.lower() in text.lower():
+                        # Find position after this title
+                        idx = text.lower().find(clean_variation.lower())
+                        if idx != -1:
+                            start_index = idx + len(clean_variation)
+                            # Move past any colon, newline, etc.
+                            while start_index < len(text) and text[start_index] in [':', '\n', ' ', '*']:
+                                start_index += 1
+                            break
+                
+                if start_index is None:
+                    return [f"Seção '{section_title}' não foi encontrada na resposta do especialista."]
 
             # Determine the end boundary by finding the start of the NEXT section
             end_index = len(text)
             
             current_title_index = -1
             for i, title in enumerate(section_titles):
-                if title.lower() in section_title.lower():
+                if title == section_title:
                     current_title_index = i
                     break
 
             if current_title_index != -1 and current_title_index < len(section_titles) - 1:
-                next_section_title_pt = section_titles[current_title_index + 1]
-                next_section_title_en = section_titles_map.get(next_section_title_pt, next_section_title_pt)
-                next_pattern_str = f"({re.escape(next_section_title_pt)}|{re.escape(next_section_title_en)})"
+                next_section_title = section_titles[current_title_index + 1]
+                next_variations = section_titles_map.get(next_section_title, [next_section_title])
+                next_variations.extend([f"## {st}" for st in next_variations])
+                next_variations.extend([f"### {st}" for st in next_variations])
                 
-                end_regex = re.compile(rf'(\d+\.\s*)?(\*\*)?{next_pattern_str}(\*\*)?:?', re.IGNORECASE)
-                end_match = end_regex.search(text, start_index)
-                if end_match:
-                    end_index = end_match.start()
+                for variation in next_variations:
+                    pattern = re.compile(rf'##+\s*{re.escape(variation.replace("## ", "").replace("### ", ""))}\s*:?\s*\n', re.IGNORECASE)
+                    match = pattern.search(text, start_index)
+                    if match:
+                        end_index = match.start()
+                        break
             
             # Extract the content of the relevant section
             section_text = text[start_index:end_index].strip()
 
-            # Extract bullet points from the section text using a more reliable multiline pattern
-            bullets = re.findall(r"^\s*(?:[-•*]|\d+\.)\s+(.*)", section_text, re.MULTILINE)
+            # Extract bullet points - try multiple patterns
+            bullets = []
             
-            cleaned_bullets = [b.strip().replace('**', '') for b in bullets if b.strip()]
+            # Pattern 1: Standard bullet points (-, •, *)
+            pattern1 = re.compile(r'^\s*[-•*]\s+(.+)$', re.MULTILINE)
+            bullets.extend(pattern1.findall(section_text))
+            
+            # Pattern 2: Numbered list (1., 2., etc.)
+            pattern2 = re.compile(r'^\s*\d+\.\s+(.+)$', re.MULTILINE)
+            bullets.extend(pattern2.findall(section_text))
+            
+            # Pattern 3: Lines starting with whitespace (indented)
+            lines = section_text.split('\n')
+            for line in lines:
+                stripped = line.strip()
+                # Skip empty, headers, or very short lines
+                if stripped and len(stripped) > 10 and not stripped.startswith('#'):
+                    # If it looks like a bullet point but wasn't captured
+                    if stripped.startswith('-') or stripped.startswith('•') or stripped.startswith('*'):
+                        # Extract content after bullet
+                        content = re.sub(r'^[-•*]\s*', '', stripped)
+                        if content and content not in bullets:
+                            bullets.append(content)
+                    elif re.match(r'^\d+\.', stripped):
+                        # Extract content after number
+                        content = re.sub(r'^\d+\.\s*', '', stripped)
+                        if content and content not in bullets:
+                            bullets.append(content)
+            
+            # Clean bullets
+            cleaned_bullets = []
+            seen = set()
+            for b in bullets:
+                # Remove markdown formatting
+                clean = re.sub(r'\*\*|__', '', b.strip())
+                # Remove leading/trailing punctuation issues
+                clean = re.sub(r'^[-•*\s]+', '', clean)
+                clean = clean.strip()
+                
+                # Skip if too short, empty, or duplicate
+                if clean and len(clean) > 5 and clean.lower() not in seen:
+                    cleaned_bullets.append(clean)
+                    seen.add(clean.lower())
 
-            # If no bullets were found, fallback to splitting by lines, which is less precise but better than nothing.
+            # Fallback: if no bullets found, try splitting by double newlines or numbered items
             if not cleaned_bullets:
-                lines = section_text.split('\n')
-                # Filter out empty lines and potential sub-headings
-                cleaned_bullets = [line.strip() for line in lines if line.strip() and not line.strip().endswith(':')]
+                # Try to find paragraphs or numbered sections
+                paragraphs = [p.strip() for p in section_text.split('\n\n') if p.strip() and len(p.strip()) > 20]
+                if paragraphs:
+                    cleaned_bullets = paragraphs[:5]  # Limit to 5
+                else:
+                    # Last resort: split by single newlines
+                    lines = [l.strip() for l in section_text.split('\n') if l.strip() and len(l.strip()) > 15 and not l.strip().startswith('#')]
+                    if lines:
+                        cleaned_bullets = lines[:5]
 
             if not cleaned_bullets:
-                # This message now accurately reflects that we found the section but it had no extractable points.
-                return ["Não foi possível extrair os pontos principais desta seção."]
+                return [f"Não foi possível extrair os pontos principais da seção '{section_title}'. A seção pode estar vazia ou em formato inesperado."]
                 
             return cleaned_bullets
         except Exception as e:
-            print(f"Erro ao extrair pontos da seção '{section_title}': {str(e)}")
-            return ["Ocorreu um erro interno ao processar a resposta do especialista."]
+            print(f"[CouncilOrchestrator] Erro ao extrair pontos da seção '{section_title}': {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return [f"Erro ao processar a resposta do especialista: {str(e)[:100]}"]
 
     async def _synthesize_consensus(
         self,
         problem: str,
-        contributions: List[AgentContribution],
-        research_findings: Optional[str] = None
-    ) -> Dict[str, Any]:
+        contributions: List[ExpertContribution],
+        research_findings: Optional[str] = None,
+        persona: Optional[Persona] = None
+    ) -> str:
         """
         Synthesize a consensus view from all expert contributions
         """
@@ -453,7 +614,22 @@ Sua função é identificar padrões, encontrar consensos e destacar perspectiva
 Apresente uma visão equilibrada e abrangente que represente a inteligência coletiva do conselho de marketing.
 Seja objetivo, claro e acionável em sua síntese. Responda SEMPRE em português do Brasil (pt-BR)."""
 
-            user_message = f"""**Problema de Marketing/Questão:**
+            # Build persona context if available
+            persona_context = ""
+            if persona:
+                persona_context = f"""
+**CLIENTE IDEAL - PERSONA (Contexto Crítico):**
+- Nome: {persona.name}
+- Objetivos: {', '.join(persona.goals[:5]) if persona.goals else 'Não especificados'}
+- Pain Points: {', '.join(persona.painPoints[:5]) if persona.painPoints else 'Não especificados'}
+- Valores: {', '.join(persona.values[:5]) if persona.values else 'Não especificados'}
+
+**IMPORTANTE:** O consenso deve considerar especificamente este perfil de cliente ideal. 
+Recomendações devem ser práticas e acionáveis para ressoar com esta persona.
+
+"""
+            
+            user_message = f"""{persona_context}**Problema de Marketing/Questão:**
 {problem}
 
 **Insights dos Especialistas:**
@@ -535,6 +711,192 @@ O relatório deve incluir:
 **Tentei:** Processar todas as contribuições e gerar síntese.
 
 **Proponho:** Tente novamente. Se o problema persistir, entre em contato com o suporte."""
+
+    async def _generate_action_plan(
+        self,
+        problem: str,
+        consensus: str,
+        contributions: List[ExpertContribution],
+        persona: Optional[Persona] = None,
+        profile: Optional[dict] = None
+    ) -> Optional[ActionPlan]:
+        """
+        Gera plano de ação completo e estruturado baseado no consenso.
+        Usa Claude para criar plano executável com fases, ações e métricas.
+        """
+        try:
+            # Build persona context
+            persona_context = ""
+            if persona:
+                persona_context = f"""
+**CLIENTE IDEAL (PERSONA):**
+- Nome: {persona.name}
+- Objetivos: {', '.join(persona.goals[:5]) if persona.goals else 'Não especificados'}
+- Pain Points: {', '.join(persona.painPoints[:5]) if persona.painPoints else 'Não especificados'}
+- Valores: {', '.join(persona.values[:5]) if persona.values else 'Não especificados'}
+- Comportamentos: {json.dumps(persona.behavioralPatterns, ensure_ascii=False, indent=2) if isinstance(persona.behavioralPatterns, dict) else 'Não especificados'}
+"""
+            
+            # Build profile context
+            profile_context = ""
+            if profile:
+                profile_context = f"""
+**CONTEXTO DO NEGÓCIO:**
+- Empresa: {profile.companyName}
+- Indústria: {profile.industry}
+- Objetivo Principal: {profile.primaryGoal}
+- Desafio Principal: {profile.mainChallenge}
+- Timeline: {profile.timeline}
+- Budget: {profile.budgetRange}
+"""
+            
+            # Build contributions summary
+            contributions_summary = "\n".join([
+                f"- **{c.expertName}**: {', '.join(c.recommendations[:3])}"
+                for c in contributions[:5]
+            ])
+            
+            prompt = f"""
+Você é um consultor estratégico especializado em criar planos de ação executáveis e estruturados.
+
+{persona_context}
+{profile_context}
+
+**PROBLEMA:**
+{problem}
+
+**CONSENSO DOS ESPECIALISTAS:**
+{consensus}
+
+**RECOMENDAÇÕES-CHAVE DOS ESPECIALISTAS:**
+{contributions_summary}
+
+**SUA TAREFA:**
+Crie um PLANO DE AÇÃO COMPLETO e ESTRUTURADO em formato JSON seguindo EXATAMENTE este schema:
+
+{{
+  "phases": [
+    {{
+      "phaseNumber": 1,
+      "name": "Nome da Fase",
+      "duration": "X semanas",
+      "objectives": ["objetivo 1", "objetivo 2"],
+      "actions": [
+        {{
+          "id": "action-1-1",
+          "title": "Título da Ação",
+          "description": "Descrição detalhada da ação",
+          "responsible": "Responsável (ex: Equipe de Marketing, CEO, Agência)",
+          "priority": "alta",
+          "estimatedTime": "X horas",
+          "tools": ["ferramenta1", "ferramenta2"],
+          "steps": ["passo 1", "passo 2", "passo 3"]
+        }}
+      ],
+      "dependencies": [],
+      "deliverables": ["entregável 1", "entregável 2"]
+    }}
+  ],
+  "totalDuration": "X-Y semanas",
+  "estimatedBudget": "R$ X ou não especificado",
+  "successMetrics": ["métrica 1 (SMART)", "métrica 2 (SMART)"]
+}}
+
+**REQUISITOS CRÍTICOS:**
+1. Mínimo 3 fases, máximo 6 fases
+2. Cada fase deve ter 3-8 ações específicas e acionáveis
+3. Priorize ações práticas que considerem a persona do cliente ideal
+4. Inclua dependências entre fases quando relevante (usar IDs como "phase-1")
+5. Métricas devem ser SMART (Specific, Measurable, Achievable, Relevant, Time-bound)
+6. Considere o contexto do negócio e persona em TODAS as ações
+7. Ações devem ser específicas o suficiente para serem executadas imediatamente
+8. Retorne APENAS o JSON válido, sem markdown ou texto adicional antes/depois
+
+**EXEMPLO DE PRIORIDADES:**
+- "alta": Ações críticas que bloqueiam outras ou têm alto impacto
+- "média": Ações importantes mas que podem ser ajustadas
+- "baixa": Ações complementares ou de longo prazo
+
+**IMPORTANTE:** Retorne APENAS JSON válido. Não use ```json ou qualquer markdown.
+"""
+            
+            response = await asyncio.wait_for(
+                self.anthropic_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4096,
+                    system="Você é um consultor estratégico especializado em criar planos de ação executáveis. Retorne sempre JSON válido, sem markdown.",
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                ),
+                timeout=90.0  # 90 segundos para gerar plano completo
+            )
+            
+            # Extract text from response
+            text = response.content[0].text if response.content else ""
+            
+            # Clean markdown if present
+            text = re.sub(r'```json\s*\n?', '', text)
+            text = re.sub(r'```\s*\n?', '', text)
+            text = text.strip()
+            
+            # Try to find JSON object in text
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if json_match:
+                text = json_match.group(0)
+            
+            try:
+                plan_dict = json.loads(text)
+                
+                # Validate and convert to ActionPlan model
+                phases = []
+                for phase_data in plan_dict.get("phases", []):
+                    actions = []
+                    for action_data in phase_data.get("actions", []):
+                        action = Action(
+                            id=action_data.get("id", f"action-{phase_data.get('phaseNumber', 0)}-{len(actions) + 1}"),
+                            title=action_data.get("title", "Ação sem título"),
+                            description=action_data.get("description", ""),
+                            responsible=action_data.get("responsible", "Equipe"),
+                            priority=action_data.get("priority", "média"),
+                            estimatedTime=action_data.get("estimatedTime", "Não especificado"),
+                            tools=action_data.get("tools", []),
+                            steps=action_data.get("steps", [])
+                        )
+                        actions.append(action)
+                    
+                    phase = Phase(
+                        phaseNumber=phase_data.get("phaseNumber", 0),
+                        name=phase_data.get("name", "Fase sem nome"),
+                        duration=phase_data.get("duration", "Não especificado"),
+                        objectives=phase_data.get("objectives", []),
+                        actions=actions,
+                        dependencies=phase_data.get("dependencies", []),
+                        deliverables=phase_data.get("deliverables", [])
+                    )
+                    phases.append(phase)
+                
+                action_plan = ActionPlan(
+                    phases=phases,
+                    totalDuration=plan_dict.get("totalDuration", "Não especificado"),
+                    estimatedBudget=plan_dict.get("estimatedBudget"),
+                    successMetrics=plan_dict.get("successMetrics", [])
+                )
+                
+                print(f"[CouncilOrchestrator] ✓ Plano de ação gerado: {len(phases)} fases, {sum(len(p.actions) for p in phases)} ações")
+                return action_plan
+                
+            except json.JSONDecodeError as e:
+                print(f"[CouncilOrchestrator] Erro ao parsear JSON do plano de ação: {e}")
+                print(f"[CouncilOrchestrator] Texto recebido: {text[:500]}...")
+                return None
+                
+        except Exception as e:
+            print(f"[CouncilOrchestrator] Erro ao gerar plano de ação: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def _get_user_preferences(self, user_id: str) -> Dict[str, Any]:
         """

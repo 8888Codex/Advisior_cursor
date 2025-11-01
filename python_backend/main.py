@@ -19,22 +19,24 @@ from slowapi.errors import RateLimitExceeded
 # Load environment variables - find_dotenv searches parent directories automatically
 env_file = find_dotenv(usecwd=True)
 if env_file:
-    load_dotenv(env_file)
+    load_dotenv(env_file, override=True)  # override=True garante que valores do .env sobrescrevam variáveis existentes
     print(f"[ENV] Loaded .env from: {env_file}")
     # Verify API key is loaded
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
     if anthropic_key:
-        print(f"[ENV] ✅ ANTHROPIC_API_KEY loaded: {anthropic_key[:20]}...")
+        masked_key = f"{anthropic_key[:10]}...{anthropic_key[-4:]}" if len(anthropic_key) > 14 else "***"
+        print(f"[ENV] ✅ ANTHROPIC_API_KEY loaded: {masked_key}")
     else:
         print("[ENV] ❌ ANTHROPIC_API_KEY not found in environment!")
+        print("[ENV] ⚠️  Adicione ANTHROPIC_API_KEY=sk-ant-... no arquivo .env")
 else:
-    print("[ENV] Warning: .env file not found!")
+    print("[ENV] ⚠️  Warning: .env file not found!")
+    print("[ENV] 💡 Crie um arquivo .env na raiz com: ANTHROPIC_API_KEY=sk-ant-...")
 
 from python_backend.models import (
     Expert, ExpertCreate, ExpertType, CategoryType, CategoryInfo,
     Conversation, ConversationCreate,
-    Message, MessageCreate, MessageSend, MessageResponse,
-    BusinessProfile, BusinessProfileCreate,
+    Message, MessageSend, MessageResponse,
     CouncilAnalysis, CouncilAnalysisCreate,
     RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation,
     AutoCloneRequest, UserPreferencesUpdate
@@ -46,6 +48,7 @@ from python_backend.crew_council import council_orchestrator
 
 # Importar roteadores
 from python_backend.routers import experts as experts_router
+from python_backend.routers import council_chat
 from python_backend.routers import conversations as conversations_router
 
 # Authentication imports
@@ -76,9 +79,9 @@ ALLOWED_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS if os.getenv("NODE_ENV") == "production" else ["*"],
+    allow_origins=["*"],  # Allow all in development
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
@@ -96,14 +99,53 @@ app.include_router(personas_modern_router)
 
 # Include experts and conversations routers
 app.include_router(experts_router.router)
+app.include_router(council_chat.router)
 app.include_router(conversations_router.router)
 
 # Initialize with seeded legends
 @app.on_event("startup")
 async def startup_event():
-    print("Seeding marketing legends...")
-    await seed_legends(storage)
-    print(f"Seeded {len(await storage.get_experts())} marketing legends successfully.")
+    print("[Startup] Initializing storage and seeding marketing legends...")
+    
+    # Initialize PostgresStorage connection if needed
+    from python_backend.postgres_storage import PostgresStorage
+    if isinstance(storage, PostgresStorage):
+        await storage.connect()
+        print("[Startup] Connected to PostgreSQL database")
+    
+    # Force reset MemStorage singleton if needed (only for MemStorage)
+    if hasattr(storage, 'experts') and not isinstance(storage, PostgresStorage):
+        existing = len(storage.experts)
+        if existing > 0:
+            print(f"[Startup] Clearing {existing} existing experts from MemStorage...")
+            storage.experts.clear()
+    
+    try:
+        await seed_legends(storage)
+        experts_count = len(await storage.get_experts())
+        print(f"[Startup] ✓ Seeded {experts_count} marketing legends successfully.")
+        
+        if experts_count == 0:
+            print("[Startup] ⚠️  WARNING: No experts found after seeding!")
+            print("[Startup] Attempting to force seed again...")
+            # Force seed by clearing flag (only for MemStorage)
+            if hasattr(storage, '_legends_seeded'):
+                storage._legends_seeded = False
+            await seed_legends(storage)
+            experts_count = len(await storage.get_experts())
+            print(f"[Startup] After force seed: {experts_count} experts")
+        
+        # Log first few expert names for verification
+        if experts_count > 0:
+            experts = await storage.get_experts()
+            print(f"[Startup] Sample experts: {[e.name for e in experts[:3]]}")
+        else:
+            print("[Startup] ⚠️  CRITICAL: No experts available after seeding!")
+            print("[Startup] Check database connection and seed process.")
+    except Exception as e:
+        print(f"[Startup] ✗ Error seeding legends: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Health check
 @app.get("/")
@@ -1141,9 +1183,9 @@ async def upload_expert_avatar(expert_id: str, file: UploadFile = File(...)):
         await file.close()
 
 # Business Profile endpoints
-@app.post("/api/profile", response_model=BusinessProfile)
+@app.post("/api/profile")
 @limiter.limit("20/day")  # Max 20 atualizações de perfil por dia
-async def save_profile(request: Request, data: BusinessProfileCreate):
+async def save_profile(request: Request, data: dict):
     """Create or update business profile"""
     # For now, use a default user_id until we add authentication
     user_id = "default_user"
@@ -1153,7 +1195,7 @@ async def save_profile(request: Request, data: BusinessProfileCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save profile: {str(e)}")
 
-@app.get("/api/profile", response_model=Optional[BusinessProfile])
+@app.get("/api/profile")
 async def get_profile():
     """Get current user's business profile"""
     # For now, use a default user_id until we add authentication
@@ -1593,6 +1635,18 @@ async def create_council_analysis(request: Request, data: CouncilAnalysisCreate)
     user_id = "default_user"
     
     try:
+        # Validar persona (OBRIGATÓRIA)
+        if not data.personaId:
+            raise HTTPException(status_code=400, detail="personaId é obrigatório. Você precisa ter uma persona criada para usar o conselho de especialistas.")
+        
+        persona = await storage.get_persona(data.personaId)
+        if not persona:
+            raise HTTPException(status_code=404, detail=f"Persona com ID {data.personaId} não encontrada. Verifique se a persona foi criada corretamente.")
+        
+        # Verificar se persona pertence ao usuário (quando tivermos auth)
+        # if persona.userId != user_id:
+        #     raise HTTPException(status_code=403, detail="Esta persona não pertence a você.")
+        
         # Get user's business profile (optional)
         profile = await storage.get_business_profile(user_id)
         
@@ -1615,7 +1669,8 @@ async def create_council_analysis(request: Request, data: CouncilAnalysisCreate)
             user_id=user_id,
             problem=data.problem,
             experts=experts,
-            profile=profile
+            profile=profile,
+            persona=persona
         )
         
         # Save analysis (temporarily disabled until table is created)
@@ -1673,6 +1728,20 @@ async def create_council_analysis_stream(request: Request, data: CouncilAnalysis
             return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
         
         try:
+            # Validar persona (OBRIGATÓRIA)
+            if not data.personaId:
+                yield sse_event("error", {
+                    "message": "personaId é obrigatório. Você precisa ter uma persona criada para usar o conselho de especialistas."
+                })
+                return
+            
+            persona = await storage.get_persona(data.personaId)
+            if not persona:
+                yield sse_event("error", {
+                    "message": f"Persona com ID {data.personaId} não encontrada. Verifique se a persona foi criada corretamente."
+                })
+                return
+            
             # Get user's business profile (optional)
             profile = await storage.get_business_profile(user_id)
             
@@ -1745,6 +1814,7 @@ async def create_council_analysis_stream(request: Request, data: CouncilAnalysis
                         expert=expert,
                         problem=data.problem,
                         profile=profile,
+                        persona=persona,
                         research_findings=research_findings
                     )
                     contributions.append(contribution)
@@ -1779,22 +1849,42 @@ async def create_council_analysis_stream(request: Request, data: CouncilAnalysis
             consensus = await council_orchestrator._synthesize_consensus(
                 problem=data.problem,
                 contributions=contributions,
-                research_findings=research_findings
+                research_findings=research_findings,
+                persona=persona
             )
             print(f"[Council Stream] Consensus generated successfully")
             
             # Create final analysis object
-            from python_backend.models import CouncilAnalysis, AgentContribution
+            from python_backend.models import CouncilAnalysis, ExpertContribution
             import uuid
+            
+            # Generate action plan (optional, não bloqueia se falhar)
+            action_plan = None
+            try:
+                import asyncio
+                await asyncio.sleep(2.0)  # Delay antes de gerar plano
+                action_plan = await council_orchestrator._generate_action_plan(
+                    problem=data.problem,
+                    consensus=consensus,
+                    contributions=contributions,
+                    persona=persona,
+                    profile=profile
+                )
+                print(f"[Council Stream] Action plan generated: {len(action_plan.phases) if action_plan else 0} phases")
+            except Exception as e:
+                print(f"[Council Stream] Action plan generation failed (non-critical): {e}")
+                action_plan = None
             
             analysis = CouncilAnalysis(
                 id=str(uuid.uuid4()),
                 userId=user_id,
                 problem=data.problem,
+                personaId=persona.id if persona else None,
                 profileId=profile.id if profile else None,
                 marketResearch=research_findings,
                 contributions=contributions,
-                consensus=consensus
+                consensus=consensus,
+                actionPlan=action_plan
             )
             
             # Save analysis (temporarily disabled until table is created)
@@ -1802,23 +1892,29 @@ async def create_council_analysis_stream(request: Request, data: CouncilAnalysis
             
             # Send final complete event
             print(f"[Council Stream] Sending analysis_complete event")
+            
+            # Serialize analysis for SSE (convert Pydantic models to dict)
+            analysis_dict = {
+                "id": analysis.id,
+                "problem": analysis.problem,
+                "personaId": analysis.personaId,
+                "contributions": [
+                    {
+                        "expertId": c.expertId,
+                        "expertName": c.expertName,
+                        "analysis": c.analysis,
+                        "keyInsights": c.keyInsights,
+                        "recommendations": c.recommendations
+                    }
+                    for c in analysis.contributions
+                ],
+                "consensus": analysis.consensus,
+                "actionPlan": analysis.actionPlan.model_dump() if analysis.actionPlan else None
+            }
+            
             yield sse_event("analysis_complete", {
                 "analysisId": analysis.id,
-                "analysis": {
-                    "id": analysis.id,
-                    "problem": analysis.problem,
-                    "contributions": [
-                        {
-                            "expertId": c.expertId,
-                            "expertName": c.expertName,
-                            "analysis": c.analysis,
-                            "keyInsights": c.keyInsights,
-                            "recommendations": c.recommendations
-                        }
-                        for c in analysis.contributions
-                    ],
-                    "consensus": analysis.consensus
-                }
+                "analysis": analysis_dict
             })
             print(f"[Council Stream] Stream completed successfully")
             

@@ -94,7 +94,7 @@ export async function apiRequest(
 
 export async function apiRequestJson<T = any>(
   url: string,
-  options?: RequestInit,
+  options?: RequestInit & { timeout?: number },
 ): Promise<T> {
   const res = await apiRequest(url, options);
   return await res.json();
@@ -111,7 +111,38 @@ export const getQueryFn: <T>(options: {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      const res = await fetch(queryKey.join("/") as string, {
+      // Construir URL corretamente - se começar com /, usar direto; senão, juntar
+      let url: string;
+      if (typeof queryKey[0] === 'string' && queryKey[0].startsWith('/')) {
+        url = queryKey[0] as string;
+        // Se há mais partes na queryKey e a primeira parte termina sem parâmetro de rota, construir caminho
+        if (queryKey.length > 1) {
+          const rest = queryKey.slice(1).filter(Boolean);
+          if (rest.length > 0) {
+            // Se a URL termina com algo como "/experts" e o próximo é um ID, fazer "/experts/{id}"
+            const lastPart = rest[0] as string;
+            // Se a URL não tem ? (não é query param), adicionar como path
+            if (!url.includes('?') && !url.endsWith('/')) {
+              url += '/' + lastPart;
+              // Se houver mais partes (query params), adicionar com ?
+              if (rest.length > 1) {
+                url += '?' + rest.slice(1).join('&');
+              }
+            } else {
+              // É query param, adicionar normalmente
+              url += (url.includes('?') ? '&' : '?') + rest.join('&');
+            }
+          }
+        }
+      } else {
+        url = queryKey.join("/") as string;
+        // Garantir que começa com / se não começar
+        if (!url.startsWith('/')) {
+          url = '/' + url;
+        }
+      }
+      
+      const res = await fetch(url, {
         credentials: "include",
         signal: controller.signal,
       });

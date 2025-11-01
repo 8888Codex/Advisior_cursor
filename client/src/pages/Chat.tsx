@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequestJson } from "@/lib/queryClient";
@@ -22,16 +22,21 @@ export default function Chat() {
   const expertId = params?.id || "";
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: expert, isLoading: expertLoading } = useQuery<Expert>({
     queryKey: ["/api/experts", expertId],
     enabled: !!expertId,
   });
 
-  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+  const { data: messagesData, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/conversations", conversationId, "messages"],
     enabled: !!conversationId,
   });
+
+  // Garantir que messages seja sempre um array
+  const messages = Array.isArray(messagesData) ? messagesData : [];
 
   const createConversationMutation = useMutation({
     mutationFn: async (data: { expertId: string; title: string }) => {
@@ -55,27 +60,121 @@ export default function Chat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { conversationId: string; content: string }) => {
-      return await apiRequestJson<{ userMessage: Message; assistantMessage: Message }>(
-        `/api/conversations/${data.conversationId}/messages`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: data.content }),
+      try {
+        // Timeout maior para requisições de IA (60 segundos)
+        const response = await apiRequestJson<{ userMessage: Message; assistantMessage: Message }>(
+          `/api/conversations/${data.conversationId}/messages`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: data.content }),
+            timeout: 60000, // 60 segundos para requisições de IA
+          }
+        );
+        return response;
+      } catch (error: any) {
+        // Extrair mensagem de erro mais específica
+        let errorMessage = "Não foi possível processar sua mensagem. Tente novamente.";
+        
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+        
+        // Verificar se é erro de autenticação
+        if (errorMessage.includes('ANTHROPIC_API_KEY') || errorMessage.includes('api_key')) {
+          errorMessage = "Erro de autenticação: ANTHROPIC_API_KEY não configurada. Verifique o arquivo .env";
+        }
+        
+        throw new Error(errorMessage);
+      }
+    },
+    onMutate: async (variables) => {
+      // Cancelar queries em andamento para evitar sobrescrever
+      await queryClient.cancelQueries({ queryKey: ["/api/conversations", variables.conversationId, "messages"] });
+      
+      // Snapshot do valor anterior
+      const previousMessages = queryClient.getQueryData<Message[]>(["/api/conversations", variables.conversationId, "messages"]);
+      
+      // Adicionar mensagem do usuário otimisticamente (antes da resposta do servidor)
+      const optimisticUserMessage: Message = {
+        id: `temp-${Date.now()}`,
+        conversationId: variables.conversationId,
+        role: "user",
+        content: variables.content,
+        createdAt: new Date(),
+      };
+      
+      queryClient.setQueryData<Message[]>(
+        ["/api/conversations", variables.conversationId, "messages"],
+        (oldMessages = []) => {
+          const messages = Array.isArray(oldMessages) ? oldMessages : [];
+          return [...messages, optimisticUserMessage];
         }
       );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversationId, "messages"] });
+      
+      // Limpar input imediatamente
       setInput("");
+      
+      return { previousMessages };
     },
-    onError: () => {
+    onSuccess: (response, variables, context) => {
+      if (response && response.userMessage && response.assistantMessage && conversationId) {
+        // Substituir mensagem temporária pela real e adicionar resposta do assistente
+        queryClient.setQueryData<Message[]>(
+          ["/api/conversations", conversationId, "messages"],
+          (oldMessages = []) => {
+            const messages = Array.isArray(oldMessages) ? oldMessages : [];
+            // Remover mensagem temporária (se existir)
+            const withoutTemp = messages.filter(m => !m.id.startsWith('temp-'));
+            // Adicionar mensagens reais do servidor (evitar duplicatas)
+            const existingIds = new Set(withoutTemp.map(m => m.id));
+            const newMessages = [...withoutTemp];
+            
+            if (!existingIds.has(response.userMessage.id)) {
+              newMessages.push(response.userMessage);
+            }
+            if (!existingIds.has(response.assistantMessage.id)) {
+              newMessages.push(response.assistantMessage);
+            }
+            return newMessages;
+          }
+        );
+      }
+    },
+    onError: (error, variables, context) => {
+      // Reverter para estado anterior em caso de erro
+      if (context?.previousMessages) {
+        queryClient.setQueryData<Message[]>(
+          ["/api/conversations", variables.conversationId, "messages"],
+          context.previousMessages
+        );
+      }
+      
+      const errorMessage = error?.message || "Não foi possível processar sua mensagem. Tente novamente.";
       toast({
         variant: "destructive",
         title: "Erro ao enviar mensagem",
-        description: "Não foi possível processar sua mensagem. Tente novamente.",
+        description: errorMessage,
       });
     },
   });
+
+  // Auto-scroll para a última mensagem quando mensagens mudarem
+  useEffect(() => {
+    // Pequeno delay para garantir que o DOM foi atualizado
+    const timeoutId = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      } else if (messagesContainerRef.current) {
+        // Fallback: scroll do container diretamente
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [messages.length, sendMessageMutation.isPending]);
 
   useEffect(() => {
     if (expert && !conversationId && !createConversationMutation.isPending) {
@@ -118,7 +217,7 @@ export default function Chat() {
     );
   }
 
-  if (!expert) {
+  if (!expert || !expert.name) {
     return (
       <AnimatedPage>
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -128,9 +227,10 @@ export default function Chat() {
     );
   }
 
-  const initials = expert.name
+  const initials = (expert.name || "E")
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -168,7 +268,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 pb-6 space-y-4 min-h-0">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 pb-6 space-y-4 min-h-0">
         {messagesLoading ? (
           <ChatLoadingSkeleton />
         ) : (
@@ -237,6 +337,8 @@ export default function Chat() {
                 </motion.div>
               </motion.div>
             )}
+            {/* Elemento invisível para scroll automático */}
+            <div ref={messagesEndRef} />
           </>
         )}
       </div>

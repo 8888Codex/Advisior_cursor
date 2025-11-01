@@ -3,8 +3,8 @@ from datetime import datetime
 import uuid
 from python_backend.models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
-    Message, MessageCreate, ExpertType, CategoryType, BusinessProfile, BusinessProfileCreate,
-    CouncilAnalysis, Persona, PersonaCreate, User, UserPreferences, UserPreferencesUpdate
+    Message, MessageSend, ExpertType, CategoryType,
+    CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate
 )
 
 # Import modern persona storage
@@ -34,12 +34,13 @@ class MemStorage:
             self.experts: Dict[str, Expert] = {}
             self.conversations: Dict[str, Conversation] = {}
             self.messages: Dict[str, Message] = {}
-            self.profiles: Dict[str, BusinessProfile] = {}
+            self.profiles: Dict[str, dict] = {}
             self.council_analyses: Dict[str, CouncilAnalysis] = {}
             self.personas: Dict[str, Persona] = {}
             self.user_preferences: Dict[str, UserPreferences] = {}  # user_id -> preferences
             # self._persona_modern_storage = PersonaModernStorage()
             self._initialized = True
+            # Reset flag on initialization - seed will check actual data
             self._legends_seeded = False
             print("Initialized in-memory storage (MemStorage).")
     
@@ -177,7 +178,7 @@ class MemStorage:
             self.conversations[conversation_id].updatedAt = datetime.utcnow()
     
     # Message operations
-    async def create_message(self, data: MessageCreate) -> Message:
+    async def create_message(self, data: MessageSend) -> Message:
         message_id = str(uuid.uuid4())
         message = Message(
             id=message_id,
@@ -198,53 +199,115 @@ class MemStorage:
         messages.sort(key=lambda x: x.createdAt)
         return messages
     
-    # Business Profile operations
-    async def save_business_profile(self, user_id: str, data: BusinessProfileCreate) -> BusinessProfile:
-        """Create or update business profile for a user"""
-        existing_profile = self.profiles.get(user_id)
+    # Council Conversation operations
+    async def create_council_conversation(self, user_id: str, persona_id: str, problem: str, expert_ids: List[str], analysis_id: Optional[str] = None) -> 'CouncilConversation':
+        """Create a new council conversation"""
+        from python_backend.models import CouncilConversation
+        import uuid
         
-        if existing_profile:
-            # Update existing profile
-            profile = BusinessProfile(
-                id=existing_profile.id,
-                userId=user_id,
-                companyName=data.companyName,
-                industry=data.industry,
-                companySize=data.companySize,
-                targetAudience=data.targetAudience,
-                mainProducts=data.mainProducts,
-                channels=data.channels,
-                budgetRange=data.budgetRange,
-                primaryGoal=data.primaryGoal,
-                mainChallenge=data.mainChallenge,
-                timeline=data.timeline,
-                createdAt=existing_profile.createdAt,
-                updatedAt=datetime.utcnow()
-            )
-        else:
-            # Create new profile
-            profile_id = str(uuid.uuid4())
-            profile = BusinessProfile(
-                id=profile_id,
-                userId=user_id,
-                companyName=data.companyName,
-                industry=data.industry,
-                companySize=data.companySize,
-                targetAudience=data.targetAudience,
-                mainProducts=data.mainProducts,
-                channels=data.channels,
-                budgetRange=data.budgetRange,
-                primaryGoal=data.primaryGoal,
-                mainChallenge=data.mainChallenge,
-                timeline=data.timeline
-            )
+        conversation_id = str(uuid.uuid4())
+        now = datetime.utcnow()
         
-        self.profiles[user_id] = profile
-        return profile
+        if not hasattr(self, 'council_conversations'):
+            self.council_conversations = {}
+        
+        conversation = CouncilConversation(
+            id=conversation_id,
+            userId=user_id,
+            personaId=persona_id,
+            problem=problem,
+            expertIds=expert_ids,
+            analysisId=analysis_id,
+            createdAt=now,
+            updatedAt=now
+        )
+        self.council_conversations[conversation_id] = conversation
+        return conversation
     
-    async def get_business_profile(self, user_id: str) -> Optional[BusinessProfile]:
+    async def get_council_conversation(self, conversation_id: str) -> Optional['CouncilConversation']:
+        """Get a council conversation by ID"""
+        if not hasattr(self, 'council_conversations'):
+            return None
+        return self.council_conversations.get(conversation_id)
+    
+    async def get_council_conversations(self, user_id: Optional[str] = None) -> List['CouncilConversation']:
+        """Get all council conversations, optionally filtered by user"""
+        from python_backend.models import CouncilConversation
+        
+        if not hasattr(self, 'council_conversations'):
+            return []
+        
+        conversations = list(self.council_conversations.values())
+        if user_id:
+            conversations = [c for c in conversations if c.userId == user_id]
+        conversations.sort(key=lambda x: x.updatedAt, reverse=True)
+        return conversations
+    
+    async def create_council_message(self, conversation_id: str, role: str, content: str, expert_id: Optional[str] = None, expert_name: Optional[str] = None) -> 'CouncilMessage':
+        """Create a message in a council conversation"""
+        from python_backend.models import CouncilMessage
+        import uuid
+        
+        message_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+        
+        if not hasattr(self, 'council_messages'):
+            self.council_messages = {}
+        
+        message = CouncilMessage(
+            id=message_id,
+            conversationId=conversation_id,
+            expertId=expert_id,
+            expertName=expert_name,
+            content=content,
+            role=role,
+            timestamp=now,
+            reactions=[]
+        )
+        self.council_messages[message_id] = message
+        
+        # Update conversation timestamp
+        if hasattr(self, 'council_conversations'):
+            if conversation_id in self.council_conversations:
+                self.council_conversations[conversation_id].updatedAt = now
+        
+        return message
+    
+    async def get_council_messages(self, conversation_id: str) -> List['CouncilMessage']:
+        """Get all messages for a council conversation"""
+        from python_backend.models import CouncilMessage
+        
+        if not hasattr(self, 'council_messages'):
+            return []
+        
+        messages = [m for m in self.council_messages.values() if m.conversationId == conversation_id]
+        messages.sort(key=lambda x: x.timestamp)
+        return messages
+    
+    async def add_council_message_reaction(self, message_id: str, reaction: 'MessageReaction') -> bool:
+        """Add a reaction to a council message"""
+        from python_backend.models import MessageReaction
+        
+        if not hasattr(self, 'council_messages'):
+            return False
+        
+        if message_id not in self.council_messages:
+            return False
+        
+        message = self.council_messages[message_id]
+        message.reactions.append(reaction)
+        return True
+    
+    # Business Profile operations - TEMPORARILY DISABLED
+    async def save_business_profile(self, user_id: str, data: dict) -> dict:
+        """Create or update business profile for a user"""
+        # Temporarily return empty dict - profiles not implemented yet
+        return {}
+    
+    async def get_business_profile(self, user_id: str) -> Optional[dict]:
         """Get business profile for a user"""
-        return self.profiles.get(user_id)
+        # Temporarily return None - profiles not implemented yet
+        return None
     
     # Council Analysis operations
     async def save_council_analysis(self, analysis: CouncilAnalysis) -> CouncilAnalysis:

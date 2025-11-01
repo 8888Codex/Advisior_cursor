@@ -7,10 +7,10 @@ Copie `DEPLOY_ENV_EXAMPLE.txt` para `.env` e preencha:
 ```bash
 # Node/Express Server
 NODE_ENV=production
-PORT=3000                    # Porta do servidor Node (UI + BFF)
+PORT=3001                    # Porta do servidor Node (UI + BFF)
 
 # Python Backend (FastAPI)
-PY_PORT=5200                 # Porta do backend Python (ou use PY_EXTERNAL se externo)
+PY_PORT=5201                 # Porta do backend Python (ou use PY_EXTERNAL se externo)
 PY_EXTERNAL=http://...       # Opcional: URL externa do Python backend
 
 # Database
@@ -28,11 +28,14 @@ PERPLEXITY_API_KEY=pplx-...  # Opcional: usado em auto-clone de experts
 ### Desenvolvimento Local
 
 ```bash
-# Portas padrão: UI 3000, Python 5200
+# Portas padrão: UI 3001, Python 5201
+npm run dev
+
+# Ou usar script específico
 npm run dev:py5200
 
 # Ou customizar portas
-PORT=3000 PY_PORT=5300 npm run dev
+PORT=3002 PY_PORT=5202 npm run dev
 ```
 
 ### Build de Produção
@@ -53,15 +56,15 @@ npm run check  # TypeScript type checking
 
 ## Health Checks
 
-- **UI/Frontend**: `GET http://localhost:3000` → deve retornar 200
-- **API Backend**: `GET http://localhost:5200/api/health` → `{"status":"ok","service":"AdvisorIA API"}`
+- **UI/Frontend**: `GET http://localhost:3001` → deve retornar 200
+- **API Backend**: `GET http://localhost:5201/api/health` → `{"status":"ok","service":"AdvisorIA API"}`
 
 ## Portas e Configuração
 
 ### Portas Padrão
 
-- **3000**: Servidor Node/Express (UI + BFF)
-- **5200**: Backend Python (FastAPI/Uvicorn)
+- **3001**: Servidor Node/Express (UI + BFF)
+- **5201**: Backend Python (FastAPI/Uvicorn)
 
 ### Resolução de Conflitos
 
@@ -69,11 +72,11 @@ Se portas estiverem ocupadas:
 
 ```bash
 # Liberar portas
-lsof -ti :3000 | xargs -r kill -9
-lsof -ti :5200 | xargs -r kill -9
+lsof -ti :3001 | xargs -r kill -9
+lsof -ti :5201 | xargs -r kill -9
 
 # Ou usar portas alternativas
-PORT=3001 PY_PORT=5300 npm run dev
+PORT=3002 PY_PORT=5202 npm run dev
 ```
 
 ## Deploy em Railway/Similar

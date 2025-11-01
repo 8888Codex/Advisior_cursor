@@ -28,10 +28,24 @@ CATEGORY_METADATA = {
 
 @router.get("/api/experts", response_model=List[Expert])
 async def get_experts(category: Optional[str] = None):
-    experts = await storage.get_experts()
-    if category:
-        experts = [e for e in experts if e.category.value == category]
-    return experts
+    try:
+        experts = await storage.get_experts()
+        print(f"[Experts Router] get_experts called. Found {len(experts)} experts. Category filter: {category}")
+        
+        if len(experts) == 0:
+            print("[Experts Router] ⚠️  WARNING: No experts found! Check if seeding completed successfully.")
+            return []
+        
+        if category:
+            experts = [e for e in experts if e.category.value == category]
+            print(f"[Experts Router] After category filter: {len(experts)} experts")
+        
+        return experts
+    except Exception as e:
+        print(f"[Experts Router] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar experts: {str(e)}")
 
 @router.get("/api/categories", response_model=List[CategoryInfo])
 async def get_categories():
@@ -80,3 +94,13 @@ async def create_expert(request: Request, data: ExpertCreate):
 @router.post("/api/experts/{expert_id}/avatar", status_code=501)
 async def upload_expert_avatar_placeholder():
     return {"message": "Endpoint de upload de avatar ainda não foi movido para o roteador."}
+
+@router.get("/api/experts/debug")
+async def debug_experts():
+    """Endpoint de diagnóstico para verificar experts"""
+    experts = await storage.get_experts()
+    return {
+        "count": len(experts),
+        "experts": [{"id": e.id, "name": e.name, "title": e.title} for e in experts[:5]],  # Primeiros 5
+        "storage_type": type(storage).__name__
+    }

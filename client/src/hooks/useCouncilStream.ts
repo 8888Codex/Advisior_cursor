@@ -30,10 +30,11 @@ export interface CouncilStreamState {
 interface UseCouncilStreamProps {
   problem: string;
   expertIds: string[];
+  personaId?: string;  // NOVO: personaId obrigatório
   enabled: boolean;
 }
 
-export function useCouncilStream({ problem, expertIds, enabled }: UseCouncilStreamProps) {
+export function useCouncilStream({ problem, expertIds, personaId, enabled }: UseCouncilStreamProps) {
   const [state, setState] = useState<CouncilStreamState>({
     isStreaming: false,
     expertStatuses: new Map(),
@@ -110,13 +111,18 @@ export function useCouncilStream({ problem, expertIds, enabled }: UseCouncilStre
       params.append("problem", problem);
       expertIds.forEach((id) => params.append("expertIds", id));
 
+      // Validar persona antes de iniciar
+      if (!personaId) {
+        throw new Error("personaId é obrigatório para análise do conselho");
+      }
+
       // Use fetch with SSE for POST data
       const response = await fetch("/api/council/analyze-stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ problem, expertIds }),
+        body: JSON.stringify({ problem, expertIds, personaId }),
       });
 
       if (!response.ok) {

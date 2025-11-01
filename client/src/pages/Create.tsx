@@ -48,10 +48,12 @@ export default function Create() {
       
       setCloneStep("synthesizing");
       
+      // Timeout maior para auto-clone (90 segundos - pode fazer pesquisa Perplexity)
       return await apiRequestJson<any>("/api/experts/auto-clone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        timeout: 90000, // 90 segundos para auto-clone (inclui pesquisa)
       });
     },
     onSuccess: (expertData) => {
@@ -129,6 +131,7 @@ export default function Create() {
       
       // For testing, we'll use Claude directly with the generated system prompt
       // This avoids persisting temporary conversations
+      // Timeout maior para test-chat (60 segundos)
       const response = await apiRequestJson<{ response: string }>("/api/experts/test-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,6 +140,7 @@ export default function Create() {
           message: message,
           history: testMessages
         }),
+        timeout: 60000, // 60 segundos para test-chat
       });
       
       return response.response;

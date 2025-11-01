@@ -20,6 +20,11 @@ import { motion } from "framer-motion";
 import { ExpertSelector } from "@/components/council/ExpertSelector";
 import { CouncilResultDisplay } from "@/components/council/CouncilResultDisplay";
 import { PreferencesSettings } from "@/components/settings/PreferencesSettings";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 interface Expert {
   id: string;
@@ -41,6 +46,7 @@ interface ExpertRecommendation {
 interface CouncilAnalysis {
   id: string;
   problem: string;
+  personaId?: string;
   contributions: Array<{
     expertId: string;
     expertName: string;
@@ -49,15 +55,28 @@ interface CouncilAnalysis {
     recommendations: string[];
   }>;
   consensus: string;
+  actionPlan?: any;
+}
+
+interface Persona {
+  id: string;
+  name: string;
+  researchMode: "quick" | "strategic";
 }
 
 export default function TestCouncil() {
   const [problem, setProblem] = useState("");
   const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
   const [useStreaming, setUseStreaming] = useState(true); // Auto-enable for 2+ experts
 
   const { data: experts = [], isLoading: loadingExperts } = useQuery<Expert[]>({
     queryKey: ["/api/experts"],
+  });
+
+  // Buscar personas
+  const { data: personas = [], isLoading: loadingPersonas } = useQuery<Persona[]>({
+    queryKey: ["/api/personas"],
   });
 
   // Debounce problem input for recommendations (800ms delay)
@@ -88,12 +107,13 @@ export default function TestCouncil() {
   const streamState = useCouncilStream({
     problem: problem.trim(),
     expertIds: selectedExperts,
+    personaId: selectedPersonaId,  // NOVO: passar personaId
     enabled: streamingEnabled,
   });
 
   // Traditional mutation (non-streaming)
   const analyzeMutation = useMutation({
-    mutationFn: async (data: { problem: string; expertIds: string[] }) => {
+    mutationFn: async (data: { problem: string; personaId: string; expertIds: string[] }) => {
       const response = await apiRequest("/api/council/analyze", {
         method: "POST",
         body: JSON.stringify(data),
@@ -134,14 +154,25 @@ export default function TestCouncil() {
   const handleSubmit = async () => {
     if (!problem.trim()) return;
     if (selectedExperts.length === 0) return;
+    
+    // Validar persona (OBRIGATÓRIA)
+    if (!selectedPersonaId) {
+      toast({
+        title: "Persona obrigatória",
+        description: "Você precisa selecionar uma persona antes de usar o conselho. Crie uma persona na página de Personas.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (useStreaming) {
-      // Use SSE streaming
+      // Use SSE streaming (TODO: adicionar personaId ao streaming também)
       setStreamingEnabled(true);
     } else {
       // Use traditional mutation
       analyzeMutation.mutate({
         problem: problem.trim(),
+        personaId: selectedPersonaId,
         expertIds: selectedExperts,
       });
     }
@@ -170,6 +201,60 @@ export default function TestCouncil() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Forms on the left */}
         <div className="lg:col-span-3 space-y-6">
+          {/* Persona Selection - OBRIGATÓRIA */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle className="font-semibold flex items-center gap-2">
+                  Cliente Ideal (Persona)
+                  <Badge variant="destructive" className="text-xs">Obrigatório</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Selecione a persona do seu cliente ideal. As recomendações serão personalizadas para este perfil.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingPersonas ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Carregando personas...</span>
+                  </div>
+                ) : personas.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="flex items-center justify-between">
+                      <span>Você precisa criar uma persona antes de usar o conselho.</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate({ to: "/personas" })}
+                      >
+                        Criar Persona
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione uma persona..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personas.map((persona) => (
+                        <SelectItem key={persona.id} value={persona.id}>
+                          {persona.name} ({persona.researchMode === "quick" ? "Rápida" : "Estratégica"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -188,9 +273,25 @@ export default function TestCouncil() {
                   value={problem}
                   onChange={(e) => setProblem(e.target.value)}
                   className="min-h-[150px] text-base"
-                  disabled={analyzeMutation.isPending}
+                  disabled={analyzeMutation.isPending || !selectedPersonaId}
                   data-testid="input-problem"
                 />
+                <div className="flex items-center justify-between mt-2">
+                  <div className="text-xs text-muted-foreground">
+                    {problem.trim().length < 10 ? (
+                      <span className="text-destructive">
+                        Mínimo 10 caracteres ({problem.length}/10)
+                      </span>
+                    ) : (
+                      <span className="text-green-600">
+                        ✓ {problem.length} caracteres
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {problem.length > 0 && `${problem.length} caracteres`}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -323,6 +424,7 @@ export default function TestCouncil() {
               onClick={handleSubmit}
             disabled={
               !problem.trim() ||
+              !selectedPersonaId ||
               selectedExperts.length === 0 ||
               isAnalyzing
             }
@@ -345,13 +447,32 @@ export default function TestCouncil() {
           </motion.div>
 
           {analyzeMutation.isError && (
-            <Card className="border-destructive">
-              <CardContent className="pt-6">
-                <p className="text-destructive">
-                  ❌ Erro na análise: {(analyzeMutation.error as Error).message}
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="border-destructive bg-destructive/5">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-destructive mb-1">Erro na análise</p>
+                      <p className="text-sm text-destructive/80 mb-3">
+                        {(analyzeMutation.error as Error).message || "Ocorreu um erro inesperado"}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => analyzeMutation.reset()}
+                      >
+                        Tentar Novamente
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
         </div>
 

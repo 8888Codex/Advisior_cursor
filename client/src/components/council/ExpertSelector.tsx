@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Loader2, Star } from "lucide-react";
 import { motion } from "framer-motion";
+import { ExpertListSkeleton } from "@/components/skeletons/CouncilSkeleton";
 
 // Types need to be imported or defined here as well
 interface Expert {
@@ -68,9 +69,7 @@ export function ExpertSelector({
       </CardHeader>
       <CardContent>
         {loadingExperts ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ExpertListSkeleton />
         ) : (
           <TooltipProvider>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

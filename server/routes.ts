@@ -1,8 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertExpertSchema, insertConversationSchema, insertMessageSchema } from "@shared/schema";
-import { chat } from "./anthropic";
+import { insertExpertSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -99,68 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send message and get AI response
-  app.post("/api/conversations/:id/messages", async (req, res) => {
-    try {
-      const conversationId = req.params.id;
-      
-      // Validate message payload with Zod
-      const messageSchema = z.object({
-        content: z.string().min(1, "Message content is required"),
-      });
-      
-      const { content } = messageSchema.parse(req.body);
-
-      const conversation = await storage.getConversation(conversationId);
-      if (!conversation) {
-        return res.status(404).json({ error: "Conversation not found" });
-      }
-
-      const expert = await storage.getExpert(conversation.expertId);
-      if (!expert) {
-        return res.status(404).json({ error: "Expert not found" });
-      }
-
-      // Save user message
-      const userMessage = await storage.createMessage({
-        conversationId,
-        role: "user",
-        content,
-      });
-
-      // Get conversation history
-      const allMessages = await storage.getMessages(conversationId);
-      const history = allMessages
-        .filter(m => m.id !== userMessage.id)
-        .map(m => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        }));
-
-      // Get AI response
-      const aiResponse = await chat(
-        expert.systemPrompt,
-        [...history, { role: "user", content }]
-      );
-
-      // Save AI message
-      const assistantMessage = await storage.createMessage({
-        conversationId,
-        role: "assistant",
-        content: aiResponse,
-      });
-
-      res.status(201).json({
-        userMessage,
-        assistantMessage,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error processing message:", error);
-      res.status(500).json({ error: "Failed to process message" });
-    }
-  });
+  // NOTA: Esta rota foi removida - agora é tratada pelo Python backend via proxy
+  // Mantida aqui apenas como referência/documentação
+  // POST /api/conversations/:id/messages → Python backend (python_backend/routers/conversations.py)
 
   const httpServer = createServer(app);
   return httpServer;

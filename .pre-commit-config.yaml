@@ -1,0 +1,39 @@
+# Pre-commit hooks para garantir qualidade do código
+# Instale com: pip install pre-commit && pre-commit install
+
+repos:
+  # Validação de imports e integridade do sistema
+  - repo: local
+    hooks:
+      - id: validate-imports
+        name: Validar Importações do Sistema
+        entry: python3 validate_imports.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+        verbose: true
+
+  # Python formatting e linting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        files: ^python_backend/
+
+  # Remove trailing whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^client/
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: check-json
+        exclude: ^(client/|tsconfig.json)
+      - id: check-merge-conflict
+      - id: detect-private-key
+

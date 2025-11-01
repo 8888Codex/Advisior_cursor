@@ -25,6 +25,7 @@ const sidebarItems: SidebarItem[] = [
   { href: "/categories", label: "Categorias", icon: <Tag className="h-4 w-4" />, testId: "sidebar-categories" },
   { href: "/test-council", label: "Conselho Estratégico", icon: <UsersRound className="h-4 w-4" />, testId: "sidebar-council" },
   { href: "/personas", label: "Persona Builder", icon: <FileText className="h-4 w-4" />, testId: "sidebar-personas" },
+  { href: "/features", label: "Funcionalidades", icon: <Sparkles className="h-4 w-4" />, testId: "sidebar-features" },
   { href: "/create", label: "Criar Especialista", icon: <UserPlus className="h-4 w-4" />, testId: "sidebar-create" },
 ];
 

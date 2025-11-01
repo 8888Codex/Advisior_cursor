@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr, validator
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict, Any
 from datetime import datetime
 from enum import Enum
 import re
@@ -99,96 +99,234 @@ class ExpertCreate(BaseModel):
         if len(v) > 100:
             raise ValueError('Name must be less than 100 characters')
         return v
-    
-    @validator('title')
-    def validate_title_length(cls, v):
-        """Validate title length"""
-        if len(v) > 150:
-            raise ValueError('Title must be less than 150 characters')
-        return v
+
+# =============================================================================
+# TASK MODELS (Background Tasks)
+# =============================================================================
+
+class TaskStatus(str, Enum):
+    """Status of a background task"""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+class TaskType(str, Enum):
+    """Type of background task"""
+    COUNCIL_ANALYSIS = "council_analysis"
+    COUNCIL_CHAT_MESSAGE = "council_chat_message"
+    EXPERT_CHAT_MESSAGE = "expert_chat_message"
+
+class BackgroundTask(BaseModel):
+    """Represents a background task"""
+    id: str
+    userId: str
+    taskType: TaskType
+    status: TaskStatus
+    progress: int = Field(default=0, ge=0, le=100)  # 0-100
+    result: Optional[Dict[str, Any]] = None  # Task result (varies by type)
+    error: Optional[str] = None  # Error message if failed
+    metadata: Optional[Dict[str, Any]] = None  # Additional metadata
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    completedAt: Optional[datetime] = None
+
+class TaskCreate(BaseModel):
+    """Request to create a new background task"""
+    taskType: TaskType
+    metadata: Optional[Dict[str, Any]] = None
+
+class TaskUpdate(BaseModel):
+    """Update task status/progress"""
+    status: Optional[TaskStatus] = None
+    progress: Optional[int] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+# =============================================================================
+# CONVERSATION MODELS
+# =============================================================================
 
 class Conversation(BaseModel):
+    """Conversation model"""
     id: str
+    userId: str
     expertId: str
     title: str
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     updatedAt: datetime = Field(default_factory=datetime.utcnow)
 
 class ConversationCreate(BaseModel):
+    """Request to create a new conversation"""
     expertId: str
-    title: str
+    title: Optional[str] = None
 
 class Message(BaseModel):
+    """Message model"""
     id: str
     conversationId: str
     role: Literal["user", "assistant"]
     content: str
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-
-class MessageCreate(BaseModel):
-    conversationId: str
-    role: Literal["user", "assistant"]
-    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class MessageSend(BaseModel):
+    """Request to send a message"""
     content: str
 
 class MessageResponse(BaseModel):
-    userMessage: Message
-    assistantMessage: Message
+    """Response after sending a message"""
+    message: Message
 
-class BusinessProfile(BaseModel):
+# =============================================================================
+# PERSONA MODELS
+# =============================================================================
+
+class Persona(BaseModel):
+    """Persona model - represents ideal client profile"""
     id: str
-    userId: str  # Will use session/auth later
-    companyName: str
-    industry: str
-    companySize: str  # "1-10", "11-50", "51-200", "201-1000", "1000+"
-    targetAudience: str
-    mainProducts: str
-    channels: List[str]  # ["online", "retail", "b2b", "marketplace"]
-    budgetRange: str  # "< $10k/month", "$10k-$50k/month", "$50k-$100k/month", "> $100k/month"
-    primaryGoal: str  # "growth", "positioning", "retention", "launch"
-    mainChallenge: str
-    timeline: str  # "immediate", "3-6 months", "6-12 months", "long-term"
+    userId: str
+    name: str
+    researchMode: Literal["quick", "strategic"]
+    demographics: Optional[Dict[str, Any]] = None
+    psychographics: Optional[Dict[str, Any]] = None
+    painPoints: List[str] = []
+    goals: List[str] = []
+    values: List[str] = []
+    contentPreferences: Optional[Dict[str, Any]] = None
+    behavioralPatterns: Optional[Dict[str, Any]] = None
+    communities: List[str] = []
+    researchData: Optional[Dict[str, Any]] = None
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     updatedAt: datetime = Field(default_factory=datetime.utcnow)
 
-class BusinessProfileCreate(BaseModel):
-    companyName: str
-    industry: str
-    companySize: str
-    targetAudience: str
-    mainProducts: str
-    channels: List[str]
-    budgetRange: str
-    primaryGoal: str
-    mainChallenge: str
-    timeline: str
+class PersonaCreate(BaseModel):
+    """Request to create a new persona"""
+    name: str
+    researchMode: Literal["quick", "strategic"]
+    demographics: Optional[Dict[str, Any]] = None
+    psychographics: Optional[Dict[str, Any]] = None
+    painPoints: List[str] = []
+    goals: List[str] = []
+    values: List[str] = []
+    contentPreferences: Optional[Dict[str, Any]] = None
+    behavioralPatterns: Optional[Dict[str, Any]] = None
+    communities: List[str] = []
+    researchData: Optional[Dict[str, Any]] = None
 
-class AgentContribution(BaseModel):
-    """Individual expert's contribution to council analysis"""
+class PersonaModern(BaseModel):
+    """Modern persona model with all fields"""
+    id: str
+    userId: str
+    name: str
+    researchMode: Literal["quick", "strategic"]
+    demographics: Optional[Dict[str, Any]] = None
+    psychographics: Optional[Dict[str, Any]] = None
+    painPoints: List[str] = []
+    goals: List[str] = []
+    values: List[str] = []
+    contentPreferences: Optional[Dict[str, Any]] = None
+    behavioralPatterns: Optional[Dict[str, Any]] = None
+    communities: List[str] = []
+    researchData: Optional[Dict[str, Any]] = None
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
+# =============================================================================
+# COUNCIL MODELS
+# =============================================================================
+
+class ExpertContribution(BaseModel):
+    """Contribution from a single expert"""
     expertId: str
     expertName: str
     analysis: str
     keyInsights: List[str]
     recommendations: List[str]
 
-class CouncilAnalysis(BaseModel):
-    """Complete council analysis with all expert contributions"""
+class Action(BaseModel):
+    """Action item in action plan"""
     id: str
-    userId: str
+    title: str
+    description: str
+    responsible: str
+    priority: Literal["alta", "média", "baixa"]
+    estimatedTime: str
+    tools: List[str] = []
+    steps: List[str] = []
+
+class Phase(BaseModel):
+    """Phase in action plan"""
+    phaseNumber: int
+    name: str
+    duration: str
+    objectives: List[str]
+    actions: List[Action]
+    dependencies: List[str] = []
+    deliverables: List[str] = []
+
+class ActionPlan(BaseModel):
+    """Complete action plan"""
+    phases: List[Phase]
+    totalDuration: str
+    estimatedBudget: Optional[str] = None
+    successMetrics: List[str] = []
+
+class CouncilAnalysis(BaseModel):
+    """Council analysis result"""
+    id: str
     problem: str
-    profileId: Optional[str] = None  # BusinessProfile ID if used
-    marketResearch: Optional[str] = None  # Perplexity findings
-    contributions: List[AgentContribution]
-    consensus: str  # Synthesized final recommendation
-    citations: List[str] = []  # From Perplexity
+    personaId: Optional[str] = None
+    contributions: List[ExpertContribution]
+    consensus: str
+    actionPlan: Optional[ActionPlan] = None
     createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 class CouncilAnalysisCreate(BaseModel):
-    """Request payload for council analysis"""
+    """Request to create a council analysis"""
     problem: str
-    expertIds: Optional[List[str]] = None  # If None, use all 8 legends
+    personaId: str  # OBRIGATÓRIA
+    expertIds: List[str]
+
+class CouncilConversation(BaseModel):
+    """Conversation with council of experts"""
+    id: str
+    userId: str
+    personaId: str
+    problem: str
+    expertIds: List[str]
+    analysisId: Optional[str] = None  # ID da análise inicial que gerou esta conversa
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
+class CouncilConversationCreate(BaseModel):
+    """Request to create a new council conversation"""
+    problem: str
+    personaId: str
+    expertIds: List[str]
+    analysisId: Optional[str] = None  # ID da análise inicial (opcional)
+
+class MessageSend(BaseModel):
+    """Request to send a message to the council"""
+    content: str
+
+class MessageReaction(BaseModel):
+    """Reaction from one expert to another's message"""
+    expertId: str
+    expertName: str
+    type: Literal["agree", "disagree", "add", "question"]
+    content: Optional[str] = None  # Additional comment
+
+class CouncilMessage(BaseModel):
+    """Message in a council conversation"""
+    id: str
+    conversationId: str
+    expertId: Optional[str] = None  # None = user message
+    expertName: Optional[str] = None
+    content: str
+    role: Literal["user", "expert", "system"]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    reactions: List[MessageReaction] = []
 
 class ExpertRecommendation(BaseModel):
     """Single expert recommendation with relevance score and justification"""
@@ -206,52 +344,20 @@ class RecommendExpertsResponse(BaseModel):
     recommendations: List[ExpertRecommendation]
 
 class AutoCloneRequest(BaseModel):
-    """Request to auto-clone a cognitive expert from minimal input"""
-    targetName: str
-    context: Optional[str] = None  # Optional additional context
+    """Request to automatically clone an expert based on input"""
+    input: str  # User's input to analyze
+    targetExpertId: Optional[str] = None  # Optional: target expert to clone from
 
+class AutoCloneResponse(BaseModel):
+    """Response from auto clone request"""
+    expertId: str
+
+# Category Info for frontend display
 class CategoryInfo(BaseModel):
-    """Category metadata with expert count"""
-    id: str  # CategoryType value
-    name: str  # Display name in Portuguese
-    description: str  # Short description
-    icon: str  # Lucide icon name suggestion
-    color: str  # Tailwind color class (e.g., "violet", "emerald")
-    expertCount: int  # Number of experts in this category
-
-class Persona(BaseModel):
-    """User persona created from strategic research"""
+    """Category information for displaying expert categories"""
     id: str
-    userId: str
     name: str
-    researchMode: Literal["quick", "strategic"]
-    
-    # Core Demographics
-    demographics: dict = {}
-    
-    # Psychographics
-    psychographics: dict = {}
-    
-    # Pain Points & Goals
-    painPoints: List[str] = []
-    goals: List[str] = []
-    values: List[str] = []
-    
-    # Content & Behavioral Patterns
-    contentPreferences: dict = {}
-    communities: List[str] = []
-    behavioralPatterns: dict = {}
-    
-    # Raw Research Data (Reddit, YouTube, Perplexity)
-    researchData: dict = {}
-    
-    # Timestamps
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
-
-class PersonaCreate(BaseModel):
-    """Request payload for persona creation"""
-    mode: Literal["quick", "strategic"]
-    targetDescription: str  # "Empreendedores de e-commerce no Brasil"
-    industry: Optional[str] = None
-    additionalContext: Optional[str] = None
+    description: str
+    icon: str
+    color: str
+    expertCount: int

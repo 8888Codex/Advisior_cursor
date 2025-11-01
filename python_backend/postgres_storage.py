@@ -7,7 +7,7 @@ import json
 
 from python_backend.models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
-    Message, MessageCreate, BusinessProfile, BusinessProfileCreate,
+    Message, MessageSend,
     CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate
 )
 from python_backend.models_persona import PersonaModern
@@ -210,54 +210,287 @@ class PostgresStorage:
     # EXPERT OPERATIONS
     async def create_expert(self, data: ExpertCreate, expert_id: Optional[str] = None) -> Expert:
         """Creates an expert in the database."""
+        from python_backend.models import ExpertType, CategoryType
+        import asyncpg
+        
         if expert_id is None:
             expert_id = str(uuid.uuid4())
         
+        # Garantir que a tabela experts existe
+        await self._ensure_experts_table()
+        
+        # Serializar expertise como JSON
+        expertise_json = json.dumps(data.expertise) if isinstance(data.expertise, list) else data.expertise
+        
         query = """
             INSERT INTO experts (id, name, title, expertise, bio, "systemPrompt", avatar, "expertType", category)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
             RETURNING *;
         """
-        record = await self._fetchrow(
-            query, expert_id, data.name, data.title, data.expertise, data.bio,
-            data.systemPrompt, data.avatar, data.expertType.value, data.category.value
-        )
-        return Expert(**dict(record))
+        
+        try:
+            record = await self._fetchrow(
+                query, expert_id, data.name, data.title, expertise_json, data.bio,
+                data.systemPrompt, data.avatar, data.expertType.value, data.category.value
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            # Tabela não existe, criar e tentar novamente
+            await self._create_experts_table()
+            record = await self._fetchrow(
+                query, expert_id, data.name, data.title, expertise_json, data.bio,
+                data.systemPrompt, data.avatar, data.expertType.value, data.category.value
+            )
+        
+        # Convert record to dict and handle field name mapping
+        expert_dict = dict(record)
+        
+        # Map database fields to Expert model fields
+        mapped_dict = {
+            "id": str(expert_dict.get("id", "")),
+            "name": expert_dict.get("name", ""),
+            "title": expert_dict.get("title", ""),
+            "expertise": expert_dict.get("expertise", []),
+            "bio": expert_dict.get("bio", ""),
+            "systemPrompt": expert_dict.get("systemPrompt") or expert_dict.get("system_prompt", ""),
+            "avatar": expert_dict.get("avatar"),
+            "expertType": ExpertType(expert_dict.get("expertType") or expert_dict.get("expert_type", "high_fidelity")),
+            "category": CategoryType(expert_dict.get("category", "marketing")),
+            "createdAt": expert_dict.get("createdAt") or expert_dict.get("created_at") or datetime.utcnow()
+        }
+        
+        return Expert(**mapped_dict)
 
     async def get_expert(self, expert_id: str) -> Optional[Expert]:
         """Fetches a single expert by ID."""
-        record = await self._fetchrow("SELECT * FROM experts WHERE id = $1", expert_id)
-        return Expert(**dict(record)) if record else None
+        from python_backend.models import ExpertType, CategoryType
+        import asyncpg
+        
+        # Garantir que a tabela existe
+        await self._ensure_experts_table()
+        
+        try:
+            record = await self._fetchrow("SELECT * FROM experts WHERE id = $1", expert_id)
+        except asyncpg.exceptions.UndefinedTableError:
+            await self._create_experts_table()
+            return None
+            
+        if not record:
+            return None
+        
+        # Convert record to dict and handle field name mapping
+        expert_dict = dict(record)
+        
+        # Parse expertise from JSON if needed
+        expertise_data = expert_dict.get("expertise", [])
+        if isinstance(expertise_data, str):
+            try:
+                expertise_data = json.loads(expertise_data)
+            except:
+                expertise_data = []
+        elif expertise_data is None:
+            expertise_data = []
+        
+        # Map database fields to Expert model fields
+        # Handle both camelCase (quoted) and snake_case field names
+        mapped_dict = {
+            "id": str(expert_dict.get("id", "")),
+            "name": expert_dict.get("name", ""),
+            "title": expert_dict.get("title", ""),
+            "expertise": expertise_data,
+            "bio": expert_dict.get("bio", ""),
+            "systemPrompt": expert_dict.get("systemPrompt") or expert_dict.get("system_prompt", ""),
+            "avatar": expert_dict.get("avatar"),
+            "expertType": ExpertType(expert_dict.get("expertType") or expert_dict.get("expert_type", "high_fidelity")),
+            "category": CategoryType(expert_dict.get("category", "marketing")),
+            "createdAt": expert_dict.get("createdAt") or expert_dict.get("created_at") or datetime.utcnow()
+        }
+        
+        return Expert(**mapped_dict)
+
+    async def _ensure_experts_table(self):
+        """Ensure experts table exists, create if not."""
+        try:
+            check_query = """
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'experts'
+                );
+            """
+            exists_record = await self._fetchrow(check_query)
+            exists = exists_record[0] if exists_record else False
+            
+            if not exists:
+                await self._create_experts_table()
+        except Exception as e:
+            print(f"[PostgresStorage] Warning checking experts table: {e}")
+            # Try to create anyway
+            try:
+                await self._create_experts_table()
+            except:
+                pass
+    
+    async def _create_experts_table(self):
+        """Create experts table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS experts (
+                id VARCHAR(255) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                expertise JSONB NOT NULL DEFAULT '[]'::jsonb,
+                bio TEXT NOT NULL,
+                "systemPrompt" TEXT NOT NULL,
+                avatar VARCHAR(500),
+                "expertType" VARCHAR(50) NOT NULL DEFAULT 'high_fidelity',
+                category VARCHAR(50) NOT NULL DEFAULT 'marketing',
+                "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        """
+        await self._execute(query)
+        print("[PostgresStorage] Created experts table.")
 
     async def get_experts(self) -> List[Expert]:
         """Fetches all experts from the database."""
-        records = await self._fetch("SELECT * FROM experts ORDER BY name")
-        return [Expert(**dict(record)) for record in records]
+        from python_backend.models import ExpertType, CategoryType
+        import asyncpg
+        
+        # Garantir que a tabela existe
+        await self._ensure_experts_table()
+        
+        try:
+            records = await self._fetch("SELECT * FROM experts ORDER BY name")
+        except asyncpg.exceptions.UndefinedTableError:
+            # Tabela não existe, criar e retornar vazio
+            await self._create_experts_table()
+            return []
+        
+        experts = []
+        for record in records:
+            try:
+                # Convert record to dict and handle field name mapping
+                expert_dict = dict(record)
+                
+                # Parse expertise from JSON if needed
+                expertise_data = expert_dict.get("expertise", [])
+                if isinstance(expertise_data, str):
+                    try:
+                        expertise_data = json.loads(expertise_data)
+                    except:
+                        expertise_data = []
+                elif expertise_data is None:
+                    expertise_data = []
+                
+                # Map database fields to Expert model fields
+                mapped_dict = {
+                    "id": str(expert_dict.get("id", "")),
+                    "name": expert_dict.get("name", ""),
+                    "title": expert_dict.get("title", ""),
+                    "expertise": expertise_data,
+                    "bio": expert_dict.get("bio", ""),
+                    "systemPrompt": expert_dict.get("systemPrompt") or expert_dict.get("system_prompt", ""),
+                    "avatar": expert_dict.get("avatar"),
+                    "expertType": ExpertType(expert_dict.get("expertType") or expert_dict.get("expert_type", "high_fidelity")),
+                    "category": CategoryType(expert_dict.get("category", "marketing")),
+                    "createdAt": expert_dict.get("createdAt") or expert_dict.get("created_at") or datetime.utcnow()
+                }
+                
+                expert = Expert(**mapped_dict)
+                experts.append(expert)
+            except Exception as e:
+                print(f"[PostgresStorage] Error converting expert record to Expert model: {e}")
+                print(f"[PostgresStorage] Record data: {dict(record)}")
+                import traceback
+                traceback.print_exc()
+                # Skip this expert and continue
+                continue
+        
+        return experts
     
     async def update_expert_avatar(self, expert_id: str, avatar_path: str) -> Optional[Expert]:
+        from python_backend.models import ExpertType, CategoryType
         query = """
             UPDATE experts SET avatar = $2, "updatedAt" = NOW()
             WHERE id = $1 RETURNING *;
         """
         record = await self._fetchrow(query, expert_id, avatar_path)
-        return Expert(**dict(record)) if record else None
+        if not record:
+            return None
+        
+        # Convert record to dict and handle field name mapping
+        expert_dict = dict(record)
+        
+        # Map database fields to Expert model fields
+        mapped_dict = {
+            "id": str(expert_dict.get("id", "")),
+            "name": expert_dict.get("name", ""),
+            "title": expert_dict.get("title", ""),
+            "expertise": expert_dict.get("expertise", []),
+            "bio": expert_dict.get("bio", ""),
+            "systemPrompt": expert_dict.get("systemPrompt") or expert_dict.get("system_prompt", ""),
+            "avatar": expert_dict.get("avatar"),
+            "expertType": ExpertType(expert_dict.get("expertType") or expert_dict.get("expert_type", "high_fidelity")),
+            "category": CategoryType(expert_dict.get("category", "marketing")),
+            "createdAt": expert_dict.get("createdAt") or expert_dict.get("created_at") or datetime.utcnow()
+        }
+        
+        return Expert(**mapped_dict)
 
     # CONVERSATION & MESSAGE OPERATIONS
     async def create_conversation(self, data: ConversationCreate) -> Conversation:
         """Creates a conversation in the database."""
         conversation_id = str(uuid.uuid4())
+        # Ensure userId column exists (migration)
+        try:
+            await self._execute('ALTER TABLE conversations ADD COLUMN IF NOT EXISTS "userId" VARCHAR(255) DEFAULT \'default_user\'')
+        except:
+            pass  # Column may already exist
+        
         query = """
-            INSERT INTO conversations (id, "expertId", title, "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, NOW(), NOW())
+            INSERT INTO conversations (id, "expertId", title, "userId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, 'default_user', NOW(), NOW())
             RETURNING *;
         """
         record = await self._fetchrow(query, conversation_id, data.expertId, data.title)
-        return Conversation(**dict(record))
+        
+        # Map field names (PostgreSQL may return lowercase)
+        record_dict = dict(record)
+        if "userid" in record_dict and "userId" not in record_dict:
+            record_dict["userId"] = record_dict.get("userid") or "default_user"
+        if "expertid" in record_dict and "expertId" not in record_dict:
+            record_dict["expertId"] = record_dict["expertid"]
+        if "createdat" in record_dict and "createdAt" not in record_dict:
+            record_dict["createdAt"] = record_dict["createdat"]
+        if "updatedat" in record_dict and "updatedAt" not in record_dict:
+            record_dict["updatedAt"] = record_dict["updatedat"]
+        
+        # Ensure userId exists (add default if missing)
+        if "userId" not in record_dict:
+            record_dict["userId"] = "default_user"
+        
+        return Conversation(**record_dict)
 
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Fetches a single conversation by ID."""
         record = await self._fetchrow("SELECT * FROM conversations WHERE id = $1", conversation_id)
-        return Conversation(**dict(record)) if record else None
+        if not record:
+            return None
+        
+        # Map field names (PostgreSQL may return lowercase)
+        record_dict = dict(record)
+        if "userid" in record_dict and "userId" not in record_dict:
+            record_dict["userId"] = record_dict.get("userid") or "default_user"
+        if "expertid" in record_dict and "expertId" not in record_dict:
+            record_dict["expertId"] = record_dict["expertid"]
+        if "createdat" in record_dict and "createdAt" not in record_dict:
+            record_dict["createdAt"] = record_dict["createdat"]
+        if "updatedat" in record_dict and "updatedAt" not in record_dict:
+            record_dict["updatedAt"] = record_dict["updatedat"]
+        
+        # Ensure userId exists
+        if "userId" not in record_dict:
+            record_dict["userId"] = "default_user"
+        
+        return Conversation(**record_dict)
 
     async def get_conversations(self, expert_id: Optional[str] = None) -> List[Conversation]:
         """Fetches conversations, optionally filtered by expert."""
@@ -268,9 +501,29 @@ class PostgresStorage:
             )
         else:
             records = await self._fetch('SELECT * FROM conversations ORDER BY "updatedAt" DESC')
-        return [Conversation(**dict(record)) for record in records]
+        
+        # Map field names for each record
+        conversations = []
+        for record in records:
+            record_dict = dict(record)
+            if "userid" in record_dict and "userId" not in record_dict:
+                record_dict["userId"] = record_dict.get("userid") or "default_user"
+            if "expertid" in record_dict and "expertId" not in record_dict:
+                record_dict["expertId"] = record_dict["expertid"]
+            if "createdat" in record_dict and "createdAt" not in record_dict:
+                record_dict["createdAt"] = record_dict["createdat"]
+            if "updatedat" in record_dict and "updatedAt" not in record_dict:
+                record_dict["updatedAt"] = record_dict["updatedat"]
+            
+            # Ensure userId exists
+            if "userId" not in record_dict:
+                record_dict["userId"] = "default_user"
+            
+            conversations.append(Conversation(**record_dict))
+        
+        return conversations
 
-    async def create_message(self, data: MessageCreate) -> Message:
+    async def create_message(self, data: MessageSend) -> Message:
         """Creates a message in the database."""
         message_id = str(uuid.uuid4())
         query = """
@@ -297,12 +550,12 @@ class PostgresStorage:
         return [Message(**dict(record)) for record in records]
 
     # BUSINESS PROFILE OPERATIONS
-    async def save_business_profile(self, user_id: str, data: BusinessProfileCreate) -> BusinessProfile:
+    async def save_business_profile(self, user_id: str, data: dict) -> dict:
         """Saves or updates a business profile."""
         # For now, return None - to be implemented when we add business_profiles table
         raise NotImplementedError
 
-    async def get_business_profile(self, user_id: str) -> Optional[BusinessProfile]:
+    async def get_business_profile(self, user_id: str) -> Optional[dict]:
         """Gets a business profile for a user."""
         # For now, return None - profiles will be implemented later
         # This allows the chat to work without profiles
@@ -368,10 +621,35 @@ class PostgresStorage:
             return None
         
         persona_dict = dict(record)
+        
         # Parse JSONB fields from string to dict
         for json_field in ['demographics', 'psychographics', 'contentPreferences', 'behavioralPatterns', 'researchData']:
             if json_field in persona_dict and isinstance(persona_dict[json_field], str):
-                persona_dict[json_field] = json.loads(persona_dict[json_field])
+                try:
+                    persona_dict[json_field] = json.loads(persona_dict[json_field])
+                except (json.JSONDecodeError, TypeError):
+                    persona_dict[json_field] = {}
+        
+        # Parse list fields that might come as strings
+        for list_field in ['painPoints', 'goals', 'values', 'communities']:
+            if list_field in persona_dict:
+                if isinstance(persona_dict[list_field], str):
+                    try:
+                        # Try to parse as JSON array
+                        parsed = json.loads(persona_dict[list_field])
+                        if isinstance(parsed, list):
+                            persona_dict[list_field] = parsed
+                        else:
+                            persona_dict[list_field] = []
+                    except (json.JSONDecodeError, TypeError):
+                        # If it's a string like '[]', convert to empty list
+                        if persona_dict[list_field] == '[]' or persona_dict[list_field] == '':
+                            persona_dict[list_field] = []
+                        else:
+                            # Single value or comma-separated, convert to list
+                            persona_dict[list_field] = [item.strip() for item in persona_dict[list_field].split(',') if item.strip()]
+                elif persona_dict[list_field] is None:
+                    persona_dict[list_field] = []
         
         return Persona(**persona_dict)
         
@@ -385,10 +663,36 @@ class PostgresStorage:
         personas = []
         for record in records:
             persona_dict = dict(record)
+            
             # Parse JSONB fields from string to dict
             for json_field in ['demographics', 'psychographics', 'contentPreferences', 'behavioralPatterns', 'researchData']:
                 if json_field in persona_dict and isinstance(persona_dict[json_field], str):
-                    persona_dict[json_field] = json.loads(persona_dict[json_field])
+                    try:
+                        persona_dict[json_field] = json.loads(persona_dict[json_field])
+                    except (json.JSONDecodeError, TypeError):
+                        persona_dict[json_field] = {}
+            
+            # Parse list fields that might come as strings
+            for list_field in ['painPoints', 'goals', 'values', 'communities']:
+                if list_field in persona_dict:
+                    if isinstance(persona_dict[list_field], str):
+                        try:
+                            # Try to parse as JSON array
+                            parsed = json.loads(persona_dict[list_field])
+                            if isinstance(parsed, list):
+                                persona_dict[list_field] = parsed
+                            else:
+                                persona_dict[list_field] = []
+                        except (json.JSONDecodeError, TypeError):
+                            # If it's a string like '[]', convert to empty list
+                            if persona_dict[list_field] == '[]' or persona_dict[list_field] == '':
+                                persona_dict[list_field] = []
+                            else:
+                                # Single value or comma-separated, convert to list
+                                persona_dict[list_field] = [item.strip() for item in persona_dict[list_field].split(',') if item.strip()]
+                    elif persona_dict[list_field] is None:
+                        persona_dict[list_field] = []
+            
             personas.append(Persona(**persona_dict))
         
         return personas
@@ -538,6 +842,317 @@ class PostgresStorage:
         """Deletes a modern persona."""
         result = await self._execute("DELETE FROM personas WHERE id = $1", persona_id)
         return result == "DELETE 1"
+    
+    # =============================================================================
+    # COUNCIL CONVERSATION OPERATIONS
+    # =============================================================================
+    
+    async def create_council_conversation(self, user_id: str, persona_id: str, problem: str, expert_ids: List[str], analysis_id: Optional[str] = None) -> 'CouncilConversation':
+        """Create a new council conversation"""
+        from python_backend.models import CouncilConversation
+        import uuid
+        
+        conversation_id = str(uuid.uuid4())
+        
+        # Insert into database (create table if needed)
+        # For now, we'll use a simple approach: store in JSON format
+        # TODO: Create proper table schema for council_conversations
+        query = """
+            INSERT INTO council_conversations (id, "userId", "personaId", problem, "expertIds", "analysisId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6, NOW(), NOW())
+            RETURNING *;
+        """
+        
+        try:
+            record = await self._fetchrow(
+                query,
+                conversation_id,
+                user_id,
+                persona_id,
+                problem,
+                json.dumps(expert_ids),
+                analysis_id  # Adicionar analysis_id no primeiro INSERT também
+            )
+            
+            # Parse expertIds from JSON
+            expert_ids_list = json.loads(record["expertIds"]) if isinstance(record["expertIds"], str) else record["expertIds"]
+            
+            # Try both case variations for field names
+            user_id_field = record.get("userId") or record.get("userid")
+            persona_id_field = record.get("personaId") or record.get("personaid")
+            expert_ids_field = record.get("expertIds") or record.get("expertids")
+            analysis_id_field = record.get("analysisId") or record.get("analysisid")
+            created_at_field = record.get("createdAt") or record.get("createdat")
+            updated_at_field = record.get("updatedAt") or record.get("updatedat")
+            
+            return CouncilConversation(
+                id=str(record["id"]),
+                userId=user_id_field,
+                personaId=persona_id_field,
+                problem=record["problem"],
+                expertIds=expert_ids_list,
+                analysisId=analysis_id_field if analysis_id_field else None,
+                createdAt=created_at_field,
+                updatedAt=updated_at_field
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            # Table doesn't exist, create it
+            await self._create_council_conversations_table()
+            # Retry the insert
+            record = await self._fetchrow(
+                query,
+                conversation_id,
+                user_id,
+                persona_id,
+                problem,
+                json.dumps(expert_ids),
+                analysis_id
+            )
+            expert_ids_list = json.loads(record["expertIds"]) if isinstance(record["expertIds"], str) else record["expertIds"]
+            
+            # Try both case variations for field names
+            user_id_field = record.get("userId") or record.get("userid")
+            persona_id_field = record.get("personaId") or record.get("personaid")
+            expert_ids_field = record.get("expertIds") or record.get("expertids")
+            analysis_id_field = record.get("analysisId") or record.get("analysisid")
+            created_at_field = record.get("createdAt") or record.get("createdat")
+            updated_at_field = record.get("updatedAt") or record.get("updatedat")
+            
+            return CouncilConversation(
+                id=str(record["id"]),
+                userId=user_id_field,
+                personaId=persona_id_field,
+                problem=record["problem"],
+                expertIds=expert_ids_list,
+                analysisId=analysis_id_field if analysis_id_field else None,
+                createdAt=created_at_field,
+                updatedAt=updated_at_field
+            )
+    
+    async def _create_council_conversations_table(self):
+        """Create council_conversations table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS council_conversations (
+                id UUID PRIMARY KEY,
+                "userId" VARCHAR(255) NOT NULL,
+                "personaId" VARCHAR(255) NOT NULL,
+                problem TEXT NOT NULL,
+                "expertIds" JSONB NOT NULL,
+                "analysisId" VARCHAR(255),
+                "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+                "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        """
+        await self._execute(query)
+    
+    async def get_council_conversation(self, conversation_id: str) -> Optional['CouncilConversation']:
+        """Get a council conversation by ID"""
+        from python_backend.models import CouncilConversation
+        
+        query = 'SELECT * FROM council_conversations WHERE id = $1'
+        try:
+            record = await self._fetchrow(query, conversation_id)
+            if not record:
+                return None
+            
+            # Parse expertIds from JSON
+            expert_ids_list = json.loads(record["expertIds"]) if isinstance(record["expertIds"], str) else record["expertIds"]
+            
+            # Try both case variations for field names
+            user_id_field = record.get("userId") or record.get("userid")
+            persona_id_field = record.get("personaId") or record.get("personaid")
+            analysis_id_field = record.get("analysisId") or record.get("analysisid")
+            created_at_field = record.get("createdAt") or record.get("createdat")
+            updated_at_field = record.get("updatedAt") or record.get("updatedat")
+            
+            return CouncilConversation(
+                id=str(record["id"]),
+                userId=user_id_field,
+                personaId=persona_id_field,
+                problem=record["problem"],
+                expertIds=expert_ids_list,
+                analysisId=analysis_id_field if analysis_id_field else None,
+                createdAt=created_at_field,
+                updatedAt=updated_at_field
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            return None
+    
+    async def get_council_conversations(self, user_id: Optional[str] = None) -> List['CouncilConversation']:
+        """Get all council conversations, optionally filtered by user"""
+        from python_backend.models import CouncilConversation
+        
+        if user_id:
+            query = 'SELECT * FROM council_conversations WHERE "userId" = $1 ORDER BY "updatedAt" DESC'
+            records = await self._fetch(query, user_id)
+        else:
+            query = 'SELECT * FROM council_conversations ORDER BY "updatedAt" DESC'
+            records = await self._fetch(query)
+        
+        conversations = []
+        for record in records:
+            expert_ids_list = json.loads(record["expertIds"]) if isinstance(record["expertIds"], str) else record["expertIds"]
+            conversations.append(CouncilConversation(
+                id=str(record["id"]),
+                userId=record["userId"],
+                personaId=record["personaId"],
+                problem=record["problem"],
+                expertIds=expert_ids_list,
+                analysisId=record.get("analysisId"),
+                createdAt=record["createdAt"],
+                updatedAt=record["updatedAt"]
+            ))
+        
+        return conversations
+    
+    async def create_council_message(self, conversation_id: str, role: str, content: str, expert_id: Optional[str] = None, expert_name: Optional[str] = None) -> 'CouncilMessage':
+        """Create a message in a council conversation"""
+        from python_backend.models import CouncilMessage
+        import uuid
+        
+        message_id = str(uuid.uuid4())
+        
+        query = """
+            INSERT INTO council_messages (id, "conversationId", "expertId", "expertName", content, role, timestamp)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            RETURNING *;
+        """
+        
+        try:
+            record = await self._fetchrow(
+                query,
+                message_id,
+                conversation_id,
+                expert_id,
+                expert_name,
+                content,
+                role
+            )
+            
+            # Update conversation timestamp
+            await self._execute(
+                'UPDATE council_conversations SET "updatedAt" = NOW() WHERE id = $1',
+                conversation_id
+            )
+            
+            # Parse reactions (default empty list)
+            reactions = []
+            if record.get("reactions"):
+                reactions = json.loads(record["reactions"]) if isinstance(record["reactions"], str) else record["reactions"]
+            
+            return CouncilMessage(
+                id=str(record["id"]),
+                conversationId=str(record["conversationId"]),
+                expertId=record["expertId"],
+                expertName=record["expertName"],
+                content=record["content"],
+                role=record["role"],
+                timestamp=record["timestamp"],
+                reactions=reactions
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            # Table doesn't exist, create it
+            await self._create_council_messages_table()
+            # Retry the insert
+            record = await self._fetchrow(
+                query,
+                message_id,
+                conversation_id,
+                expert_id,
+                expert_name,
+                content,
+                role
+            )
+            await self._execute(
+                'UPDATE council_conversations SET "updatedAt" = NOW() WHERE id = $1',
+                conversation_id
+            )
+            reactions = []
+            if record.get("reactions"):
+                reactions = json.loads(record["reactions"]) if isinstance(record["reactions"], str) else record["reactions"]
+            return CouncilMessage(
+                id=str(record["id"]),
+                conversationId=str(record["conversationId"]),
+                expertId=record["expertId"],
+                expertName=record["expertName"],
+                content=record["content"],
+                role=record["role"],
+                timestamp=record["timestamp"],
+                reactions=reactions
+            )
+    
+    async def _create_council_messages_table(self):
+        """Create council_messages table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS council_messages (
+                id UUID PRIMARY KEY,
+                "conversationId" UUID NOT NULL REFERENCES council_conversations(id) ON DELETE CASCADE,
+                "expertId" VARCHAR(255),
+                "expertName" VARCHAR(255),
+                content TEXT NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+                reactions JSONB DEFAULT '[]'::jsonb
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_council_messages_conversation ON council_messages("conversationId");
+        """
+        await self._execute(query)
+    
+    async def get_council_messages(self, conversation_id: str) -> List['CouncilMessage']:
+        """Get all messages for a council conversation"""
+        from python_backend.models import CouncilMessage
+        
+        query = 'SELECT * FROM council_messages WHERE "conversationId" = $1 ORDER BY timestamp ASC'
+        try:
+            records = await self._fetch(query, conversation_id)
+        except asyncpg.exceptions.UndefinedTableError:
+            return []
+        
+        messages = []
+        for record in records:
+            reactions = []
+            if record.get("reactions"):
+                reactions = json.loads(record["reactions"]) if isinstance(record["reactions"], str) else record["reactions"]
+            
+            messages.append(CouncilMessage(
+                id=str(record["id"]),
+                conversationId=str(record["conversationId"]),
+                expertId=record["expertId"],
+                expertName=record["expertName"],
+                content=record["content"],
+                role=record["role"],
+                timestamp=record["timestamp"],
+                reactions=reactions
+            ))
+        
+        return messages
+    
+    async def add_council_message_reaction(self, message_id: str, reaction: 'MessageReaction') -> bool:
+        """Add a reaction to a council message"""
+        from python_backend.models import MessageReaction
+        
+        # Get current message
+        message = await self._fetchrow('SELECT reactions FROM council_messages WHERE id = $1', message_id)
+        if not message:
+            return False
+        
+        # Get current reactions
+        reactions = []
+        if message.get("reactions"):
+            reactions = json.loads(message["reactions"]) if isinstance(message["reactions"], str) else message["reactions"]
+        
+        # Add new reaction
+        reactions.append(reaction.model_dump() if hasattr(reaction, 'model_dump') else reaction.dict() if hasattr(reaction, 'dict') else reaction)
+        
+        # Update message
+        await self._execute(
+            'UPDATE council_messages SET reactions = $1::jsonb WHERE id = $2',
+            json.dumps(reactions),
+            message_id
+        )
+        
+        return True
     
     def _parse_persona_modern_record(self, record: asyncpg.Record) -> PersonaModern:
         """Helper to parse a database record into PersonaModern."""

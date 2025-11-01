@@ -10,7 +10,13 @@ import re
 from typing import Dict, List, Optional, Any
 import httpx
 import asyncio
+from dotenv import load_dotenv, find_dotenv
 from anthropic import AsyncAnthropic
+
+# Carregar .env quando o módulo é importado
+_env_file = find_dotenv(usecwd=True)
+if _env_file:
+    load_dotenv(_env_file, override=True)
 
 class RedditResearchEngine:
     """
@@ -30,15 +36,24 @@ class RedditResearchEngine:
     
     def _ensure_initialized(self):
         """Lazy initialization of API clients"""
+        # Garantir que .env está carregado
+        _env_file = find_dotenv(usecwd=True)
+        if _env_file:
+            load_dotenv(_env_file, override=True)
+        
         if self._perplexity_api_key is None:
-            self._perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+            self._perplexity_api_key = os.getenv("PERPLEXITY_API_KEY") or os.environ.get("PERPLEXITY_API_KEY")
             if not self._perplexity_api_key:
                 raise ValueError("PERPLEXITY_API_KEY environment variable not set")
         
         if self._anthropic_client is None:
-            anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+            anthropic_key = os.getenv("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
             if not anthropic_key:
-                raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+                raise ValueError(
+                    "ANTHROPIC_API_KEY environment variable not set. "
+                    "Verifique se o arquivo .env existe e contém ANTHROPIC_API_KEY=sk-ant-... "
+                    "ou configure como variável de ambiente do sistema."
+                )
             self._anthropic_client = AsyncAnthropic(api_key=anthropic_key)
     
     def _get_cache_key(self, method: str, **kwargs) -> str:
