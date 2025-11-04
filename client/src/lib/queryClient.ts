@@ -81,7 +81,7 @@ export async function apiRequest(
     const res = await fetch(fullUrl, {
       ...options,
       signal: controller.signal,
-      credentials: "include",
+      credentials: "omit",  // Removido "include" para permitir CORS com wildcard
       keepalive: true,  // 🆕 Mantém requisição viva mesmo se aba não estiver em foco
     });
     
@@ -165,7 +165,7 @@ export const getQueryFn: <T>(options: {
       const fullUrl = getFullApiUrl(url);
       
       const res = await fetch(fullUrl, {
-        credentials: "include",
+        credentials: "omit",  // Removido "include" para permitir CORS com wildcard
         signal: controller.signal,
       });
       
