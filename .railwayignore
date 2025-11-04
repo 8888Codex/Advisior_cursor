@@ -1,13 +1,17 @@
-# Ignorar frontend e build artifacts
+# Build artifacts
 node_modules/
 dist/
 build/
 .next/
+
+# Frontend (NÃO enviar para Railway)
 client/
 server/
+
+# Vercel
 .vercel/
 
-# Python
+# Python virtual envs
 .venv/
 venv/
 __pycache__/
@@ -16,5 +20,9 @@ __pycache__/
 # OS
 .DS_Store
 *.log
-.env
-.local
+
+# Docs temporários
+*_AGORA.md
+DEBUG_*.md
+TEST*.md
+DEPLOY_*.md
