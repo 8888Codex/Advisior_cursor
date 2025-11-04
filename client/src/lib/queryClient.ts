@@ -49,14 +49,21 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-// Configuração da API - SIMPLES e DIRETO
-const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://advisior-cursor.onrender.com'
-  : '';
-
+// Configuração da API - HARD-CODED (sem variáveis de ambiente)
 function getFullApiUrl(path: string): string {
+  // Se já é URL completa, retorna direto
   if (path.startsWith('http')) return path;
-  if (import.meta.env.PROD) return `${API_BASE_URL}${path}`;
+  
+  // HARD-CODE: Em produção, sempre usar Render
+  // Detecta produção por hostname (não usa import.meta.env)
+  const isProduction = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('advisior-cursor'));
+  
+  if (isProduction) {
+    return `https://advisior-cursor.onrender.com${path}`;
+  }
+  
+  // Local: usa caminho relativo (proxy local)
   return path;
 }
 
