@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Users, Loader2, Target, Lightbulb, FileText, MessageCircle, CheckCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTypingDelay } from "@/hooks/useTypingDelay";
+import { useTypingDelay } from "@/hooks/useTypingDelay.ts";
 import { ActionPlanDisplay } from "./ActionPlanDisplay";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";

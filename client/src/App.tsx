@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Header } from "@/components/Header";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { GlobalErrorProvider, useGlobalError } from "@/hooks/useGlobalError";
+import { GlobalErrorProvider, useGlobalError } from "@/hooks/useGlobalError.tsx";
 import { AnimatePresence } from "framer-motion";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";

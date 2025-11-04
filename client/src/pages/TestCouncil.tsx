@@ -13,10 +13,10 @@ import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb, Settings, S
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCouncilStream } from "@/hooks/useCouncilStream";
-import { useCouncilBackground } from "@/hooks/useCouncilBackground";
-import { usePersistedState } from "@/hooks/usePersistedState";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useCouncilStream } from "@/hooks/useCouncilStream.ts";
+import { useCouncilBackground } from "@/hooks/useCouncilBackground.ts";
+import { usePersistedState } from "@/hooks/usePersistedState.ts";
+import { useDebounce } from "@/hooks/useDebounce.ts";
 import { CouncilAnimation } from "@/components/council/CouncilAnimation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExpertSelector } from "@/components/council/ExpertSelector";

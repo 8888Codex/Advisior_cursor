@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Save, RotateCcw } from "lucide-react";
-import { useUserPreferences, type UserPreferences } from "@/hooks/useUserPreferences";
+import { useUserPreferences, type UserPreferences } from "@/hooks/useUserPreferences.ts";
 import { useToast } from "@/hooks/use-toast";
 
 interface PreferencesSettingsProps {

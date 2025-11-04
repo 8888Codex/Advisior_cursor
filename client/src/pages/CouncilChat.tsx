@@ -12,7 +12,7 @@ import { Loader2, Send, Users, ArrowLeft, Sparkles, Lightbulb, Target } from "lu
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedPage } from "@/components/AnimatedPage";
-import { useCouncilChat } from "@/hooks/useCouncilChat";
+import { useCouncilChat } from "@/hooks/useCouncilChat.ts";
 
 interface Persona {
   id: string;
