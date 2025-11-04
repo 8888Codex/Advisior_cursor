@@ -1,4 +1,4 @@
-# Build artifacts
+# Build artifacts do Node
 node_modules/
 dist/
 build/
@@ -11,11 +11,11 @@ server/
 # Vercel
 .vercel/
 
-# Python virtual envs
+# Python virtual envs (NÃO ignorar python_backend!)
 .venv/
 venv/
-__pycache__/
-*.pyc
+**/__pycache__/
+**/*.pyc
 
 # OS
 .DS_Store
@@ -26,3 +26,9 @@ __pycache__/
 DEBUG_*.md
 TEST*.md
 DEPLOY_*.md
+VERCEL_*.md
+AGUARDANDO_*.md
+MISSAO_*.md
+SOLUCAO_*.md
+RAILWAY_*.sh
+test_and_seed.py
