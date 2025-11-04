@@ -28,3 +28,69 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Documentação temporária de debug
+*_AGORA.md
+DEBUG_*.md
+CORRECAO_*.md
+URGENTE_*.md
+TESTE_*.md
+CONSOLE_*.md
+CONSOLE_*.txt
+ERRO_*.md
+SOLUCAO_*.md
+
+# Arquivos de acesso temporários
+ACESSE_*.txt
+PORTA.txt
+ACESSO_*.md
+
+# Scripts temporários
+CORRIGIR_AGORA.sh
+TESTE_FINAL_*.sh
+
+# Backups e arquivos temporários
+*.bak
+.env.bak
+*_OLD.md
+LEIA_*.txt
+
+# Logs diversos
+*.log
+bringup*.log
+dev.local.log
+frontend.log
+host.fix.log
+run.now.log
+server.log
+test_*.log
+/tmp/
+
+# Análises e relatórios temporários
+ANALISE_*.md
+RELATORIO_*.md
+VALIDACAO_*.md
+IMPLEMENTACAO_*.md
+ENTREGA_*.md
+SUMARIO_*.md
+PROGRESSO_*.md
+RESUMO_*.md
+
+# Documentos de processos/planejamento temporários
+PLANO_*.md
+PROPOSTA_*.md
+REPENSANDO_*.md
+
+# Testes e outputs
+test_*.py
+test_*.html
+test_*.json
+test_*.txt
+*_output.txt
+*_output.log
+*_results.json
+
+# Arquivos de sistema/IDE
+.cursor/
+.vscode/
+.idea/

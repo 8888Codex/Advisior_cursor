@@ -21,14 +21,19 @@ env_file = find_dotenv(usecwd=True)
 if env_file:
     load_dotenv(env_file, override=True)  # override=True garante que valores do .env sobrescrevam variáveis existentes
     print(f"[ENV] Loaded .env from: {env_file}")
-    # Verify API key is loaded
+    # Verify API keys are loaded
     anthropic_key = os.getenv("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
     if anthropic_key:
         masked_key = f"{anthropic_key[:10]}...{anthropic_key[-4:]}" if len(anthropic_key) > 14 else "***"
         print(f"[ENV] ✅ ANTHROPIC_API_KEY loaded: {masked_key}")
+    
+    # Verify Perplexity API key
+    perplexity_key = os.getenv("PERPLEXITY_API_KEY") or os.environ.get("PERPLEXITY_API_KEY")
+    if perplexity_key and len(perplexity_key) > 5:
+        masked_perplexity = f"{perplexity_key[:10]}...{perplexity_key[-4:]}" if len(perplexity_key) > 14 else "pplx-***"
+        print(f"[ENV] ✅ PERPLEXITY_API_KEY loaded: {masked_perplexity}")
     else:
-        print("[ENV] ❌ ANTHROPIC_API_KEY not found in environment!")
-        print("[ENV] ⚠️  Adicione ANTHROPIC_API_KEY=sk-ant-... no arquivo .env")
+        print(f"[ENV] ⚠️  PERPLEXITY_API_KEY not found or incomplete")
 else:
     print("[ENV] ⚠️  Warning: .env file not found!")
     print("[ENV] 💡 Crie um arquivo .env na raiz com: ANTHROPIC_API_KEY=sk-ant-...")
@@ -39,12 +44,14 @@ from python_backend.models import (
     Message, MessageSend, MessageResponse,
     CouncilAnalysis, CouncilAnalysisCreate,
     RecommendExpertsRequest, RecommendExpertsResponse, ExpertRecommendation,
-    AutoCloneRequest, UserPreferencesUpdate
+    AutoCloneRequest, UserPreferencesUpdate,
+    TaskType, BackgroundTask
 )
 from python_backend.storage import storage
 from python_backend.crew_agent import LegendAgentFactory
 from python_backend.seed import seed_legends
 from python_backend.crew_council import council_orchestrator
+from python_backend.background_tasks import create_task, get_task_status, register_task_processor
 
 # Importar roteadores
 from python_backend.routers import experts as experts_router
@@ -387,7 +394,7 @@ CATEGORY_METADATA = {
 # ... (conteúdo removido) ...
 
 @app.post("/api/experts/auto-clone", response_model=ExpertCreate, status_code=200)
-@limiter.limit("3/hour")  # Max 3 clones por hora (custo alto de API)
+@limiter.limit("20/hour")  # 20 clones por hora (aumentado para desenvolvimento)
 async def auto_clone_expert(request: Request, data: AutoCloneRequest):
     """
     Auto-clone a cognitive expert from minimal input.
@@ -401,17 +408,36 @@ async def auto_clone_expert(request: Request, data: AutoCloneRequest):
         import httpx
         from anthropic import AsyncAnthropic
         
-        # Step 1: Perplexity research
+        # Step 1: Perplexity research (com fallback)
         perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
-        if not perplexity_api_key:
-            raise HTTPException(
-                status_code=503,
-                detail="Serviço de pesquisa indisponível. Configure PERPLEXITY_API_KEY."
-            )
+        use_perplexity = bool(perplexity_api_key)
         
-        # Build research query
-        context_suffix = f" Foco: {data.context}" if data.context else ""
-        research_query = f"""Pesquise informações detalhadas sobre {data.targetName}{context_suffix}.
+        if not use_perplexity:
+            print(f"[AutoClone] ⚠️ PERPLEXITY_API_KEY não configurada - usando modo FALLBACK (apenas Claude)")
+            # Modo FALLBACK: Usar conhecimento geral do Claude sem pesquisa específica
+            research_findings = f"""
+Clone Cognitivo de {data.targetName}
+
+NOTA: Esta é uma síntese baseada em conhecimento geral, sem pesquisa específica em tempo real.
+Para maior fidelidade, configure PERPLEXITY_API_KEY para pesquisa em tempo real.
+
+Contexto fornecido: {data.context or 'Nenhum contexto adicional fornecido'}
+
+Crie um system prompt EXTRACT para {data.targetName} usando conhecimento geral disponível sobre:
+- Biografia e trajetória conhecida
+- Filosofias e princípios típicos
+- Métodos e abordagens conhecidos
+- Áreas de expertise reconhecidas
+
+Se não houver conhecimento suficiente sobre esta pessoa, crie um especialista genérico baseado no contexto fornecido.
+"""
+        else:
+            print(f"[AutoClone] ✅ PERPLEXITY_API_KEY configurada - usando pesquisa em tempo real")
+        
+        if use_perplexity:
+            # Build research query
+            context_suffix = f" Foco: {data.context}" if data.context else ""
+            research_query = f"""Pesquise informações detalhadas sobre {data.targetName}{context_suffix}.
 
 Forneça:
 1. Biografia completa e trajetória profissional
@@ -423,41 +449,41 @@ Forneça:
 
 Inclua dados específicos, citações, livros publicados, e exemplos concretos."""
 
-        # Call Perplexity API
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            perplexity_response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {perplexity_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "sonar-pro",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "Você é um pesquisador especializado em biografias profissionais e análise de personalidades. Forneça informações factuais, detalhadas e específicas."
-                        },
-                        {
-                            "role": "user",
-                            "content": research_query
-                        }
-                    ],
-                    "temperature": 0.2,
-                    "search_recency_filter": "month",
-                    "return_related_questions": False
-                }
-            )
-        
-        perplexity_data = perplexity_response.json()
-        
-        # Extract research findings
-        research_findings = ""
-        if "choices" in perplexity_data and len(perplexity_data["choices"]) > 0:
-            research_findings = perplexity_data["choices"][0]["message"]["content"]
-        
-        if not research_findings:
-            raise ValueError("Nenhum resultado de pesquisa foi encontrado")
+            # Call Perplexity API (timeout 120s para pesquisas complexas)
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                perplexity_response = await client.post(
+                    "https://api.perplexity.ai/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {perplexity_api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "sonar-pro",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "Você é um pesquisador especializado em biografias profissionais e análise de personalidades. Forneça informações factuais, detalhadas e específicas."
+                            },
+                            {
+                                "role": "user",
+                                "content": research_query
+                            }
+                        ],
+                        "temperature": 0.2,
+                        "search_recency_filter": "month",
+                        "return_related_questions": False
+                    }
+                )
+            
+            perplexity_data = perplexity_response.json()
+            
+            # Extract research findings
+            research_findings = ""
+            if "choices" in perplexity_data and len(perplexity_data["choices"]) > 0:
+                research_findings = perplexity_data["choices"][0]["message"]["content"]
+            
+            if not research_findings:
+                raise ValueError("Nenhum resultado de pesquisa foi encontrado")
         
         # Step 2: Claude synthesis into EXTRACT system prompt
         anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -725,8 +751,9 @@ RETORNE APENAS O SYSTEM PROMPT COMPLETO COM OS 20 PONTOS:"""
 
         claude_response = await anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=8192,
+            max_tokens=16000,  # Aumentado para EXTRACT completo de 20 pontos
             temperature=0.3,
+            timeout=180.0,  # 3 minutos para gerar system prompt complexo
             messages=[{
                 "role": "user",
                 "content": synthesis_prompt
@@ -1621,7 +1648,7 @@ E-mail Marketing: [insight específico aqui]
 
 # Council Analysis endpoints
 @app.post("/api/council/analyze", response_model=CouncilAnalysis)
-@limiter.limit("5/hour")  # Max 5 análises de conselho por hora (muito custoso)
+@limiter.limit("50/hour")  # Max 50 análises de conselho por hora (ajustado para desenvolvimento)
 async def create_council_analysis(request: Request, data: CouncilAnalysisCreate):
     """
     Run collaborative analysis by council of marketing legend experts.
@@ -1673,8 +1700,12 @@ async def create_council_analysis(request: Request, data: CouncilAnalysisCreate)
             persona=persona
         )
         
-        # Save analysis (temporarily disabled until table is created)
-        # await storage.save_council_analysis(analysis)
+        # Salvar análise no banco para uso posterior no chat
+        try:
+            await storage.save_council_analysis(analysis)
+            print(f"[Council] ✅ Análise salva no banco: {analysis.id}")
+        except Exception as save_error:
+            print(f"[Council] ⚠️ Erro ao salvar análise (não crítico): {save_error}")
         
         return analysis
     
@@ -1707,7 +1738,7 @@ async def create_council_analysis(request: Request, data: CouncilAnalysisCreate)
         raise HTTPException(status_code=500, detail=f"Failed to create council analysis: {str(e)}")
 
 @app.post("/api/council/analyze-stream")
-@limiter.limit("5/hour")  # Max 5 análises de conselho por hora (muito custoso)
+@limiter.limit("50/hour")  # Max 50 análises de conselho por hora (ajustado para desenvolvimento)
 async def create_council_analysis_stream(request: Request, data: CouncilAnalysisCreate):
     """
     Run collaborative analysis with Server-Sent Events streaming.
@@ -1887,8 +1918,12 @@ async def create_council_analysis_stream(request: Request, data: CouncilAnalysis
                 actionPlan=action_plan
             )
             
-            # Save analysis (temporarily disabled until table is created)
-            # await storage.save_council_analysis(analysis)
+            # Salvar análise no banco para uso posterior no chat
+            try:
+                await storage.save_council_analysis(analysis)
+                print(f"[Council Stream] ✅ Análise salva no banco: {analysis.id}")
+            except Exception as save_error:
+                print(f"[Council Stream] ⚠️ Erro ao salvar análise (não crítico): {save_error}")
             
             # Send final complete event
             print(f"[Council Stream] Sending analysis_complete event")
@@ -1952,12 +1987,310 @@ async def get_council_analysis(analysis_id: str):
     return analysis
 
 # ============================================================================
+# BACKGROUND COUNCIL ANALYSIS
+# ============================================================================
+
+async def _process_council_analysis_background(metadata: dict):
+    """
+    Processa análise do conselho em background.
+    Usado pelo sistema de background tasks.
+    """
+    try:
+        problem = metadata.get("problem")
+        expert_ids = metadata.get("expertIds", [])
+        persona_id = metadata.get("personaId")
+        user_id = metadata.get("userId", "default_user")
+        
+        print(f"[Background] Iniciando análise do conselho para: {problem[:50]}...")
+        
+        # Validar persona
+        persona = await storage.get_persona(persona_id)
+        if not persona:
+            raise ValueError(f"Persona {persona_id} não encontrada")
+        
+        # Get user's business profile
+        profile = await storage.get_business_profile(user_id)
+        
+        # Get experts
+        if expert_ids:
+            experts = []
+            for expert_id in expert_ids:
+                expert = await storage.get_expert(expert_id)
+                if expert:
+                    experts.append(expert)
+        else:
+            experts = await storage.get_experts()
+        
+        if not experts:
+            raise ValueError("Nenhum especialista disponível")
+        
+        print(f"[Background] Analisando com {len(experts)} especialistas...")
+        
+        # Run council analysis (synchronous, sequentially)
+        analysis = await council_orchestrator.analyze_problem(
+            user_id=user_id,
+            problem=problem,
+            experts=experts,
+            profile=profile,
+            persona=persona
+        )
+        
+        print(f"[Background] Análise completada: {analysis.id}")
+        
+        # Salvar análise no banco para uso posterior no chat
+        try:
+            await storage.save_council_analysis(analysis)
+            print(f"[Background] ✅ Análise salva no banco: {analysis.id}")
+        except Exception as save_error:
+            print(f"[Background] ⚠️ Erro ao salvar análise (não crítico): {save_error}")
+        
+        # Return result as dict
+        return {
+            "id": analysis.id,
+            "problem": analysis.problem,
+            "personaId": analysis.personaId,
+            "contributions": [
+                {
+                    "expertId": c.expertId,
+                    "expertName": c.expertName,
+                    "analysis": c.analysis,
+                    "keyInsights": c.keyInsights,
+                    "recommendations": c.recommendations
+                }
+                for c in analysis.contributions
+            ],
+            "consensus": analysis.consensus,
+            "actionPlan": analysis.actionPlan.model_dump() if analysis.actionPlan else None
+        }
+        
+    except Exception as e:
+        print(f"[Background] Erro na análise do conselho: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+# Register the processor on startup
+@app.on_event("startup")
+async def register_council_processor():
+    """Registra o processador de análise do conselho"""
+    register_task_processor(TaskType.COUNCIL_ANALYSIS, _process_council_analysis_background)
+    print("[Startup] ✓ Processador de análise do conselho registrado")
+
+@app.post("/api/council/analyze-async", response_model=BackgroundTask)
+@limiter.limit("50/hour")  # Max 50 análises de conselho por hora (ajustado para desenvolvimento)
+async def create_council_analysis_async(request: Request, data: CouncilAnalysisCreate):
+    """
+    Inicia análise do conselho em background e retorna imediatamente com task_id.
+    Cliente deve fazer polling em /api/tasks/{task_id} para verificar progresso.
+    """
+    user_id = "default_user"
+    
+    # Validar persona
+    if not data.personaId:
+        raise HTTPException(status_code=400, detail="personaId é obrigatório")
+    
+    persona = await storage.get_persona(data.personaId)
+    if not persona:
+        raise HTTPException(status_code=404, detail=f"Persona {data.personaId} não encontrada")
+    
+    # Criar task em background
+    task = await create_task(
+        user_id=user_id,
+        task_type=TaskType.COUNCIL_ANALYSIS,
+        metadata={
+            "problem": data.problem,
+            "expertIds": data.expertIds,
+            "personaId": data.personaId,
+            "userId": user_id
+        }
+    )
+    
+    print(f"[Council Async] Task criada: {task.id}")
+    
+    return task
+
+@app.get("/api/tasks/{task_id}", response_model=BackgroundTask)
+async def get_task(task_id: str):
+    """
+    Obtém o status de uma task em background.
+    Cliente faz polling deste endpoint até status ser 'completed' ou 'failed'.
+    """
+    task = await get_task_status(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task não encontrada")
+    return task
+
+# ============================================================================
 # PERSONA BUILDER ENDPOINTS
 # ============================================================================
 
 from python_backend.models_persona import PersonaModern, PersonaModernCreate
+from python_backend.models_persona_deep import PersonaDeep, PersonaDeepCreate
 from python_backend.reddit_research import reddit_research
+from python_backend.reddit_research_deep import reddit_research_deep
 from datetime import datetime as dt
+
+@app.post("/api/personas/enhance-description")
+@limiter.limit("30/hour")  # Mais generoso pois é rápido e ajuda UX
+async def enhance_persona_description(request: Request, data: dict):
+    """
+    Enriquece descrição vaga/simples do usuário com detalhes específicos e acionáveis.
+    
+    Usa Claude para:
+    1. Inferir contexto implícito (cargo, setor, tamanho de empresa)
+    2. Corrigir erros de português
+    3. Adicionar detalhes relevantes
+    4. Quantificar quando possível
+    5. Tornar descrição mais precisa e acionável
+    
+    Retorna descrição expandida que gera personas de maior qualidade.
+    """
+    description = data.get("description", "").strip()
+    industry = data.get("industry", "").strip()
+    context = data.get("context", "").strip()
+    
+    if not description:
+        raise HTTPException(status_code=400, detail="Descrição é obrigatória")
+    
+    if len(description) < 10:
+        raise HTTPException(status_code=400, detail="Descrição muito curta (mínimo 10 caracteres)")
+    
+    try:
+        # Instanciar cliente Anthropic
+        from anthropic import AsyncAnthropic
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        # Prompt otimizado para expansão inteligente + sugestões de indústria e contexto
+        prompt = f"""Você é um especialista em perfis de cliente (ICP - Ideal Customer Profile) com 15+ anos de experiência.
+
+Um usuário descreveu seu público-alvo de forma simples e direta:
+"{description}"
+
+Indústria/Setor: {industry if industry else "não especificada - INFIRA o setor mais provável baseado na descrição"}
+Contexto adicional: {context if context else "nenhum - USE seu conhecimento para preencher lacunas"}
+
+TAREFA:
+Transforme esta descrição simples em uma descrição ULTRA-ESPECÍFICA, ACIONÁVEL e RICA EM CONTEXTO.
+Além disso, sugira a INDÚSTRIA/SETOR e um CONTEXTO ADICIONAL relevante.
+
+REGRAS OBRIGATÓRIAS:
+
+1. MANTENHA A ESSÊNCIA
+   - Não mude o significado do que o usuário disse
+   - Preserve intenção original
+
+2. CORRIJA NATURALMENTE
+   - Erros de português ("possue" → "possui")
+   - Gramática e clareza
+   - Mas mantendo tom profissional
+
+3. INFIRA LOGICAMENTE
+   - Se menciona "time comercial" + "10k/mês" → Inferir tamanho da empresa
+   - Se diz "B2B" → Inferir cargos prováveis (CMO, Diretor Marketing, Head Growth)
+   - Se menciona budget → Inferir maturidade e faturamento provável
+
+4. ADICIONE ESPECIFICIDADE
+   - Cargos específicos ao invés de "profissionais"
+   - Faixas de faturamento/tamanho baseadas em budget mencionado
+   - Setores específicos se possível inferir
+   - Dores/objetivos típicos do perfil
+
+5. QUANTIFIQUE SEMPRE QUE POSSÍVEL
+   - Faturamento: "R$X-Y/ano ou /mês"
+   - Tamanho equipe: "X-Y pessoas"
+   - Orçamento: Expandir contexto do que foi mencionado
+
+6. FORMATE NARRATIVAMENTE
+   - Texto fluído, não bullet points
+   - Máximo 3-4 frases
+   - Fácil de ler e entender
+
+7. SUGIRA INDÚSTRIA E CONTEXTO
+   - Indústria: 1-3 palavras específicas (ex: "SaaS B2B", "E-commerce", "Tecnologia")
+   - Contexto: 1 frase complementar com insights valiosos
+
+EXEMPLOS DE TRANSFORMAÇÃO:
+
+Exemplo 1:
+Input: "Empresario de e-commerce"
+Descrição: "Fundador ou CEO de e-commerce de moda/beleza/decoração com faturamento R$100k-500k/mês, equipe de 5-15 pessoas, busca melhorar ROAS e reduzir CAC de R$150+ para R$80-100, desafiado por competição em Meta Ads e necessidade de construir marca forte com margem saudável acima de 30%."
+Indústria: "E-commerce"
+Contexto: "Foco em DTC (Direct-to-Consumer) com forte presença em redes sociais"
+
+Exemplo 2:
+Input: "profisional b2b que gasta 5k mes em ads"
+Descrição: "Gerente de Marketing ou Growth de empresas B2B SaaS/Serviços com faturamento R$200k-1M/ano, equipe de 2-5 pessoas, investe R$5k-15k/mês em Google Ads e LinkedIn, busca reduzir CAC atual de R$500+ e melhorar qualidade de leads para atingir meta de 10-15 novos clientes/mês."
+Indústria: "SaaS B2B"
+Contexto: "Modelo de assinatura mensal com ticket médio R$500-2k/mês"
+
+Exemplo 3:
+Input: "Profissionai b2b que possue time comercial e investem pelo menos 10k em trafego pago por mes"
+Descrição: "CMO, Diretor Comercial ou Head de Marketing de empresas B2B (SaaS, Tecnologia ou Serviços Corporativos) com faturamento R$500k-5M/ano, possui equipe comercial/marketing de 3-10 pessoas, investe R$10k-30k/mês em tráfego pago (Google Ads, LinkedIn Ads), busca otimizar funil de vendas, reduzir CAC atual de R$800-1500 e aumentar taxa de conversão de leads qualificados para fechar 15-30 novos contratos/mês."
+Indústria: "SaaS B2B / Tecnologia"
+Contexto: "Ciclo de vendas médio/longo (30-90 dias) com processo consultivo"
+
+AGORA, transforme esta descrição:
+"{description}"
+
+RETORNE NO FORMATO JSON:
+{{
+  "description": "descrição expandida aqui (3-4 frases)",
+  "industry": "indústria sugerida (1-3 palavras)",
+  "context": "contexto adicional sugerido (1 frase)"
+}}
+
+RETORNE APENAS O JSON, SEM MARKDOWN OU EXPLICAÇÕES.
+"""
+
+        # Chamar Claude para enriquecer descrição
+        response = await anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=800,
+            temperature=0.7,  # Balanceio entre criatividade e precisão
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        result_text = response.content[0].text.strip()
+        
+        # Remover markdown se presente
+        if result_text.startswith("```json"):
+            result_text = result_text.replace("```json", "").replace("```", "").strip()
+        elif result_text.startswith("```"):
+            result_text = result_text.replace("```", "").strip()
+        
+        # Parse JSON
+        import json
+        result = json.loads(result_text)
+        
+        enhanced = result.get("description", "")
+        suggested_industry = result.get("industry", "")
+        suggested_context = result.get("context", "")
+        
+        # Remover aspas se Claude retornou entre aspas
+        if enhanced.startswith('"') and enhanced.endswith('"'):
+            enhanced = enhanced[1:-1]
+        
+        print(f"[EnhancePersona] Original: {description[:50]}...")
+        print(f"[EnhancePersona] Enhanced: {enhanced[:50]}...")
+        print(f"[EnhancePersona] Industry: {suggested_industry}")
+        print(f"[EnhancePersona] Context: {suggested_context[:50]}...")
+        
+        return {
+            "original": description,
+            "enhanced": enhanced,
+            "suggested_industry": suggested_industry,
+            "suggested_context": suggested_context,
+            "improvements": {
+                "added_specificity": len(enhanced) > len(description) * 1.5,
+                "character_count": {"before": len(description), "after": len(enhanced)},
+                "estimated_quality_boost": "high" if len(enhanced) > len(description) * 2 else "medium"
+            },
+            "confidence": 0.85
+        }
+        
+    except Exception as e:
+        print(f"[EnhancePersona] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao melhorar descrição: {str(e)}")
 
 @app.post("/api/personas", response_model=PersonaModern)
 @limiter.limit("10/hour")  # Max 10 personas criadas por hora
@@ -2087,6 +2420,238 @@ async def delete_persona(persona_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Persona not found")
     return {"success": True}
+
+# ============================================================================
+# PERSONA PROFUNDA ENDPOINTS - Framework de 20 Pontos
+# ============================================================================
+
+@app.post("/api/personas-deep", response_model=PersonaDeep)
+@limiter.limit("5/hour")  # Mais restritivo devido ao custo computacional
+async def create_deep_persona(request: Request, data: PersonaDeepCreate):
+    """
+    Create a DEEP persona using Framework PERSONA PROFUNDA (20 pontos).
+    
+    Framework adaptado do EXTRACT usado para clones de especialistas.
+    
+    20 pontos incluem:
+    - IDENTITY CORE (5 pontos): Experiências formativas, padrões decisórios, linguagem, gatilhos, valores
+    - BEHAVIORAL PATTERNS (5 pontos): Decision pattern, story banks, objeções, trust triggers, failure stories
+    - COMMUNICATION PATTERNS (3 pontos): Style, consumption patterns, influence network
+    - QUANTIFIED PAIN POINTS (2 pontos): Primary e secondary com métricas
+    - GOALS & ASPIRATIONS (3 pontos): Short-term, long-term, definition of success
+    - JOURNEY MAPPING (2 pontos): Journey stages, touchpoint matrix
+    
+    Esta é uma persona de ALTA FIDELIDADE (18-20/20) similar à profundidade dos clones de especialistas.
+    """
+    user_id = "default_user"  # TODO: replace with actual user auth
+    
+    try:
+        # 🆕 BUSCAR BUSINESS PROFILE DO USUÁRIO
+        business_profile = await storage.get_business_profile(user_id)
+        
+        # 🆕 CRIAR CONTEXTO ENRIQUECIDO
+        enriched_context = ""
+        if business_profile:
+            print(f"[DeepPersona] Business Profile encontrado: {business_profile.get('companyName')}")
+            enriched_context = f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 CONTEXTO DO NEGÓCIO DO USUÁRIO (USE PARA PERSONALIZAR A PERSONA):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏢 Empresa: {business_profile.get('companyName', 'N/A')}
+🏭 Indústria: {business_profile.get('industry', 'N/A')}
+👥 Tamanho: {business_profile.get('companySize', 'N/A')}
+🎯 Público-alvo típico: {business_profile.get('targetAudience', 'N/A')}
+📦 Produtos/Serviços: {business_profile.get('mainProducts', 'N/A')}
+📢 Canais: {', '.join(business_profile.get('channels', [])) if business_profile.get('channels') else 'N/A'}
+💰 Budget Range: {business_profile.get('budgetRange', 'N/A')}
+🎯 Objetivo Principal: {business_profile.get('primaryGoal', 'N/A')}
+⚠️ Desafio Principal: {business_profile.get('mainChallenge', 'N/A')}
+⏱️ Timeline: {business_profile.get('timeline', 'N/A')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 INSTRUÇÕES CRÍTICAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Esta persona será usada por "{business_profile.get('companyName')}" para entender melhor seus clientes
+2. Foque em pain points, objeções e success definition RELEVANTES para o contexto de "{business_profile.get('industry')}"
+3. Considere que o objetivo deles é: {business_profile.get('primaryGoal')}
+4. O desafio principal deles é: {business_profile.get('mainChallenge')}
+
+EXEMPLO DE PERSONALIZAÇÃO:
+- Se o negócio é "Agência de Marketing Digital", foque em:
+  * Pain points: CAC alto, conversão baixa, criativos que não performam
+  * Objeções: "Já tentei outras agências", "Como sei que vai dar resultado?"
+  * Success: CAC abaixo de X, ROAS >3x, previsibilidade
+  
+- Se o negócio é "Coach de Carreira", foque em:
+  * Pain points: Paralisia decisória, falta de clareza, síndrome do impostor
+  * Objeções: "E se não funcionar?", "Quanto tempo leva?"
+  * Success: Clareza de propósito, transição bem-sucedida, trabalho com significado
+
+Personalize a persona para ser EXTREMAMENTE RELEVANTE para {business_profile.get('companyName')}!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{data.additionalContext or ''}
+"""
+        else:
+            print("[DeepPersona] Nenhum Business Profile encontrado - gerando persona genérica")
+            enriched_context = data.additionalContext or ""
+        
+        # Conduct DEEP research COM CONTEXTO
+        print(f"[DeepPersona] Iniciando criação de persona profunda: {data.targetDescription}")
+        
+        try:
+            research_data = await reddit_research_deep.research_deep(
+                target_description=data.targetDescription,
+                industry=data.industry,
+                additional_context=enriched_context  # 🆕 PASSA CONTEXTO ENRIQUECIDO
+            )
+        except Exception as research_error:
+            print(f"Error in deep research: {str(research_error)}")
+            raise HTTPException(status_code=500, detail=f"Error in deep persona research: {str(research_error)}")
+        
+        # Generate persona name
+        persona_name = f"Persona Profunda: {data.targetDescription[:50]}"
+        
+        # Create persona ID and timestamps
+        import uuid
+        persona_id = str(uuid.uuid4())
+        now = dt.utcnow()
+        
+        # Prepare deep persona data
+        persona_data = {
+            "id": persona_id,
+            "userId": user_id,
+            "name": persona_name,
+            "researchMode": "deep",
+            "target_description": data.targetDescription,
+            "industry": data.industry,
+            "business_profile_context": business_profile if business_profile else None,  # 🆕 SALVA CONTEXTO
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        # Merge with research data
+        persona_data.update(research_data)
+        
+        # Create PersonaDeep instance
+        persona = PersonaDeep(**persona_data)
+        
+        # Save to database (usando storage padrão por enquanto)
+        # TODO: Criar storage específico para personas profundas
+        # Por enquanto salva como dict no storage
+        await storage.pool.execute(
+            """
+            INSERT INTO personas_deep (id, user_id, name, research_mode, target_description, industry, data, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            """,
+            persona_id,
+            user_id,
+            persona_name,
+            "deep",
+            data.targetDescription,
+            data.industry,
+            json.dumps(persona.dict()),
+            now,
+            now
+        )
+        
+        print(f"[DeepPersona] Persona profunda criada com sucesso: {persona_id}")
+        print(f"[DeepPersona] Quality score: {persona.quality_score}/20")
+        
+        return persona
+    
+    except ValueError as e:
+        error_msg = str(e)
+        print(f"[ERROR] ValueError in deep persona creation: {error_msg}")
+        raise HTTPException(status_code=400, detail=f"Error in deep persona research: {error_msg}")
+    except httpx.HTTPStatusError as e:
+        print(f"[ERROR] API HTTP error: {e.response.status_code} - {e.response.text}")
+        if "resource_exhausted" in e.response.text.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="Limite de recursos atingido. Por favor, aguarde um momento e tente novamente."
+            )
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"API error: {e.response.text}"
+        )
+    except Exception as e:
+        print(f"Error creating deep persona: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create deep persona: {str(e)}")
+
+@app.get("/api/personas-deep", response_model=List[PersonaDeep])
+async def get_deep_personas():
+    """Get all deep personas for the current user"""
+    user_id = "default_user"
+    
+    try:
+        rows = await storage.pool.fetch(
+            "SELECT data FROM personas_deep WHERE user_id = $1 ORDER BY created_at DESC",
+            user_id
+        )
+        
+        personas = []
+        for row in rows:
+            persona_data = row['data']
+            if isinstance(persona_data, str):
+                persona_data = json.loads(persona_data)
+            personas.append(PersonaDeep(**persona_data))
+        
+        return personas
+    except Exception as e:
+        print(f"Error fetching deep personas: {str(e)}")
+        return []
+
+@app.get("/api/personas-deep/{persona_id}", response_model=PersonaDeep)
+async def get_deep_persona(persona_id: str):
+    """Get a specific deep persona by ID"""
+    try:
+        row = await storage.pool.fetchrow(
+            "SELECT data FROM personas_deep WHERE id = $1",
+            persona_id
+        )
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Deep persona not found")
+        
+        persona_data = row['data']
+        if isinstance(persona_data, str):
+            persona_data = json.loads(persona_data)
+        
+        return PersonaDeep(**persona_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching deep persona: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching deep persona: {str(e)}")
+
+@app.delete("/api/personas-deep/{persona_id}")
+async def delete_deep_persona(persona_id: str):
+    """Delete a deep persona"""
+    try:
+        result = await storage.pool.execute(
+            "DELETE FROM personas_deep WHERE id = $1",
+            persona_id
+        )
+        
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Deep persona not found")
+        
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting deep persona: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting deep persona: {str(e)}")
+
+# ============================================================================
+# PERSONA DOWNLOAD ENDPOINTS
+# ============================================================================
 
 @app.get("/api/personas/{persona_id}/download")
 async def download_persona(persona_id: str):

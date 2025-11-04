@@ -3,7 +3,7 @@ import { ExpertAvatar } from "./ExpertAvatar";
 import { ActivityFeed } from "./ActivityFeed";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
-import type { ExpertStatus, ActivityEvent } from "@/hooks/useCouncilStream";
+import type { ExpertStatus, ActivityEvent } from "@/types/council";
 
 interface CouncilAnimationProps {
   expertStatuses: ExpertStatus[];

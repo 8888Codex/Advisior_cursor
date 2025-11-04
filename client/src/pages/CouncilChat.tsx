@@ -5,10 +5,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Users, ArrowLeft } from "lucide-react";
+import { Loader2, Send, Users, ArrowLeft, Sparkles, Lightbulb, Target } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedPage } from "@/components/AnimatedPage";
 import { useCouncilChat } from "@/hooks/useCouncilChat";
@@ -74,6 +75,320 @@ function getExpertInitials(expertName: string): string {
     .slice(0, 2);
 }
 
+// Parser para extrair ações executáveis da resposta
+interface ActionItem {
+  title: string;
+  steps: string[];
+  resultado: string;
+  tempo: string;
+}
+
+function parseExecutableResponse(content: string): {
+  diagnostico: string;
+  acoes: ActionItem[];
+  template: string;
+  metrica: string;
+  armadilha: string;
+  rawContent: string;
+} {
+  // Regex patterns
+  const diagnosticoMatch = content.match(/##\s*🎯\s*DIAGNÓSTICO RÁPIDO\s*([\s\S]*?)(?=##|$)/i);
+  const templateMatch = content.match(/##\s*📋\s*TEMPLATE PRONTO[\s\S]*?\n([\s\S]*?)(?=##|$)/i);
+  const metricaMatch = content.match(/##\s*📊\s*COMO MEDIR[\s\S]*?\n([\s\S]*?)(?=##|⚠️|$)/i);
+  const armadilhaMatch = content.match(/##\s*⚠️\s*ARMADILHA[\s\S]*?\n([\s\S]*?)$/i);
+  
+  // Parse ações
+  const acoes: ActionItem[] = [];
+  const acoesSection = content.match(/##\s*⚡.*?(?=##\s*📋|$)/is)?.[0] || '';
+  const acaoMatches = acoesSection.matchAll(/\*\*AÇÃO\s+(\d+):\*\*\s*(.*?)\n-\s*\*\*Fazer agora:\*\*(.*?)\n-\s*\*\*Resultado:\*\*(.*?)\n-\s*\*\*Tempo:\*\*(.*?)(?=\*\*AÇÃO|\n\n|##|$)/gis);
+  
+  for (const match of acaoMatches) {
+    acoes.push({
+      title: match[2].trim(),
+      steps: match[3].split('\n-').map(s => s.trim()).filter(Boolean),
+      resultado: match[4].trim(),
+      tempo: match[5].trim(),
+    });
+  }
+
+  return {
+    diagnostico: diagnosticoMatch?.[1]?.trim() || '',
+    acoes,
+    template: templateMatch?.[1]?.trim() || '',
+    metrica: metricaMatch?.[1]?.trim() || '',
+    armadilha: armadilhaMatch?.[1]?.trim() || '',
+    rawContent: content,
+  };
+}
+
+// Componente ExecutableMessage - Formato Executável
+interface ExecutableMessageProps {
+  message: any;
+  expertName: string;
+  expertColors: { bg: string; text: string };
+}
+
+function ExecutableMessage({ message, expertName, expertColors }: ExecutableMessageProps) {
+  const { toast } = useToast();
+  const parsed = parseExecutableResponse(message.content);
+  const [checkedActions, setCheckedActions] = useState<Record<number, boolean>>({});
+  const [showTemplate, setShowTemplate] = useState(false);
+  
+  const toggleAction = (idx: number) => {
+    setCheckedActions(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+  
+  const completedCount = Object.values(checkedActions).filter(Boolean).length;
+  
+  return (
+    <Card className="bg-muted/30 relative overflow-hidden border-l-4 border-l-primary/50">
+      {/* Shimmer Effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent -translate-x-full animate-shimmer pointer-events-none" />
+      
+      <CardContent className="pt-4 relative z-10 space-y-4">
+        {/* Diagnóstico */}
+        {parsed.diagnostico && (
+          <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              🎯 {parsed.diagnostico}
+            </p>
+          </div>
+        )}
+        
+        {/* Ações Executáveis */}
+        {parsed.acoes.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-sm">⚡ Ações Imediatas</h4>
+              {parsed.acoes.length > 0 && (
+                <Badge variant={completedCount === parsed.acoes.length ? "default" : "secondary"}>
+                  {completedCount}/{parsed.acoes.length} completas
+                </Badge>
+              )}
+            </div>
+            
+            {parsed.acoes.map((acao, idx) => (
+              <Card key={idx} className={`p-3 transition-all ${checkedActions[idx] ? 'opacity-50 bg-green-500/5' : ''}`}>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={checkedActions[idx] || false}
+                    onChange={() => toggleAction(idx)}
+                    className="mt-1 h-5 w-5 rounded border-2 cursor-pointer"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm">{acao.title}</p>
+                      <Badge variant="outline" className="text-xs">{acao.tempo}</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      {acao.steps.map((step, sidx) => (
+                        <p key={sidx} className="text-xs text-muted-foreground pl-3 border-l-2 border-primary/30">
+                          {step}
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-xs text-green-700 dark:text-green-400">
+                      ✓ Resultado: {acao.resultado}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+        
+        {/* Template Pronto */}
+        {parsed.template && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-sm">📋 Template Pronto</h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowTemplate(!showTemplate)}
+              >
+                {showTemplate ? 'Ocultar' : 'Ver Template'}
+              </Button>
+            </div>
+            
+            {showTemplate && (
+              <Card className="p-3 bg-accent/5 border-accent/20">
+                <pre className="text-xs whitespace-pre-wrap font-mono">
+                  {parsed.template}
+                </pre>
+                <Button
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    navigator.clipboard.writeText(parsed.template);
+                    toast({ title: "✅ Template copiado!" });
+                  }}
+                >
+                  Copiar Template
+                </Button>
+              </Card>
+            )}
+          </div>
+        )}
+        
+        {/* Métrica + Armadilha */}
+        <div className="grid grid-cols-2 gap-3">
+          {parsed.metrica && (
+            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <p className="text-xs font-medium text-green-700 dark:text-green-300">
+                📊 {parsed.metrica}
+              </p>
+            </div>
+          )}
+          {parsed.armadilha && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-xs font-medium text-red-700 dark:text-red-300">
+                ⚠️ {parsed.armadilha}
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Fallback: se não parseou, mostrar raw */}
+        {parsed.acoes.length === 0 && !parsed.diagnostico && (
+          <p className="text-sm whitespace-pre-wrap">{parsed.rawContent}</p>
+        )}
+        
+        {/* Timestamp */}
+        <p className="text-xs text-muted-foreground mt-2">
+          {new Date(message.timestamp).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Componente InsightsPanel - "Efeito Disney" 🎭
+interface InsightsPanelProps {
+  analysis: any;
+}
+
+function InsightsPanel({ analysis }: InsightsPanelProps) {
+  if (!analysis) return null;
+  
+  const allInsights = analysis.contributions.flatMap((c: any) => 
+    c.keyInsights.map((insight: string) => ({
+      expert: c.expertName,
+      insight,
+    }))
+  );
+  
+  const allRecommendations = analysis.contributions.flatMap((c: any) =>
+    c.recommendations.map((rec: string) => ({
+      expert: c.expertName,
+      recommendation: rec,
+    }))
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className="mb-4 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/5 border-2 border-primary/20 shadow-lg">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-accent animate-pulse" />
+              <CardTitle className="text-lg">💎 Insights do Conselho</CardTitle>
+            </div>
+            <Badge variant="secondary" className="font-semibold">
+              {allInsights.length + allRecommendations.length} descobertas
+            </Badge>
+          </div>
+          <CardDescription>
+            Conhecimento acumulado dos especialistas — sempre disponível
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="insights" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="insights">
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Insights ({allInsights.length})
+              </TabsTrigger>
+              <TabsTrigger value="recommendations">
+                <Target className="h-4 w-4 mr-2" />
+                Ações ({allRecommendations.length})
+              </TabsTrigger>
+              <TabsTrigger value="consensus">
+                <Users className="h-4 w-4 mr-2" />
+                Consenso
+              </TabsTrigger>
+            </TabsList>
+          
+            <TabsContent value="insights" className="space-y-2 mt-4 max-h-64 overflow-y-auto pr-2">
+              {allInsights.map((item, idx) => {
+                const colors = getExpertAvatarColor(item.expert);
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex gap-3 items-start p-3 rounded-lg bg-background/60 hover:bg-background/90 transition-all duration-200 border border-border/50"
+                  >
+                    <Avatar className={`h-7 w-7 ${colors.bg} shrink-0`}>
+                      <AvatarFallback className={`${colors.text} text-xs font-semibold`}>
+                        {getExpertInitials(item.expert)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground mb-1">{item.expert}</p>
+                      <p className="text-sm leading-relaxed">{item.insight}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </TabsContent>
+          
+            <TabsContent value="recommendations" className="space-y-2 mt-4 max-h-64 overflow-y-auto pr-2">
+              {allRecommendations.map((item, idx) => {
+                const colors = getExpertAvatarColor(item.expert);
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex gap-3 items-start p-3 rounded-lg bg-background/60 hover:bg-background/90 transition-all duration-200 border border-border/50"
+                  >
+                    <Avatar className={`h-7 w-7 ${colors.bg} shrink-0`}>
+                      <AvatarFallback className={`${colors.text} text-xs font-semibold`}>
+                        {getExpertInitials(item.expert)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground mb-1">{item.expert}</p>
+                      <p className="text-sm leading-relaxed">{item.recommendation}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </TabsContent>
+          
+            <TabsContent value="consensus" className="mt-4 max-h-64 overflow-y-auto pr-2">
+              <div className="p-4 rounded-lg bg-background/60 border border-border/50">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{analysis.consensus}</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function CouncilChat() {
   const [, params] = useRoute("/council-chat/:id");
   const [, setLocation] = useLocation();
@@ -104,6 +419,12 @@ export default function CouncilChat() {
     enabled: !!conversation?.personaId,
   });
   const persona = personas.find((p) => p.id === conversation?.personaId);
+
+  // Buscar análise inicial se disponível (para painel de insights)
+  const { data: analysisData } = useQuery({
+    queryKey: [`/api/council/analysis/${conversation?.analysisId}`],
+    enabled: !!conversation?.analysisId,
+  });
 
   // Auto-scroll para última mensagem
   useEffect(() => {
@@ -225,6 +546,11 @@ export default function CouncilChat() {
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto p-6 pb-6 space-y-4 min-h-0"
         >
+          {/* Painel de Insights "Disney" - sempre visível */}
+          {analysisData && (
+            <InsightsPanel analysis={analysisData} />
+          )}
+          
           {displayMessages.length === 0 ? (
             <div className="text-center py-12 px-4">
               <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -305,9 +631,14 @@ export default function CouncilChat() {
                 return (
                   <motion.div
                     key={message.id}
-                    initial={{ opacity: 0, x: -20, y: 10 }}
-                    animate={{ opacity: 1, x: 0, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 120,
+                      damping: 20,
+                    }}
                     className="flex gap-3"
                   >
                     <Avatar className={`h-10 w-10 ${colors.bg} ring-2 ring-border/50 flex-shrink-0`}>
@@ -320,29 +651,11 @@ export default function CouncilChat() {
                           Especialista
                         </Badge>
                       </div>
-                      <Card className="bg-muted/30">
-                        <CardContent className="pt-4">
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                          {message.reactions && message.reactions.length > 0 && (
-                            <div className="mt-3 pt-3 border-t space-y-1">
-                              {message.reactions.map((reaction, idx) => (
-                                <div key={idx} className="text-xs text-muted-foreground">
-                                  <Badge variant="secondary" className="text-xs mr-2">
-                                    {reaction.type === "agree" ? "✓" : reaction.type === "disagree" ? "✗" : reaction.type === "add" ? "+" : "?"}
-                                  </Badge>
-                                  <span className="font-medium">{reaction.expertName}:</span> {reaction.content || reaction.type}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(message.timestamp).toLocaleTimeString("pt-BR", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <ExecutableMessage 
+                        message={message}
+                        expertName={message.expertName || ''}
+                        expertColors={colors}
+                      />
                     </div>
                   </motion.div>
                 );

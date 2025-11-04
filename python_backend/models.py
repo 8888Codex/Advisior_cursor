@@ -344,9 +344,9 @@ class RecommendExpertsResponse(BaseModel):
     recommendations: List[ExpertRecommendation]
 
 class AutoCloneRequest(BaseModel):
-    """Request to automatically clone an expert based on input"""
-    input: str  # User's input to analyze
-    targetExpertId: Optional[str] = None  # Optional: target expert to clone from
+    """Request to automatically clone an expert from a target person"""
+    targetName: str  # Nome da pessoa a ser clonada (ex: "Steve Jobs", "Elon Musk")
+    context: Optional[str] = None  # Contexto adicional opcional para refinar a pesquisa
 
 class AutoCloneResponse(BaseModel):
     """Response from auto clone request"""

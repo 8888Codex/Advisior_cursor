@@ -9,14 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb, Settings } from "lucide-react";
+import { Loader2, Users, Sparkles, TrendingUp, Zap, Star, Lightbulb, Settings, Save, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCouncilStream } from "@/hooks/useCouncilStream";
+import { useCouncilBackground } from "@/hooks/useCouncilBackground";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CouncilAnimation } from "@/components/council/CouncilAnimation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ExpertSelector } from "@/components/council/ExpertSelector";
 import { CouncilResultDisplay } from "@/components/council/CouncilResultDisplay";
 import { PreferencesSettings } from "@/components/settings/PreferencesSettings";
@@ -24,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation } from "wouter";
 
 interface Expert {
   id: string;
@@ -65,10 +67,38 @@ interface Persona {
 }
 
 export default function TestCouncil() {
-  const [problem, setProblem] = useState("");
-  const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  
+  // 🆕 Estados persistidos - não perdem ao navegar
+  const [problem, setProblem, clearProblem] = usePersistedState("council-problem", "", {
+    expireAfter: 24 * 60 * 60 * 1000 // 24 horas
+  });
+  const [selectedExperts, setSelectedExperts, clearExperts] = usePersistedState<string[]>("council-experts", [], {
+    expireAfter: 24 * 60 * 60 * 1000
+  });
+  const [selectedPersonaId, setSelectedPersonaId, clearPersona] = usePersistedState<string>("council-persona", "", {
+    expireAfter: 24 * 60 * 60 * 1000
+  });
   const [useStreaming, setUseStreaming] = useState(true); // Auto-enable for 2+ experts
+  const [useBackgroundPolling, setUseBackgroundPolling] = useState(true); // NEW: Use background polling
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+  
+  // 🆕 Persistir resultado da análise também!
+  const [savedAnalysis, setSavedAnalysis, clearSavedAnalysis] = usePersistedState<CouncilAnalysis | null>(
+    "council-analysis-result",
+    null,
+    { expireAfter: 24 * 60 * 60 * 1000 } // 24 horas
+  );
+  
+  // Mostrar indicador se há estado salvo ao carregar
+  useEffect(() => {
+    if (problem || selectedExperts.length > 0 || savedAnalysis) {
+      console.log('[TestCouncil] Estado anterior restaurado');
+      setShowSavedIndicator(true);
+      setTimeout(() => setShowSavedIndicator(false), 6000);
+    }
+  }, []);
 
   const { data: experts = [], isLoading: loadingExperts } = useQuery<Expert[]>({
     queryKey: ["/api/experts"],
@@ -123,12 +153,33 @@ export default function TestCouncil() {
     },
   });
 
-  // Start streaming when enabled
+  // 🆕 Background polling hook (works even when navigating away)
+  const backgroundState = useCouncilBackground({
+    problem: problem.trim(),
+    expertIds: selectedExperts,
+    personaId: selectedPersonaId,
+    enabled: streamingEnabled && useBackgroundPolling,
+  });
+  
+  // Debug: Log estado do background
   useEffect(() => {
-    if (streamingEnabled && !streamState.isStreaming && !streamState.finalAnalysis) {
+    if (useBackgroundPolling && streamingEnabled) {
+      console.log('[TestCouncil] Background state:', {
+        isProcessing: backgroundState.isProcessing,
+        expertCount: backgroundState.expertStatusArray?.length || 0,
+        activityCount: backgroundState.activityFeed?.length || 0,
+        hasAnalysis: !!backgroundState.analysis,
+      });
+    }
+  }, [useBackgroundPolling, streamingEnabled, backgroundState.isProcessing, backgroundState.expertStatusArray?.length, backgroundState.activityFeed?.length, backgroundState.analysis]);
+
+  // Start streaming when enabled (only if not using background polling)
+  useEffect(() => {
+    if (streamingEnabled && !useBackgroundPolling && !streamState.isStreaming && !streamState.finalAnalysis) {
+      console.log('[TestCouncil] Starting streaming...');
       streamState.startStreaming();
     }
-  }, [streamingEnabled]);
+  }, [streamingEnabled, useBackgroundPolling, streamState.isStreaming, streamState.finalAnalysis]);
 
   const handleToggleExpert = (expertId: string) => {
     setSelectedExperts((prev) =>
@@ -165,11 +216,25 @@ export default function TestCouncil() {
       return;
     }
 
-    if (useStreaming) {
-      // Use SSE streaming (TODO: adicionar personaId ao streaming também)
+    if (useStreaming && useBackgroundPolling) {
+      // 🆕 Use background polling (works when navigating away)
+      console.log('[TestCouncil] Starting background polling mode');
       setStreamingEnabled(true);
+      // backgroundState.startAnalysis() is called automatically via useEffect
+    } else if (useStreaming) {
+      // Use SSE streaming (visual, but stops when navigating)
+      console.log('[TestCouncil] Starting SSE streaming mode');
+      setStreamingEnabled(true);
+      // Chamar startStreaming diretamente para garantir que inicie
+      setTimeout(() => {
+        if (!streamState.isStreaming) {
+          console.log('[TestCouncil] Force starting streaming');
+          streamState.startStreaming();
+        }
+      }, 100);
     } else {
-      // Use traditional mutation
+      // Use traditional mutation (for single expert)
+      console.log('[TestCouncil] Starting traditional mutation mode');
       analyzeMutation.mutate({
         problem: problem.trim(),
         personaId: selectedPersonaId,
@@ -178,8 +243,37 @@ export default function TestCouncil() {
     }
   };
 
-  const analysis = streamState.finalAnalysis || (analyzeMutation.data as CouncilAnalysis | undefined);
-  const isAnalyzing = useStreaming ? streamState.isStreaming : analyzeMutation.isPending;
+  // 🆕 Combinar análise do stream/mutation/background COM análise salva
+  const analysis = 
+    backgroundState.analysis || 
+    streamState.finalAnalysis || 
+    (analyzeMutation.data as CouncilAnalysis | undefined) || 
+    savedAnalysis;
+  const isAnalyzing = useBackgroundPolling 
+    ? backgroundState.isProcessing 
+    : (useStreaming ? streamState.isStreaming : analyzeMutation.isPending);
+  
+  // 🆕 Salvar análise quando completar
+  useEffect(() => {
+    if (backgroundState.analysis) {
+      console.log('[TestCouncil] Salvando análise do background...');
+      setSavedAnalysis(backgroundState.analysis);
+    }
+  }, [backgroundState.analysis, setSavedAnalysis]);
+  
+  useEffect(() => {
+    if (streamState.finalAnalysis) {
+      console.log('[TestCouncil] Salvando análise do stream...');
+      setSavedAnalysis(streamState.finalAnalysis);
+    }
+  }, [streamState.finalAnalysis, setSavedAnalysis]);
+  
+  useEffect(() => {
+    if (analyzeMutation.data) {
+      console.log('[TestCouncil] Salvando análise da mutation...');
+      setSavedAnalysis(analyzeMutation.data as CouncilAnalysis);
+    }
+  }, [analyzeMutation.data, setSavedAnalysis]);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -197,6 +291,53 @@ export default function TestCouncil() {
           Teste a funcionalidade do conselho de IA com lendas do marketing
         </p>
       </motion.div>
+
+      {/* 🆕 Banner de Estado Restaurado */}
+      {showSavedIndicator && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="mb-6"
+        >
+          <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Save className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div>
+                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                      Estado restaurado!
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Seu progresso anterior foi recuperado.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    clearProblem();
+                    clearExperts();
+                    clearPersona();
+                    clearSavedAnalysis();
+                    setShowSavedIndicator(false);
+                    toast({
+                      title: "Estado limpo",
+                      description: "Começando do zero",
+                    });
+                  }}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Limpar e Recomeçar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Forms on the left */}
@@ -231,7 +372,7 @@ export default function TestCouncil() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate({ to: "/personas" })}
+                        onClick={() => setLocation("/personas")}
                       >
                         Criar Persona
                       </Button>
@@ -476,19 +617,22 @@ export default function TestCouncil() {
           )}
         </div>
 
-        {/* Show CouncilAnimation when streaming */}
-        {useStreaming && (streamState.isStreaming || streamState.expertStatusArray.length > 0) && (
+        {/* Show CouncilAnimation when analyzing - sempre mostrar se isAnalyzing for true */}
+        {isAnalyzing && (
           <div className="lg:col-span-3 mt-8">
             <CouncilAnimation
-              expertStatuses={streamState.expertStatusArray}
-              activityFeed={streamState.activityFeed}
-              isStreaming={streamState.isStreaming}
+              expertStatuses={useBackgroundPolling ? (backgroundState.expertStatusArray || []) : (streamState.expertStatusArray || [])}
+              activityFeed={useBackgroundPolling ? (backgroundState.activityFeed || []) : (streamState.activityFeed || [])}
+              isStreaming={isAnalyzing}
             />
           </div>
         )}
 
         {/* Show results (for both streaming and non-streaming after completion) */}
-        <CouncilResultDisplay analysis={analysis} isStreaming={useStreaming && (streamState.isStreaming || !streamState.finalAnalysis)} />
+        <CouncilResultDisplay 
+          analysis={analysis} 
+          isStreaming={isAnalyzing}
+        />
 
       </div>
     </div>

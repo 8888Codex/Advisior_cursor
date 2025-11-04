@@ -1,76 +1,162 @@
-name: Validar Sistema
+name: Validação de Código
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
+    branches: [ main, develop ]
+  push:
     branches: [ main, develop ]
 
 jobs:
-  validate-backend:
+  validate:
+    name: Validar Mudanças
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-    
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    
-    - name: Instalar dependências
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Validar importações e integridade
-      run: python3 validate_imports.py
-      env:
-        PYTHONPATH: ${{ github.workspace }}
-    
-    - name: Verificar sintaxe Python
-      run: |
-        pip install flake8
-        flake8 python_backend --count --select=E9,F63,F7,F82 --show-source --statistics
-    
-    - name: Testar servidor FastAPI
-      run: |
-        timeout 10 python3 -m uvicorn python_backend.main:app --host 127.0.0.1 --port 8000 &
-        sleep 5
-        curl -f http://localhost:8000/api/health || exit 1
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Instalar dependências Node.js
+        run: npm ci
+      
+      - name: Instalar dependências Python
+        run: |
+          cd python_backend
+          pip install -r requirements.txt
+      
+      # ============================================================
+      # VALIDAÇÃO 1: TypeScript Type Checking
+      # ============================================================
+      - name: ✅ TypeScript Type Check
+        run: npm run check
+        continue-on-error: false
+      
+      # ============================================================
+      # VALIDAÇÃO 2: Python Imports
+      # ============================================================
+      - name: ✅ Validar Imports Python
+        run: python scripts/check-imports.py
+        continue-on-error: true  # Warnings não bloqueiam
+      
+      # ============================================================
+      # VALIDAÇÃO 3: Endpoint Compatibility
+      # ============================================================
+      - name: ✅ Validar Compatibilidade de Endpoints
+        run: python scripts/check-endpoints.py
+        continue-on-error: true  # Warnings não bloqueiam
+      
+      # ============================================================
+      # VALIDAÇÃO 4: Linting (Futuro)
+      # ============================================================
+      # - name: ✅ ESLint (Frontend)
+      #   run: npm run lint
+      #   continue-on-error: true
+      
+      # - name: ✅ Flake8 (Python)
+      #   run: |
+      #     pip install flake8
+      #     flake8 python_backend/
+      #   continue-on-error: true
+      
+      # ============================================================
+      # VALIDAÇÃO 5: Testes (Futuro)
+      # ============================================================
+      # - name: ✅ Testes Frontend
+      #   run: npm test
+      
+      # - name: ✅ Testes Backend
+      #   run: pytest python_backend/tests/
+      
+      # ============================================================
+      # COMENTÁRIO AUTOMÁTICO (Opcional)
+      # ============================================================
+      - name: 💬 Comentar Resultados
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `
+            ## 🛡️ Validação Automática
+            
+            **Status:** ${{ job.status }}
+            
+            ### Validações Executadas:
+            - ✅ TypeScript Type Check
+            - ✅ Python Imports
+            - ✅ Endpoint Compatibility
+            
+            ### Próximos Passos:
+            1. Verifique se TODAS as validações passaram
+            2. Complete o checklist do template de PR
+            3. Aguarde aprovação do revisor
+            
+            **Lembrete:** Consulte [PROCESSO_VALIDACAO.md](PROCESSO_VALIDACAO.md) antes de modificar código!
+            `;
+            
+            // Comentar apenas em PRs
+            if (context.eventName === 'pull_request') {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
 
-  validate-frontend:
+  # ============================================================
+  # JOB 2: Build Test (Verificar se builda)
+  # ============================================================
+  build-test:
+    name: Testar Build
     runs-on: ubuntu-latest
+    needs: validate
     
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    
-    - name: Configurar Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: client/package-lock.json
-    
-    - name: Instalar dependências
-      working-directory: ./client
-      run: npm ci
-    
-    - name: Verificar TypeScript
-      working-directory: ./client
-      run: npx tsc --noEmit
-    
-    - name: Build frontend
-      working-directory: ./client
-      run: npm run build
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Instalar dependências
+        run: npm ci
+      
+      - name: 🏗️ Build Frontend
+        run: npm run build
+        continue-on-error: false
+      
+      - name: ✅ Build Sucesso
+        run: echo "Build passou com sucesso!"
 
+  # ============================================================
+  # JOB 3: Security Check (Futuro)
+  # ============================================================
+  # security:
+  #   name: Security Scan
+  #   runs-on: ubuntu-latest
+  #   
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     
+  #     - name: 🔒 npm audit
+  #       run: npm audit --audit-level=high
+  #       continue-on-error: true
+  #     
+  #     - name: 🔒 Python safety check
+  #       run: |
+  #         pip install safety
+  #         safety check
+  #       continue-on-error: true

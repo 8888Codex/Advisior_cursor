@@ -1,102 +1,197 @@
-# Guia de Deploy - AdvisorIA Elite
+# 🚀 Deploy - AdvisorIA Elite
 
-## Variáveis de Ambiente Obrigatórias
+## Variáveis de Ambiente Necessárias
 
-Copie `DEPLOY_ENV_EXAMPLE.txt` para `.env` e preencha:
-
+### Obrigatórias
 ```bash
-# Node/Express Server
+# Anthropic API (para clones de especialistas)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Perplexity API (para pesquisa de personas)
+PERPLEXITY_API_KEY=pplx-...
+
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:port/database
+```
+
+### Opcionais
+```bash
+# Porta do servidor (default: 5500)
+PORT=5500
+
+# Porta do backend Python (default: 5501)
+PY_PORT=5501
+
+# Ambiente
 NODE_ENV=production
-PORT=3001                    # Porta do servidor Node (UI + BFF)
 
-# Python Backend (FastAPI)
-PY_PORT=5201                 # Porta do backend Python (ou use PY_EXTERNAL se externo)
-PY_EXTERNAL=http://...       # Opcional: URL externa do Python backend
-
-# Database
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-
-# APIs de IA (obrigatórias)
-ANTHROPIC_API_KEY=sk-ant-... # Obrigatório para consenso do conselho
-
-# APIs Opcionais
-PERPLEXITY_API_KEY=pplx-...  # Opcional: usado em auto-clone de experts
+# Backend Python externo (se rodar separadamente)
+PY_EXTERNAL=http://python-backend-url:5501
 ```
 
-## Scripts Disponíveis
+---
 
-### Desenvolvimento Local
+## Deploy no Railway
 
+### 1. Configurar Variáveis de Ambiente
+
+No painel do Railway, adicionar:
+- `ANTHROPIC_API_KEY`
+- `PERPLEXITY_API_KEY`
+- `DATABASE_URL` (Railway fornece automaticamente se adicionar PostgreSQL)
+- `PORT` (Railway configura automaticamente)
+- `NODE_ENV=production`
+
+### 2. Build Command
 ```bash
-# Portas padrão: UI 3001, Python 5201
-npm run dev
-
-# Ou usar script específico
-npm run dev:py5200
-
-# Ou customizar portas
-PORT=3002 PY_PORT=5202 npm run dev
-```
-
-### Build de Produção
-
-```bash
-# Build completo (client + server)
 npm run build
+```
 
-# Iniciar em produção
+### 3. Start Command
+```bash
 npm start
 ```
 
-### Verificação de Tipos
-
-```bash
-npm run check  # TypeScript type checking
+### 4. Health Check
+```
+GET /api/experts
 ```
 
-## Health Checks
+Deve retornar lista de especialistas (status 200).
 
-- **UI/Frontend**: `GET http://localhost:3001` → deve retornar 200
-- **API Backend**: `GET http://localhost:5201/api/health` → `{"status":"ok","service":"AdvisorIA API"}`
+---
 
-## Portas e Configuração
+## Deploy Manual (VPS/Server)
 
-### Portas Padrão
+### 1. Requisitos
+- Node.js 20+
+- Python 3.11+
+- PostgreSQL 14+
+- npm 9+
 
-- **3001**: Servidor Node/Express (UI + BFF)
-- **5201**: Backend Python (FastAPI/Uvicorn)
-
-### Resolução de Conflitos
-
-Se portas estiverem ocupadas:
-
+### 2. Instalação
 ```bash
-# Liberar portas
-lsof -ti :3001 | xargs -r kill -9
-lsof -ti :5201 | xargs -r kill -9
+# Clone
+git clone https://github.com/8888Codex/Advisior_cursor.git
+cd Advisior_cursor
 
-# Ou usar portas alternativas
-PORT=3002 PY_PORT=5202 npm run dev
+# Instalar dependências Node
+npm install
+
+# Instalar dependências Python
+pip install -r python_backend/requirements.txt
+
+# Configurar variáveis de ambiente
+cp .env.example .env
+# Editar .env com suas chaves
 ```
 
-## Deploy em Railway/Similar
+### 3. Build
+```bash
+npm run build
+```
 
-1. Configure variáveis de ambiente acima
-2. Build será executado automaticamente via `npm run build`
-3. Start será executado via `npm start`
-4. Se Python estiver em serviço separado, use `PY_EXTERNAL` em vez de `PY_PORT`
+### 4. Iniciar
+```bash
+# Produção
+npm start
+
+# Desenvolvimento
+./start_reliable.sh
+```
+
+---
+
+## Portas Expostas
+
+| Serviço | Porta | Público | Descrição |
+|---------|-------|---------|-----------|
+| Frontend + API | 5500 | Sim | Porta principal (único ponto de entrada) |
+| Backend Python | 5501 | Não | Interno (proxy via Node.js) |
+
+**IMPORTANTE:** Apenas a porta 5500 precisa ser exposta publicamente.
+
+---
+
+## Verificação Pós-Deploy
+
+### 1. Health Check Frontend
+```bash
+curl http://your-domain.com/api/experts
+```
+
+Deve retornar JSON com ~22 especialistas.
+
+### 2. Testar Proxy
+```bash
+curl http://your-domain.com/api/personas
+```
+
+Deve retornar lista de personas ou array vazio (status 200).
+
+### 3. Testar Frontend
+Acessar no navegador:
+```
+http://your-domain.com
+```
+
+Deve carregar página inicial.
+
+---
 
 ## Troubleshooting
 
-### Erro: "ANTHROPIC_API_KEY não encontrada"
-- Verifique se `.env` existe na raiz do projeto
-- Confirme que variável está definida: `ANTHROPIC_API_KEY=sk-ant-...`
+### Erro: "Python backend not responding"
+**Solução:** Verificar se `PY_PORT` está correto e se Python está rodando
 
-### Erro: "Address already in use"
-- Use scripts para matar processos nas portas antes de iniciar
-- Ou configure portas alternativas via variáveis de ambiente
+### Erro: "ANTHROPIC_API_KEY not set"
+**Solução:** Adicionar variável de ambiente no Railway/servidor
 
-### Erro: "Could not resolve authentication method"
-- Backend Python não está encontrando `ANTHROPIC_API_KEY`
-- Verifique que `.env` está sendo carregado corretamente no Python
+### Erro: "Database connection failed"
+**Solução:** Verificar `DATABASE_URL` e conectividade com PostgreSQL
 
+### Erro: "Port already in use"
+**Solução:** Mudar `PORT` para porta disponível (Railway configura automaticamente)
+
+---
+
+## Monitoramento
+
+### Logs
+```bash
+# Ver logs em produção
+tail -f /var/log/advisoria.log
+```
+
+### Métricas Importantes
+- Taxa de sucesso de análises do conselho
+- Tempo médio de resposta
+- Taxa de erro em criação de personas
+- Usage de APIs (Anthropic, Perplexity)
+
+---
+
+## Atualizações
+
+### Para atualizar o sistema:
+```bash
+git pull origin main
+npm install
+npm run build
+# Reiniciar servidor
+```
+
+---
+
+## Suporte
+
+Para problemas de deploy, verificar:
+1. Logs do servidor
+2. Status das APIs externas
+3. Conectividade com banco de dados
+4. Variáveis de ambiente configuradas
+
+---
+
+**Última atualização:** 3 de Novembro de 2025  
+**Versão:** 2.0.0

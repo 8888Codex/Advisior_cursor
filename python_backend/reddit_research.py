@@ -288,16 +288,37 @@ Forneça dados específicos, estatísticas quando possível, e cite fontes relev
             
             # Now use Claude to structure the data
             claude_prompt = f"""
-Com base nos dados de pesquisa a seguir:
+Você é um especialista em criação de personas de marketing de alta precisão.
 
+INPUT DO USUÁRIO (pode ser vago):
+- Descrição: "{target_description}"
+- Indústria: {context if context else "não especificada"}
+
+DADOS DE PESQUISA:
 {perplexity_content}
 
-Crie uma persona completa para '{target_description}' {context} seguindo os frameworks modernos de 2025:
+ANÁLISE CRÍTICA DO INPUT:
+1. O input é vago ou genérico? Se sim, USE OS DADOS DE PESQUISA para INFERIR detalhes específicos
+2. Faltam cargos específicos? DEDUZA baseado no contexto (budget, team size, indústria)
+3. Sem setor definido? IDENTIFIQUE o setor mais provável baseado nas características
 
-1. Comece com uma declaração de trabalho principal (job statement) clara e acionável
-2. Estruture usando o framework BAG completo (Behaviors, Aspirations, Goals)
-3. Inclua elementos quantitativos detalhados para todos os pontos de dor
-4. Mapeie a jornada moderna com todos os pontos de contato
+TAREFA:
+Crie uma persona ULTRA-ESPECÍFICA seguindo os frameworks modernos de 2025:
+
+PRINCÍPIOS OBRIGATÓRIOS:
+1. NUNCA seja genérico - sempre específico
+2. INFIRA detalhes que o usuário não mencionou mas são lógicos
+3. QUANTIFIQUE tudo que for possível (tempo, dinheiro, frequência)
+4. Use DADOS REAIS da pesquisa, não suposições genéricas
+5. Comece com job statement claro e acionável
+6. Estruture usando framework BAG completo (Behaviors, Aspirations, Goals)
+7. Inclua elementos quantitativos DETALHADOS para todos os pontos de dor
+8. Mapeie jornada moderna com todos os pontos de contato
+
+EXPANSÃO INTELIGENTE:
+Se input diz "profissionais B2B" → Identifique CARGOS específicos (CMO, Diretor, Head)
+Se menciona "10k/mês em ads" → Infira faturamento, tamanho empresa, maturidade
+Se não menciona setor → Use padrões da pesquisa para identificar setor provável
 
 Formate os dados no seguinte formato JSON:
 {{
@@ -432,7 +453,7 @@ Importante: Todos os dados devem ser específicos, acionáveis e baseados na pes
 
     async def research_strategic(self, target_description: str, industry: Optional[str] = None, additional_context: Optional[str] = None) -> Dict:
         """
-        Strategic research mode: More comprehensive research with additional context
+        Strategic research mode: DEEP comprehensive research with multiple API calls
         
         Args:
             target_description: Description of the target audience
@@ -440,7 +461,7 @@ Importante: Todos os dados devem ser específicos, acionáveis e baseados na pes
             additional_context: Additional context to refine the research
         
         Returns:
-            Dict with comprehensive persona data
+            Dict with comprehensive persona data with REAL insights
         """
         try:
             # Check cache first
@@ -449,102 +470,249 @@ Importante: Todos os dados devem ser específicos, acionáveis e baseados na pes
             if cached_result:
                 return cached_result
             
-            print(f"[RedditResearch] Iniciando pesquisa estratégica para '{target_description}'")
-            
-            # For strategic research, we'll do two Perplexity calls:
-            # 1. First to find relevant communities and sources
-            # 2. Second to get deeper insights based on those communities
+            print(f"[RedditResearch] 🔍 MODO ESTRATÉGICO - Pesquisa profunda para '{target_description}'")
+            self._ensure_initialized()
             
             context = f"na indústria de {industry}" if industry else ""
-            additional = f"Contexto adicional: {additional_context}" if additional_context else ""
+            additional = f". {additional_context}" if additional_context else ""
             
-            # Simplified strategic research - just use quick research with a fallback
-            try:
-                # Call quick research with the same parameters
-                result = await self.research_quick(target_description, industry)
-                
-                # Add additional context to the result
-                if additional_context and "research_data" in result:
-                    result["research_data"]["additional_context"] = additional_context
-                
-                # Cache the result
-                self._set_cache_result(cache_key, result)
-                
-                return result
-                
-            except Exception as e:
-                print(f"[RedditResearch] Error in strategic research: {str(e)}")
-                
-                # Provide fallback data
-                fallback_data = {
-                    "job_statement": f"Ajudar {target_description} a ter sucesso em seus objetivos profissionais",
-                    "functional_jobs": ["Economizar tempo", "Aumentar produtividade"],
-                    "emotional_jobs": ["Reduzir estresse", "Aumentar confiança"],
-                    "social_jobs": ["Ser reconhecido por pares", "Demonstrar competência"],
-                    "behaviors": {
-                        "online": ["Pesquisa por soluções online", "Consome conteúdo educativo"],
-                        "purchasing": ["Compara opções", "Busca recomendações"],
-                        "content_consumption": ["Prefere conteúdo prático", "Consome em múltiplos formatos"]
-                    },
-                    "aspirations": [
-                        f"Ser reconhecido como expert em {industry or 'seu campo'}",
-                        "Alcançar equilíbrio entre vida pessoal e profissional"
-                    ],
-                    "goals": ["Aumentar visibilidade online", "Melhorar conversões", "Desenvolver habilidades técnicas"],
-                    "demographics": {
-                        "age": "30-45 anos",
-                        "location": "Centros urbanos",
-                        "education": "Ensino superior completo",
-                        "income": "Classe média a alta",
-                        "occupation": "Profissional de marketing freelancer"
-                    },
-                    "pain_points_quantified": [
-                        {
-                            "description": "Dificuldade em acompanhar tendências do mercado",
-                            "impact": "Perda de oportunidades de negócio",
-                            "frequency": "Constante"
-                        }
-                    ],
-                    "researchData": {
-                        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "target_description": target_description,
-                        "confidence_level": "low",
-                        "is_fallback": True
-                    }
-                }
-                
-                if industry:
-                    fallback_data["researchData"]["industry"] = industry
-                if additional_context:
-                    fallback_data["researchData"]["additional_context"] = additional_context
-                    
-                # Cache o resultado de fallback também
-                self._set_cache_result(cache_key, fallback_data)
-                
-                return fallback_data
+            # ============================================================================
+            # FASE 1: DESCOBERTA DE COMUNIDADES E FONTES (Primeira chamada Perplexity)
+            # ============================================================================
+            discovery_query = f"""Pesquise profundamente sobre {target_description} {context}{additional}.
+
+TAREFA 1 - DESCOBERTA:
+Identifique COMUNIDADES REAIS onde este público está ativo:
+- Subreddits específicos (ex: r/marketing, r/startups, r/entrepreneur)
+- Fóruns e grupos online
+- Comunidades profissionais
+- Canais e influenciadores que seguem
+
+RETORNE:
+1. Lista de 5-10 comunidades específicas com URLs
+2. Principais tópicos discutidos
+3. Principais preocupações e dores mencionadas
+4. Linguagem e termos que usam"""
+
+            print(f"[RedditResearch] 📊 Fase 1: Descobrindo comunidades...")
+            discovery_response = await self._call_perplexity_api(discovery_query)
+            discovery_text = self._extract_content_from_response(discovery_response)
+            
+            # ============================================================================
+            # FASE 2: ANÁLISE PROFUNDA DE PAIN POINTS (Segunda chamada Perplexity)
+            # ============================================================================
+            pain_points_query = f"""Baseado no público {target_description} {context}{additional}, faça uma análise QUANTIFICADA e ESPECÍFICA.
+
+TAREFA 2 - PAIN POINTS QUANTIFICADOS:
+Identifique problemas REAIS com NÚMEROS:
+- Custos específicos (ex: CAC de R$X, tempo de Y horas/semana)
+- Impactos mensuráveis (ex: perda de X% de leads, Y% de churn)
+- Frequência dos problemas (diário, semanal, mensal)
+- ROI e métricas que acompanham
+
+RETORNE:
+1. Top 5 pain points com custos estimados
+2. Impacto financeiro de cada problema
+3. Frequência de ocorrência
+4. Métricas que mais monitoram"""
+
+            print(f"[RedditResearch] 💰 Fase 2: Analisando pain points quantificados...")
+            pain_response = await self._call_perplexity_api(pain_points_query)
+            pain_text = self._extract_content_from_response(pain_response)
+            
+            # ============================================================================
+            # FASE 3: COMPORTAMENTOS E DECISÕES (Terceira chamada Perplexity)
+            # ============================================================================
+            behavior_query = f"""Pesquise o comportamento de compra e decisão de {target_description} {context}{additional}.
+
+TAREFA 3 - COMPORTAMENTOS REAIS:
+Identifique padrões de decisão e ação:
+- Como pesquisam soluções (canais, ferramentas, processos)
+- Critérios de decisão (preço, features, suporte, etc)
+- Influenciadores e fontes de confiança
+- Objeções típicas e medos
+- Ciclo de decisão (tempo médio, etapas)
+
+RETORNE:
+1. Processo de pesquisa detalhado
+2. Critérios de decisão priorizados
+3. Principais objeções
+4. Tempo médio de decisão"""
+
+            print(f"[RedditResearch] 🎯 Fase 3: Mapeando comportamentos e decisões...")
+            behavior_response = await self._call_perplexity_api(behavior_query)
+            behavior_text = self._extract_content_from_response(behavior_response)
+            
+            # ============================================================================
+            # FASE 4: SÍNTESE COM CLAUDE (Quarta chamada - Claude)
+            # ============================================================================
+            print(f"[RedditResearch] 🤖 Fase 4: Sintetizando com Claude...")
+            
+            synthesis_prompt = f"""Você é um especialista em personas B2B e análise de público-alvo com 15+ anos de experiência.
+
+Recebi 3 pesquisas profundas sobre: {target_description} {context}{additional}
+
+DESCOBERTA DE COMUNIDADES:
+{discovery_text}
+
+PAIN POINTS QUANTIFICADOS:
+{pain_text}
+
+COMPORTAMENTOS E DECISÕES:
+{behavior_text}
+
+TAREFA FINAL:
+Crie uma persona ULTRA-ESPECÍFICA e ESTRATÉGICA no formato JSON:
+
+{{
+  "job_statement": "Job to be done principal (específico e acionável)",
+  "functional_jobs": ["5-7 jobs funcionais ESPECÍFICOS"],
+  "emotional_jobs": ["4-5 jobs emocionais REAIS"],
+  "social_jobs": ["3-4 jobs sociais ESPECÍFICOS"],
+  "behaviors": {{
+    "online": ["5-7 comportamentos online ESPECÍFICOS com ferramentas/plataformas"],
+    "purchasing": ["4-5 comportamentos de compra DETALHADOS"],
+    "content_consumption": ["4-5 preferências de conteúdo ESPECÍFICAS"]
+  }},
+  "aspirations": ["4-5 aspirações ESPECÍFICAS E AMBICIOSAS"],
+  "goals": ["5-7 objetivos MENSURÁVEIS com números"],
+  "pain_points_quantified": [
+    {{
+      "description": "Pain point ESPECÍFICO",
+      "impact": "Impacto MENSURÁVEL",
+      "cost": "Custo ESTIMADO em R$ ou tempo",
+      "frequency": "Frequência ESPECÍFICA (diária/semanal/mensal)"
+    }}
+  ],
+  "decision_criteria": {{
+    "must_have": ["3-5 critérios ESSENCIAIS"],
+    "nice_to_have": ["2-3 critérios DESEJÁVEIS"],
+    "deal_breakers": ["2-3 ELIMINATÓRIOS"]
+  }},
+  "demographics": {{
+    "age": "Faixa etária ESPECÍFICA",
+    "location": "Localizações ESPECÍFICAS",
+    "occupation": "Cargos ESPECÍFICOS",
+    "education": "Nível ESPECÍFICO",
+    "income": "Faixa salarial ESPECÍFICA em R$"
+  }},
+  "values": ["4-5 valores ESPECÍFICOS"],
+  "touchpoints": [
+    {{
+      "channel": "Canal ESPECÍFICO",
+      "stage": "awareness/consideration/decision",
+      "importance": 1-10,
+      "preferred_content": ["tipos de conteúdo ESPECÍFICOS"]
+    }}
+  ],
+  "content_preferences": {{
+    "formats": ["formatos ESPECÍFICOS"],
+    "topics": ["tópicos ESPECÍFICOS"],
+    "channels": ["canais ESPECÍFICOS"],
+    "influencers": ["influenciadores ESPECÍFICOS se mencionados"]
+  }},
+  "communities": ["5-10 comunidades ESPECÍFICAS com URLs se possível"]
+}}
+
+REGRAS OBRIGATÓRIAS:
+1. SEMPRE incluir NÚMEROS e QUANTIFICAÇÕES
+2. SEMPRE ser ESPECÍFICO (não genérico)
+3. SEMPRE basear nas pesquisas fornecidas
+4. SEMPRE incluir custos estimados nos pain points
+5. SEMPRE detalhar critérios de decisão
+
+RETORNE APENAS O JSON, SEM MARKDOWN OU EXPLICAÇÕES."""
+
+            claude_response = await self._anthropic_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4000,
+                temperature=0.3,  # Mais determinístico para dados estruturados
+                messages=[{"role": "user", "content": synthesis_prompt}]
+            )
+            
+            result_text = claude_response.content[0].text.strip()
+            
+            # Remover markdown se presente
+            if result_text.startswith("```json"):
+                result_text = result_text.replace("```json", "").replace("```", "").strip()
+            elif result_text.startswith("```"):
+                result_text = result_text.replace("```", "").strip()
+            
+            # Parse JSON
+            result = json.loads(result_text)
+            
+            # Adicionar metadata da pesquisa
+            result["research_data"] = {
+                "sources": self._extract_sources_from_response(discovery_response),
+                "confidence_level": "high",  # Pesquisa profunda = alta confiança
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "target_description": target_description,
+                "industry": industry,
+                "additional_context": additional_context,
+                "research_depth": "strategic",
+                "perplexity_calls": 3,
+                "claude_synthesis": True
+            }
+            
+            # Cache the result
+            self._set_cache_result(cache_key, result)
+            
+            print(f"[RedditResearch] ✅ Pesquisa estratégica concluída com ALTA qualidade!")
+            
+            return result
                 
         except Exception as e:
-            print(f"[RedditResearch] Critical error in research_strategic: {str(e)}")
+            print(f"[RedditResearch] ❌ Error in strategic research: {str(e)}")
             
-            # Minimal fallback data
-            return {
-                "job_statement": f"Ajudar {target_description} a resolver seus problemas",
-                "functional_jobs": ["Resolver problemas básicos"],
-                "emotional_jobs": ["Reduzir estresse"],
-                "social_jobs": ["Demonstrar competência"],
-                "goals": [{"description": "Resolver problemas básicos", "timeframe": "short"}],
+            # Provide fallback data
+            fallback_data = {
+                "job_statement": f"Ajudar {target_description} a ter sucesso em seus objetivos profissionais",
+                "functional_jobs": ["Economizar tempo", "Aumentar produtividade"],
+                "emotional_jobs": ["Reduzir estresse", "Aumentar confiança"],
+                "social_jobs": ["Ser reconhecido por pares", "Demonstrar competência"],
+                "behaviors": {
+                    "online": ["Pesquisa por soluções online", "Consome conteúdo educativo"],
+                    "purchasing": ["Compara opções", "Busca recomendações"],
+                    "content_consumption": ["Prefere conteúdo prático", "Consome em múltiplos formatos"]
+                },
+                "aspirations": [
+                    f"Ser reconhecido como expert em {industry or 'seu campo'}",
+                    "Alcançar equilíbrio entre vida pessoal e profissional"
+                ],
+                "goals": ["Aumentar visibilidade online", "Melhorar conversões", "Desenvolver habilidades técnicas"],
                 "demographics": {
-                    "age": "Adulto",
+                    "age": "30-45 anos",
+                    "location": "Centros urbanos",
+                    "education": "Ensino superior completo",
+                    "income": "Classe média a alta",
                     "occupation": "Profissional"
                 },
-                "behaviors": {
-                    "online": ["Busca informações online"]
-                },
-                "researchData": {
+                "pain_points_quantified": [
+                    {
+                        "description": "Dificuldade em acompanhar tendências do mercado",
+                        "impact": "Perda de oportunidades de negócio",
+                        "frequency": "Constante"
+                    }
+                ],
+                "research_data": {
+                    "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "target_description": target_description,
+                    "confidence_level": "low",
                     "is_fallback": True,
                     "error": str(e)
                 }
             }
+            
+            if industry:
+                fallback_data["research_data"]["industry"] = industry
+            if additional_context:
+                fallback_data["research_data"]["additional_context"] = additional_context
+                
+            # Cache o resultado de fallback também
+            self._set_cache_result(cache_key, fallback_data)
+            
+            return fallback_data
 
 # Singleton instance
 reddit_research = RedditResearchEngine()

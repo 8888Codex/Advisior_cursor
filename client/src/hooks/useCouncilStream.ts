@@ -1,31 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type {
+  ExpertStatus,
+  ActivityEvent,
+  CouncilStreamState,
+  CouncilAnalysis,
+} from "@/types/council";
 
-export interface ExpertStatus {
-  expertId: string;
-  expertName: string;
-  expertAvatar?: string;
-  status: "waiting" | "researching" | "analyzing" | "completed" | "failed";
-  progress: number; // 0-100
-  insightCount?: number;
-  recommendationCount?: number;
-  error?: string;
-}
-
-export interface ActivityEvent {
-  id: string;
-  timestamp: number;
-  expertName?: string;
-  message: string;
-  type: "info" | "success" | "error";
-}
-
-export interface CouncilStreamState {
-  isStreaming: boolean;
-  expertStatuses: Map<string, ExpertStatus>;
-  activityFeed: ActivityEvent[];
-  finalAnalysis: any | null;
-  error: string | null;
-}
+// Re-export para compatibilidade com código existente
+export type { ExpertStatus, ActivityEvent };
 
 interface UseCouncilStreamProps {
   problem: string;
@@ -82,107 +64,6 @@ export function useCouncilStream({ problem, expertIds, personaId, enabled }: Use
       return { ...prev, expertStatuses: newStatuses };
     });
   }, []);
-
-  const startStreaming = useCallback(async () => {
-    if (!enabled || !problem || expertIds.length === 0) return;
-    
-    // Initialize expert statuses
-    const initialStatuses = new Map<string, ExpertStatus>();
-    expertIds.forEach((expertId) => {
-      initialStatuses.set(expertId, {
-        expertId,
-        expertName: "", // Will be populated from events
-        status: "waiting",
-        progress: 0,
-      });
-    });
-
-    setState({
-      isStreaming: true,
-      expertStatuses: initialStatuses,
-      activityFeed: [],
-      finalAnalysis: null,
-      error: null,
-    });
-
-    try {
-      // Create EventSource connection
-      const params = new URLSearchParams();
-      params.append("problem", problem);
-      expertIds.forEach((id) => params.append("expertIds", id));
-
-      // Validar persona antes de iniciar
-      if (!personaId) {
-        throw new Error("personaId é obrigatório para análise do conselho");
-      }
-
-      // Use fetch with SSE for POST data
-      const response = await fetch("/api/council/analyze-stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ problem, expertIds, personaId }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
-      let buffer = "";
-
-      while (true) {
-        const { done, value} = await reader.read();
-        
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const blocks = buffer.split("\n\n");
-        buffer = blocks.pop() || "";
-
-        for (const block of blocks) {
-          if (!block.trim()) continue;
-          
-          const lines = block.split("\n");
-          let eventType: string | null = null;
-          let eventData: string | null = null;
-
-          for (const line of lines) {
-            if (line.startsWith("event:")) {
-              eventType = line.substring(7).trim();
-            } else if (line.startsWith("data:")) {
-              eventData = line.substring(6).trim();
-            }
-          }
-
-          if (eventType && eventData) {
-            try {
-              const data = JSON.parse(eventData);
-              handleSSEEvent(eventType, data);
-            } catch (e) {
-              console.error("Failed to parse SSE data:", eventData, e);
-            }
-          }
-        }
-      }
-
-    } catch (error: any) {
-      console.error("Stream error:", error);
-      setState((prev) => ({
-        ...prev,
-        isStreaming: false,
-        error: error.message || "Stream connection failed",
-      }));
-      addActivity(`Error: ${error.message}`, "error");
-    }
-  }, [enabled, problem, expertIds, addActivity]);
 
   const handleSSEEvent = useCallback((eventType: string, data: any) => {
     console.log("SSE Event:", eventType, data);
@@ -270,6 +151,123 @@ export function useCouncilStream({ problem, expertIds, personaId, enabled }: Use
         console.warn("Unknown SSE event type:", eventType);
     }
   }, [addActivity, updateExpertStatus]);
+
+  const startStreaming = useCallback(async () => {
+    // Validações básicas (não verificar 'enabled' aqui - permitir chamada explícita)
+    if (!problem || expertIds.length === 0) {
+      console.error('[useCouncilStream] Missing problem or expertIds', { problem, expertIds });
+      return;
+    }
+
+    // Validar persona antes de iniciar
+    if (!personaId) {
+      console.error('[useCouncilStream] Missing personaId');
+      addActivity("Erro: Persona é obrigatória", "error");
+      return;
+    }
+    
+    console.log('[useCouncilStream] Starting stream with:', { problem: problem.substring(0, 50), expertIds, personaId });
+    
+    // Initialize expert statuses
+    const initialStatuses = new Map<string, ExpertStatus>();
+    expertIds.forEach((expertId) => {
+      initialStatuses.set(expertId, {
+        expertId,
+        expertName: "", // Will be populated from events
+        status: "waiting",
+        progress: 0,
+      });
+    });
+
+    setState({
+      isStreaming: true,
+      expertStatuses: initialStatuses,
+      activityFeed: [],
+      finalAnalysis: null,
+      error: null,
+    });
+
+    try {
+      console.log('[useCouncilStream] Sending request to /api/council/analyze-stream');
+      
+      // Use fetch with SSE for POST data
+      const response = await fetch("/api/council/analyze-stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ problem, expertIds, personaId }),
+        keepalive: true, // 🆕 Continuar em background quando mudar de aba
+      });
+
+      console.log('[useCouncilStream] Response received:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[useCouncilStream] HTTP error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      let buffer = "";
+
+      console.log('[useCouncilStream] Starting to read stream...');
+      
+      while (true) {
+        const { done, value} = await reader.read();
+        
+        if (done) {
+          console.log('[useCouncilStream] Stream ended');
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() || "";
+
+        for (const block of blocks) {
+          if (!block.trim()) continue;
+          
+          const lines = block.split("\n");
+          let eventType: string | null = null;
+          let eventData: string | null = null;
+
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              eventType = line.substring(7).trim();
+            } else if (line.startsWith("data:")) {
+              eventData = line.substring(6).trim();
+            }
+          }
+
+          if (eventType && eventData) {
+            try {
+              const data = JSON.parse(eventData);
+              console.log('[useCouncilStream] SSE Event:', eventType, data);
+              handleSSEEvent(eventType, data);
+            } catch (e) {
+              console.error("Failed to parse SSE data:", eventData, e);
+            }
+          }
+        }
+      }
+
+    } catch (error: any) {
+      console.error("[useCouncilStream] Stream error:", error);
+      setState((prev) => ({
+        ...prev,
+        isStreaming: false,
+        error: error.message || "Stream connection failed",
+      }));
+      addActivity(`Error: ${error.message}`, "error");
+    }
+  }, [problem, expertIds, personaId, handleSSEEvent]);
 
   // Cleanup on unmount
   useEffect(() => {

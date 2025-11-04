@@ -14,7 +14,7 @@ function startPythonBackend() {
     log(`Skipping local Python spawn. Using external backend at ${process.env.PY_EXTERNAL}`);
     return undefined;
   }
-  const PY_PORT = parseInt(process.env.PY_PORT || '5201', 10);
+  const PY_PORT = parseInt(process.env.PY_PORT || '5501', 10);
   log(`Starting Python backend on port ${PY_PORT}...`);
   const pythonHost = process.platform === 'darwin' ? '127.0.0.1' : '0.0.0.0';
   const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'python_backend.main:app', '--host', pythonHost, '--port', String(PY_PORT), '--reload'], {
@@ -47,7 +47,7 @@ const pythonBackend = startPythonBackend();
 
 // Proxy all /api requests to Python backend BEFORE any other middleware
 // This ensures the request body is not consumed by express.json()
-const PY_PORT = parseInt(process.env.PY_PORT || '5201', 10);
+const PY_PORT = parseInt(process.env.PY_PORT || '5501', 10);
 const PY_TARGET = process.env.PY_EXTERNAL || `http://localhost:${PY_PORT}`;
 app.use('/api', createProxyMiddleware({
   target: PY_TARGET,
@@ -179,10 +179,10 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
+  // Other ports are firewalled. Default to 5500 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '3001', 10);
+  const port = parseInt(process.env.PORT || '5500', 10);
   const host = '0.0.0.0';
   server.listen(port, host, () => {
     log(`serving on port ${port} (host: ${host}) with PY_TARGET=${PY_TARGET}`);

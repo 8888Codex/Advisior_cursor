@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-const DEFAULT_TIMEOUT_MS = 30000; // 30 segundos
+const DEFAULT_TIMEOUT_MS = 90000; // 90 segundos (modo estratégico pode levar 40-60s)
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -63,6 +63,7 @@ export async function apiRequest(
       ...options,
       signal: controller.signal,
       credentials: "include",
+      keepalive: true,  // 🆕 Mantém requisição viva mesmo se aba não estiver em foco
     });
     
     clearTimeout(timeoutId);

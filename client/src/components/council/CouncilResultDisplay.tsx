@@ -15,12 +15,60 @@ import { useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Confetti from "react-confetti";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { CouncilAnalysis } from "@/types/council";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Configuração de typing delay
 const TYPING_DELAY_CONFIG = {
   speed: 25, // caracteres por segundo (velocidade natural de leitura)
   delay: 500, // delay inicial em ms antes de começar a digitar
 } as const;
+
+// Componente para renderizar markdown de forma consistente
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="text-xl font-bold mt-6 mb-3">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-lg font-semibold mt-5 mb-2">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-base font-semibold mt-4 mb-2">{children}</h3>
+          ),
+          p: ({ children }) => (
+            <p className="leading-relaxed mb-3">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 space-y-1 mb-3">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 space-y-1 mb-3">{children}</ol>
+          ),
+          li: ({ children }) => (
+            <li className="leading-relaxed">{children}</li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+          code: ({ children }) => (
+            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-primary pl-4 italic my-3">{children}</blockquote>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 // Função helper para gerar avatar colorido baseado no nome do expert
 // Sistema expandido com mais cores e mapeamento por nome para consistência
@@ -101,20 +149,6 @@ interface ActionPlan {
   totalDuration: string;
   estimatedBudget?: string;
   successMetrics: string[];
-}
-
-interface CouncilAnalysis {
-  id: string;
-  problem: string;
-  contributions: Array<{
-    expertId: string;
-    expertName: string;
-    analysis: string;
-    keyInsights: string[];
-    recommendations: string[];
-  }>;
-  consensus: string;
-  actionPlan?: ActionPlan;
 }
 
 interface CouncilResultDisplayProps {
@@ -355,9 +389,7 @@ export function CouncilResultDisplay({ analysis, isStreaming }: CouncilResultDis
                   <Target className="h-5 w-5 text-primary" />
                   Consenso Estratégico
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {consensusText}
-                </p>
+                <MarkdownContent content={consensusText} />
             </div>
             </TabsContent>
             
@@ -462,9 +494,9 @@ export function CouncilResultDisplay({ analysis, isStreaming }: CouncilResultDis
                     <Target className="h-4 w-4" />
                     Consenso em uma Linha
                   </h4>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {analysis.consensus}
-                  </p>
+                  <div className="text-sm text-muted-foreground line-clamp-3">
+                    <MarkdownContent content={analysis.consensus} />
+                  </div>
                 </div>
                 
                 {/* Top 3 Insights */}

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Download, Trash2, Edit } from "lucide-react";
+import { Loader2, Download, Trash2, Edit, Sparkles, Check, X, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceExhaustedError } from "@/components/ResourceExhaustedError";
 
@@ -47,6 +47,12 @@ export default function Personas() {
   const [additionalContext, setAdditionalContext] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [resourceExhaustedError, setResourceExhaustedError] = useState(false);
+  
+  // 🆕 Estados para enhancement de descrição
+  const [enhancedSuggestion, setEnhancedSuggestion] = useState<string>("");
+  const [suggestedIndustry, setSuggestedIndustry] = useState<string>("");
+  const [suggestedContext, setSuggestedContext] = useState<string>("");
+  const [showEnhancedSuggestion, setShowEnhancedSuggestion] = useState(false);
 
   // Fetch personas
   const { data: personas = [], isLoading: loadingPersonas } = useQuery<Persona[]>({
@@ -67,6 +73,7 @@ export default function Personas() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
+        timeout: 120000, // 120 segundos (2 minutos) para modo estratégico
       });
       return response;
     },
@@ -99,6 +106,70 @@ export default function Personas() {
       });
     },
   });
+
+  // 🆕 Enhance description mutation
+  const enhanceDescriptionMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/personas/enhance-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: targetDescription,
+          industry: industry || undefined,
+          context: additionalContext || undefined,
+        }),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setEnhancedSuggestion(data.enhanced);
+      setSuggestedIndustry(data.suggested_industry || "");
+      setSuggestedContext(data.suggested_context || "");
+      setShowEnhancedSuggestion(true);
+      toast({
+        title: "✨ Descrição melhorada!",
+        description: "A IA enriqueceu sua descrição e sugeriu indústria e contexto.",
+        duration: 5000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao melhorar descrição",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleEnhanceDescription = () => {
+    if (!targetDescription.trim() || targetDescription.trim().length < 10) {
+      toast({
+        title: "Descrição muito curta",
+        description: "Digite pelo menos 10 caracteres para a IA melhorar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    enhanceDescriptionMutation.mutate();
+  };
+  
+  const handleApplyEnhanced = () => {
+    setTargetDescription(enhancedSuggestion);
+    if (suggestedIndustry) setIndustry(suggestedIndustry);
+    if (suggestedContext) setAdditionalContext(suggestedContext);
+    setShowEnhancedSuggestion(false);
+    toast({
+      title: "Sugestões aplicadas!",
+      description: "Descrição, indústria e contexto foram preenchidos automaticamente.",
+    });
+  };
+  
+  const handleRejectEnhanced = () => {
+    setShowEnhancedSuggestion(false);
+    setEnhancedSuggestion("");
+    setSuggestedIndustry("");
+    setSuggestedContext("");
+  };
 
   // Delete persona mutation
   const deletePersonaMutation = useMutation({
@@ -201,16 +272,112 @@ export default function Personas() {
                 </div>
 
                 {/* Target Description */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="target">Público-Alvo *</Label>
                   <Textarea
                     id="target"
                     data-testid="input-target"
-                    placeholder="Ex: Empreendedores de e-commerce no Brasil"
+                    placeholder="Ex: Profissionais B2B que investem em marketing digital"
                     value={targetDescription}
                     onChange={(e) => setTargetDescription(e.target.value)}
                     rows={3}
+                    className="resize-none"
                   />
+                  
+                  {/* 🆕 Botão "Melhorar com IA" */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEnhanceDescription}
+                    disabled={!targetDescription.trim() || targetDescription.trim().length < 10 || enhanceDescriptionMutation.isPending}
+                    className="w-full sm:w-auto gap-2"
+                  >
+                    {enhanceDescriptionMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Melhorando com IA...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Melhorar Descrição com IA
+                      </>
+                    )}
+                  </Button>
+                  
+                  {/* 🆕 Card de Sugestão Melhorada */}
+                  {showEnhancedSuggestion && enhancedSuggestion && (
+                    <Card className="border-accent/50 bg-accent/5">
+                      <CardContent className="pt-4 space-y-4">
+                        <div className="flex items-start gap-2">
+                          <Wand2 className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground mb-2">
+                                ✨ Sugestões da IA (mais específicas):
+                            </p>
+                              
+                              {/* Descrição Melhorada */}
+                              <div className="mb-3">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  📝 Descrição:
+                                </p>
+                                <p className="text-sm text-foreground leading-relaxed bg-background/50 p-3 rounded-lg border border-border/50">
+                              {enhancedSuggestion}
+                            </p>
+                              </div>
+                              
+                              {/* Indústria Sugerida */}
+                              {suggestedIndustry && (
+                                <div className="mb-3">
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                                    🏢 Indústria:
+                                  </p>
+                                  <p className="text-sm text-foreground bg-background/50 p-2 rounded-lg border border-border/50">
+                                    {suggestedIndustry}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {/* Contexto Sugerido */}
+                              {suggestedContext && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                                    💡 Contexto Adicional:
+                                  </p>
+                                  <p className="text-sm text-foreground bg-background/50 p-2 rounded-lg border border-border/50">
+                                    {suggestedContext}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleApplyEnhanced}
+                            className="gap-2"
+                          >
+                            <Check className="h-4 w-4" />
+                            Usar Todas as Sugestões
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRejectEnhanced}
+                            className="gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Manter Original
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
 
                 {/* Industry */}

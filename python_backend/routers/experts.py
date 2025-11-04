@@ -82,7 +82,27 @@ async def get_expert(expert_id: str):
 @limiter.limit("10/day")
 async def create_expert(request: Request, data: ExpertCreate):
     try:
+        # 🆕 GERAR CLASSE PYTHON AUTOMATICAMENTE
+        from python_backend.clone_generator import clone_generator
+        
+        try:
+            # Salvar como classe Python
+            file_path, class_name = clone_generator.save_clone_to_file(data)
+            print(f"[CreateExpert] ✅ Classe Python gerada: {file_path}")
+            
+            # Registrar no CloneRegistry
+            success = clone_generator.register_clone(data.name, class_name, file_path)
+            if success:
+                print(f"[CreateExpert] ✅ Clone registrado no CloneRegistry: {data.name}")
+            else:
+                print(f"[CreateExpert] ⚠️ Falha ao registrar no CloneRegistry (não crítico)")
+        except Exception as gen_error:
+            print(f"[CreateExpert] ⚠️ Erro ao gerar classe Python (não crítico): {gen_error}")
+            # Continua com salvamento no banco mesmo se geração de Python falhar
+        
+        # Salvar no banco de dados (comportamento original)
         expert = await storage.create_expert(data)
+        
         return expert
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create expert: {str(e)}")

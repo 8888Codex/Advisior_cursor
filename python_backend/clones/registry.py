@@ -70,13 +70,14 @@ class CloneRegistry:
     @classmethod
     def _auto_discover_clones(cls):
         """
-        Auto-descobre todos os clones disponíveis no diretório clones/
+        Auto-descobre todos os clones disponíveis no diretório clones/ E clones/custom/
         
         Procura por arquivos *_clone.py e tenta importar automaticamente
         """
         try:
             clones_dir = os.path.dirname(__file__)
             
+            # 1. Descobrir clones pré-prontos (diretório principal)
             for filename in os.listdir(clones_dir):
                 if filename.endswith('_clone.py'):
                     module_name = filename[:-3]  # Remove .py
@@ -109,9 +110,57 @@ class CloneRegistry:
                         pass
                     except Exception as e:
                         print(f"[CloneRegistry] Warning: Erro ao importar {module_name}: {e}")
+            
+            # 2. 🆕 Descobrir clones customizados (diretório custom/)
+            custom_dir = os.path.join(clones_dir, 'custom')
+            if os.path.exists(custom_dir):
+                cls._discover_custom_clones(custom_dir)
         
         except Exception as e:
             print(f"[CloneRegistry] Warning: Erro no auto-discovery: {e}")
+    
+    @classmethod
+    def _discover_custom_clones(cls, custom_dir: str):
+        """
+        Descobre clones customizados no diretório custom/
+        
+        Args:
+            custom_dir: Caminho para o diretório custom/
+        """
+        try:
+            for filename in os.listdir(custom_dir):
+                if not filename.endswith('_clone.py') or filename == '__init__.py':
+                    continue
+                
+                module_name = filename[:-3]  # Remove .py
+                
+                try:
+                    # Import module dinamicamente
+                    module = importlib.import_module(f'python_backend.clones.custom.{module_name}')
+                    
+                    # Procurar por classe que herda de ExpertCloneBase
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        
+                        # Check if it's a class and subclass of ExpertCloneBase
+                        if (isinstance(attr, type) and 
+                            hasattr(attr, '__mro__') and 
+                            'ExpertCloneBase' in [c.__name__ for c in attr.__mro__]):
+                            
+                            # Instanciar para pegar o nome
+                            try:
+                                instance = attr()
+                                expert_name = instance.name
+                                cls.register(expert_name, attr)
+                                print(f"[CloneRegistry] ✅ Clone customizado carregado: {expert_name}")
+                            except:
+                                pass
+                
+                except Exception as e:
+                    print(f"[CloneRegistry] ⚠️ Erro ao carregar custom clone {module_name}: {e}")
+        
+        except Exception as e:
+            print(f"[CloneRegistry] Warning: Erro ao descobrir custom clones: {e}")
     
     @classmethod
     def get_coverage_stats(cls) -> Dict[str, int]:

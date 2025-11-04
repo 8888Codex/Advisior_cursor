@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExpertCard, type Expert } from "@/components/ExpertCard";
 import { Input } from "@/components/ui/input";
@@ -68,16 +68,26 @@ export default function Experts() {
     queryKey: expertsQueryKey,
     retry: 2,
     refetchOnWindowFocus: false,
-    onError: (error) => {
-      console.error("[Experts] Erro ao buscar experts:", error);
-    },
-    onSuccess: (data) => {
-      console.log(`[Experts] ${data.length} experts carregados`);
-    },
   });
+  
+  // Log de sucesso/erro (React Query v5 não suporta mais onSuccess/onError)
+  useEffect(() => {
+    if (experts.length > 0) {
+      console.log(`[Experts] ${experts.length} experts carregados`);
+    }
+  }, [experts.length]);
+  
+  useEffect(() => {
+    if (error) {
+      console.error("[Experts] Erro ao buscar experts:", error);
+    }
+  }, [error]);
 
   const { data: recommendationsData } = useQuery<RecommendationsResponse>({
     queryKey: ["/api/experts/recommendations"],
+    retry: false, // Não tentar novamente se falhar
+    enabled: false, // Desabilitar até endpoint ser implementado
+    // TODO: Implementar endpoint /api/experts/recommendations no backend
   });
 
   const expertRecommendationMap = useMemo(() => {

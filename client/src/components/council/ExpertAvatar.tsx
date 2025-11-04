@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Check, X, Loader2, Search, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import type { ExpertStatus } from "@/hooks/useCouncilStream";
+import type { ExpertStatus } from "@/types/council";
 
 interface ExpertAvatarProps {
   status: ExpertStatus;

@@ -4,7 +4,8 @@ import uuid
 from python_backend.models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
     Message, MessageSend, ExpertType, CategoryType,
-    CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate
+    CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate,
+    BackgroundTask, TaskStatus
 )
 
 # Import modern persona storage
@@ -38,6 +39,7 @@ class MemStorage:
             self.council_analyses: Dict[str, CouncilAnalysis] = {}
             self.personas: Dict[str, Persona] = {}
             self.user_preferences: Dict[str, UserPreferences] = {}  # user_id -> preferences
+            self.background_tasks: Dict[str, 'BackgroundTask'] = {}  # 🆕 Background tasks storage
             # self._persona_modern_storage = PersonaModernStorage()
             self._initialized = True
             # Reset flag on initialization - seed will check actual data
@@ -298,16 +300,33 @@ class MemStorage:
         message.reactions.append(reaction)
         return True
     
-    # Business Profile operations - TEMPORARILY DISABLED
+    # Business Profile operations - REDIRECTS TO POSTGRES
     async def save_business_profile(self, user_id: str, data: dict) -> dict:
-        """Create or update business profile for a user"""
-        # Temporarily return empty dict - profiles not implemented yet
-        return {}
+        """Create or update business profile for a user - delegates to PostgreSQL"""
+        if hasattr(self, 'pool') and self.pool:
+            # Use PostgresStorage method
+            from python_backend.postgres_storage import PostgresStorage
+            pg_storage = PostgresStorage(self.pool)
+            return await pg_storage.save_business_profile(user_id, data)
+        else:
+            # Fallback to in-memory (for testing)
+            if not hasattr(self, 'business_profiles'):
+                self.business_profiles = {}
+            self.business_profiles[user_id] = data
+            return data
     
     async def get_business_profile(self, user_id: str) -> Optional[dict]:
-        """Get business profile for a user"""
-        # Temporarily return None - profiles not implemented yet
-        return None
+        """Get business profile for a user - delegates to PostgreSQL"""
+        if hasattr(self, 'pool') and self.pool:
+            # Use PostgresStorage method
+            from python_backend.postgres_storage import PostgresStorage
+            pg_storage = PostgresStorage(self.pool)
+            return await pg_storage.get_business_profile(user_id)
+        else:
+            # Fallback to in-memory (for testing)
+            if not hasattr(self, 'business_profiles'):
+                return None
+            return self.business_profiles.get(user_id)
     
     # Council Analysis operations
     async def save_council_analysis(self, analysis: CouncilAnalysis) -> CouncilAnalysis:
@@ -508,6 +527,50 @@ class MemStorage:
             return result == "DELETE 1"
         finally:
             await conn.close()
+    
+    # =============================================================================
+    # BACKGROUND TASK OPERATIONS
+    # =============================================================================
+    
+    async def create_background_task(self, task: BackgroundTask) -> BackgroundTask:
+        """Create a new background task"""
+        self.background_tasks[task.id] = task
+        print(f"[MemStorage] Created background task: {task.id}")
+        return task
+    
+    async def get_background_task(self, task_id: str) -> Optional[BackgroundTask]:
+        """Get a background task by ID"""
+        return self.background_tasks.get(task_id)
+    
+    async def update_background_task(
+        self,
+        task_id: str,
+        status: Optional[TaskStatus] = None,
+        progress: Optional[int] = None,
+        result: Optional[dict] = None,
+        error: Optional[str] = None,
+        completedAt: Optional[datetime] = None
+    ) -> Optional[BackgroundTask]:
+        """Update a background task"""
+        task = self.background_tasks.get(task_id)
+        if not task:
+            return None
+        
+        if status is not None:
+            task.status = status
+        if progress is not None:
+            task.progress = progress
+        if result is not None:
+            task.result = result
+        if error is not None:
+            task.error = error
+        if completedAt is not None:
+            task.completedAt = completedAt
+        
+        task.updatedAt = datetime.utcnow()
+        
+        print(f"[MemStorage] Updated task {task_id}: status={task.status}, progress={task.progress}%")
+        return task
 
 
 def get_storage_instance():

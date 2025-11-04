@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Info, CheckCircle2, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ActivityEvent } from "@/hooks/useCouncilStream";
+import type { ActivityEvent } from "@/types/council";
 
 interface ActivityFeedProps {
   activities: ActivityEvent[];

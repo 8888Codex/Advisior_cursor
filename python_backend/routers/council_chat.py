@@ -154,9 +154,11 @@ async def _process_council_message_background(conversation_id: str, message_cont
         # Buscar análise inicial se disponível
         analysis_context = ""
         if conversation.analysisId:
+            print(f"[Council Chat Background] 🔍 Buscando análise: {conversation.analysisId}")
             try:
                 analysis = await storage.get_council_analysis(conversation.analysisId)
                 if analysis:
+                    print(f"[Council Chat Background] ✅ Análise encontrada! Consenso: {len(analysis.consensus)} chars, Contribuições: {len(analysis.contributions)}")
                     analysis_context = f"""
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    CONTEXTO DA ANÁLISE INICIAL DO CONSELHO                   ║
@@ -173,17 +175,65 @@ async def _process_council_message_background(conversation_id: str, message_cont
                         analysis_context += "**CONTRIBUIÇÕES INICIAIS DOS ESPECIALISTAS:**\n"
                         for contrib in analysis.contributions:
                             analysis_context += f"\n--- {contrib.expertName} ---\n"
+                            
                             if contrib.keyInsights:
-                                analysis_context += "Insights: " + ", ".join(contrib.keyInsights[:3]) + "\n"
+                                analysis_context += f"\n### INSIGHTS DE {contrib.expertName.upper()}:\n"
+                                for idx, insight in enumerate(contrib.keyInsights, 1):
+                                    analysis_context += f"  {idx}. {insight}\n"
+                                analysis_context += "\n"
+                            
                             if contrib.recommendations:
-                                analysis_context += "Recomendações: " + ", ".join(contrib.recommendations[:3]) + "\n"
+                                analysis_context += f"### RECOMENDAÇÕES DE {contrib.expertName.upper()}:\n"
+                                for idx, rec in enumerate(contrib.recommendations, 1):
+                                    analysis_context += f"  {idx}. {rec}\n"
+                                analysis_context += "\n"
                         analysis_context += "\n"
                     if analysis.actionPlan:
                         analysis_context += "**PLANO DE AÇÃO CRIADO:**\n"
                         analysis_context += f"Total de {len(analysis.actionPlan.phases)} fases | Duração: {analysis.actionPlan.totalDuration}\n\n"
+                    
+                    # Adicionar contexto COMPLETO da persona (CRÍTICO)
+                    analysis_context += f"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           PERSONA DO CLIENTE IDEAL                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+**NOME DA PERSONA:** {persona.name}
+
+**JOB STATEMENT (Trabalho Principal):**
+{persona.job_statement if hasattr(persona, 'job_statement') else 'N/A'}
+
+**PRINCIPAIS JOBS TO BE DONE:**
+Funcionais: {', '.join(persona.functional_jobs[:5]) if hasattr(persona, 'functional_jobs') and persona.functional_jobs else 'N/A'}
+Emocionais: {', '.join(persona.emotional_jobs[:3]) if hasattr(persona, 'emotional_jobs') and persona.emotional_jobs else 'N/A'}
+Sociais: {', '.join(persona.social_jobs[:2]) if hasattr(persona, 'social_jobs') and persona.social_jobs else 'N/A'}
+
+**PAIN POINTS PRINCIPAIS:**
+"""
+                    if hasattr(persona, 'pain_points_quantified') and persona.pain_points_quantified:
+                        for idx, pain in enumerate(persona.pain_points_quantified[:3], 1):
+                            analysis_context += f"{idx}. {pain['description'] if isinstance(pain, dict) else pain.description} - Impacto: {pain['impact'] if isinstance(pain, dict) else pain.impact}\n"
+                    
+                    analysis_context += f"""
+**DEMOGRAPHICS:**
+{persona.demographics if hasattr(persona, 'demographics') else 'N/A'}
+
+**GOALS:**
+{', '.join(persona.goals[:5]) if hasattr(persona, 'goals') and persona.goals else 'N/A'}
+
+**VALORES CORE:**
+{', '.join(persona.values[:5]) if hasattr(persona, 'values') and persona.values else 'N/A'}
+
+"""
+                else:
+                    print(f"[Council Chat Background] ❌ Análise não encontrada no banco para ID: {conversation.analysisId}")
             except Exception as e:
-                print(f"[Council Chat Background] Erro ao buscar análise inicial: {e}")
+                print(f"[Council Chat Background] ❌ Erro ao buscar análise inicial: {e}")
+                import traceback
+                traceback.print_exc()
                 analysis_context = ""
+        else:
+            print(f"[Council Chat Background] ⚠️ Conversa sem analysisId - contexto limitado")
         
         # Para cada especialista, gerar resposta
         for expert in experts:
@@ -218,6 +268,92 @@ IMPORTANTE: Suas recomendações devem ser específicas para este perfil de clie
                 messages_for_claude.append({"role": "user", "content": message_content})
                 
                 enriched_system_prompt = expert.systemPrompt
+                
+                # Adicionar instrução CRÍTICA no topo
+                enriched_system_prompt += """
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⚠️  CONTEXTO COMPLETO DISPONÍVEL - NÃO PEÇA INFORMAÇÕES BÁSICAS NOVAMENTE  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+**VOCÊ TEM TODO O CONTEXTO NECESSÁRIO ABAIXO. NÃO PEÇA INFORMAÇÕES BÁSICAS NOVAMENTE.**
+
+O usuário JÁ passou por uma análise inicial COMPLETA com o conselho de especialistas.
+Abaixo está TODO o contexto dessa análise, incluindo:
+- ✅ O problema original completo
+- ✅ O consenso estratégico do conselho
+- ✅ TODOS os insights e recomendações de cada especialista (não apenas resumo)
+- ✅ O plano de ação estruturado com fases
+- ✅ A persona COMPLETA do público-alvo (demographics, jobs, pain points, goals, valores)
+- ✅ O histórico completo desta conversa
+
+**USE ESTE CONTEXTO** para responder de forma CONTEXTUALIZADA e EXTREMAMENTE VALIOSA.
+
+❌ NÃO pergunte "qual é seu negócio?"
+❌ NÃO pergunte "quem é seu público?"
+❌ NÃO pergunte "qual seu objetivo?"
+❌ NÃO pergunte informações que JÁ ESTÃO no contexto abaixo
+
+✅ RESPONDA com base no contexto completo
+✅ AGREGUE VALOR com insights específicos
+✅ SEJA DIRETO e acionável
+
+"""
+                
+                # FORÇAR formato executável (não texto livre)
+                execution_template = """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    FORMATO OBRIGATÓRIO DE RESPOSTA                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+**⚠️  VOCÊ DEVE RESPONDER NESTE FORMATO EXATO (NÃO FORMATO LIVRE):**
+
+## 🎯 DIAGNÓSTICO RÁPIDO
+[1-2 linhas identificando o problema core, não parágrafo longo]
+
+## ⚡ 3 AÇÕES IMEDIATAS (15 MIN CADA)
+
+**AÇÃO 1:** [Título específico - ex: "Escrever headline usando fórmula 4U"]
+- **Fazer agora:** [Passo-a-passo ultra específico em 3-5 bullet points]
+- **Resultado:** [O que você terá ao completar]
+- **Tempo:** ~15 min
+
+**AÇÃO 2:** [Título específico]
+- **Fazer agora:** [Passo-a-passo]
+- **Resultado:** [Output esperado]
+- **Tempo:** ~15 min
+
+**AÇÃO 3:** [Título específico]
+- **Fazer agora:** [Passo-a-passo]
+- **Resultado:** [Output esperado]
+- **Tempo:** ~15 min
+
+## 📋 TEMPLATE PRONTO PARA USAR
+
+[Gere 1 artefato REAL que o usuário pode copiar e usar:
+- Email de vendas pronto
+- Post de LinkedIn completo
+- Script de VSL
+- Checklist de implementação
+- Sequência de automação
+- etc.]
+
+## 📊 COMO MEDIR SUCESSO
+[1 métrica específica e como medir - ex: "Taxa de abertura >25% no email"]
+
+## ⚠️ ARMADILHA A EVITAR
+[1 erro comum que destruiria a implementação]
+
+**IMPORTANTE:**
+- Máximo 300 palavras TOTAL
+- Zero teoria ou filosofia
+- Zero parágrafos longos
+- 100% executável agora
+- Template deve ser copy-paste ready
+"""
+                
+                enriched_system_prompt += "\n\n" + execution_template
+                
                 if analysis_context:
                     enriched_system_prompt += "\n\n" + analysis_context
                 enriched_system_prompt += "\n\n" + persona_context
@@ -231,11 +367,7 @@ IMPORTANTE: Suas recomendações devem ser específicas para este perfil de clie
 
 **VOCÊ ESTÁ EM UMA MESA DE CONVERSA COM OUTROS ESPECIALISTAS:**
 
-1. Você TEM ACESSO COMPLETO ao contexto da análise inicial, incluindo:
-   - O problema original que foi analisado
-   - O consenso estratégico gerado pelo conselho
-   - As contribuições de todos os especialistas (incluindo você)
-   - O plano de ação completo que foi criado
+1. Você TEM ACESSO COMPLETO ao contexto da análise inicial acima (incluindo suas próprias contribuições)
 
 2. Quando o usuário mencionar "plano", "plano de ação", "fases", "ações", etc., 
    VOCÊ DEVE fazer referência ao plano de ação que foi criado anteriormente.
@@ -249,6 +381,8 @@ IMPORTANTE: Suas recomendações devem ser específicas para este perfil de clie
 
 6. Esta é uma conversa contínua - todos os especialistas estão "na mesma mesa" 
    e compartilham o mesmo contexto completo.
+
+7. **LEMBRE-SE:** O usuário já forneceu TODAS as informações. Não peça novamente!
 """
                 
                 agent = LegendAgentFactory.create_agent(expert.name, enriched_system_prompt)

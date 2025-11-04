@@ -8,7 +8,8 @@ import json
 from python_backend.models import (
     Expert, ExpertCreate, Conversation, ConversationCreate, 
     Message, MessageSend,
-    CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate
+    CouncilAnalysis, Persona, User, UserPreferences, UserPreferencesUpdate,
+    BackgroundTask, TaskStatus
 )
 from python_backend.models_persona import PersonaModern
 
@@ -219,25 +220,25 @@ class PostgresStorage:
         # Garantir que a tabela experts existe
         await self._ensure_experts_table()
         
-        # Serializar expertise como JSON
-        expertise_json = json.dumps(data.expertise) if isinstance(data.expertise, list) else data.expertise
+        # expertise deve ser lista Python (será convertido para text[] automaticamente)
+        expertise_list = data.expertise if isinstance(data.expertise, list) else []
         
         query = """
             INSERT INTO experts (id, name, title, expertise, bio, "systemPrompt", avatar, "expertType", category)
-            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *;
         """
         
         try:
             record = await self._fetchrow(
-                query, expert_id, data.name, data.title, expertise_json, data.bio,
+                query, expert_id, data.name, data.title, expertise_list, data.bio,
                 data.systemPrompt, data.avatar, data.expertType.value, data.category.value
             )
         except asyncpg.exceptions.UndefinedTableError:
             # Tabela não existe, criar e tentar novamente
             await self._create_experts_table()
             record = await self._fetchrow(
-                query, expert_id, data.name, data.title, expertise_json, data.bio,
+                query, expert_id, data.name, data.title, expertise_list, data.bio,
                 data.systemPrompt, data.avatar, data.expertType.value, data.category.value
             )
         
@@ -552,25 +553,265 @@ class PostgresStorage:
     # BUSINESS PROFILE OPERATIONS
     async def save_business_profile(self, user_id: str, data: dict) -> dict:
         """Saves or updates a business profile."""
-        # For now, return None - to be implemented when we add business_profiles table
-        raise NotImplementedError
+        import uuid
+        from datetime import datetime
+        
+        # Check if profile already exists
+        existing = await self._fetchrow(
+            'SELECT id FROM business_profiles WHERE user_id = $1',
+            user_id
+        )
+        
+        if existing:
+            # Update existing profile
+            query = """
+                UPDATE business_profiles
+                SET company_name = $2,
+                    industry = $3,
+                    company_size = $4,
+                    target_audience = $5,
+                    main_products = $6,
+                    channels = $7,
+                    budget_range = $8,
+                    primary_goal = $9,
+                    main_challenge = $10,
+                    timeline = $11,
+                    updated_at = NOW()
+                WHERE user_id = $1
+                RETURNING *
+            """
+            record = await self._fetchrow(
+                query,
+                user_id,
+                data.get('companyName') or data.get('company_name'),
+                data.get('industry'),
+                data.get('companySize') or data.get('company_size'),
+                data.get('targetAudience') or data.get('target_audience'),
+                data.get('mainProducts') or data.get('main_products'),
+                data.get('channels', []),
+                data.get('budgetRange') or data.get('budget_range'),
+                data.get('primaryGoal') or data.get('primary_goal'),
+                data.get('mainChallenge') or data.get('main_challenge'),
+                data.get('timeline')
+            )
+        else:
+            # Create new profile
+            profile_id = str(uuid.uuid4())
+            query = """
+                INSERT INTO business_profiles (
+                    id, user_id, company_name, industry, company_size,
+                    target_audience, main_products, channels, budget_range,
+                    primary_goal, main_challenge, timeline, created_at, updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+                RETURNING *
+            """
+            record = await self._fetchrow(
+                query,
+                profile_id,
+                user_id,
+                data.get('companyName') or data.get('company_name'),
+                data.get('industry'),
+                data.get('companySize') or data.get('company_size'),
+                data.get('targetAudience') or data.get('target_audience'),
+                data.get('mainProducts') or data.get('main_products'),
+                data.get('channels', []),
+                data.get('budgetRange') or data.get('budget_range'),
+                data.get('primaryGoal') or data.get('primary_goal'),
+                data.get('mainChallenge') or data.get('main_challenge'),
+                data.get('timeline')
+            )
+        
+        # Convert to dict with camelCase keys
+        return {
+            'id': record['id'],
+            'userId': record['user_id'],
+            'companyName': record['company_name'],
+            'industry': record['industry'],
+            'companySize': record['company_size'],
+            'targetAudience': record['target_audience'],
+            'mainProducts': record['main_products'],
+            'channels': record['channels'],
+            'budgetRange': record['budget_range'],
+            'primaryGoal': record['primary_goal'],
+            'mainChallenge': record['main_challenge'],
+            'timeline': record['timeline'],
+            'createdAt': record['created_at'].isoformat() if record.get('created_at') else None,
+            'updatedAt': record['updated_at'].isoformat() if record.get('updated_at') else None
+        }
 
     async def get_business_profile(self, user_id: str) -> Optional[dict]:
         """Gets a business profile for a user."""
-        # For now, return None - profiles will be implemented later
-        # This allows the chat to work without profiles
-        return None
+        record = await self._fetchrow(
+            'SELECT * FROM business_profiles WHERE user_id = $1',
+            user_id
+        )
+        
+        if not record:
+            return None
+        
+        # Convert to dict with camelCase keys
+        return {
+            'id': record['id'],
+            'userId': record['user_id'],
+            'companyName': record['company_name'],
+            'industry': record['industry'],
+            'companySize': record['company_size'],
+            'targetAudience': record['target_audience'],
+            'mainProducts': record['main_products'],
+            'channels': record['channels'],
+            'budgetRange': record['budget_range'],
+            'primaryGoal': record['primary_goal'],
+            'mainChallenge': record['main_challenge'],
+            'timeline': record['timeline'],
+            'createdAt': record['created_at'].isoformat() if record.get('created_at') else None,
+            'updatedAt': record['updated_at'].isoformat() if record.get('updated_at') else None
+        }
         
     # COUNCIL ANALYSIS & PERSONA OPERATIONS
     async def save_council_analysis(self, analysis: CouncilAnalysis) -> CouncilAnalysis:
-        # To be implemented when council analysis table is created
-        raise NotImplementedError
+        """Save council analysis to database"""
+        from python_backend.models import CouncilAnalysis
+        import json
+        
+        # Ensure table exists
+        try:
+            query = """
+                INSERT INTO council_analyses (id, "userId", problem, "personaId", contributions, consensus, "actionPlan", "createdAt")
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8)
+                ON CONFLICT (id) DO UPDATE SET
+                    consensus = EXCLUDED.consensus,
+                    "actionPlan" = EXCLUDED."actionPlan";
+            """
+            
+            # Serialize contributions and actionPlan to JSON
+            contributions_json = json.dumps([{
+                "expertId": c.expertId,
+                "expertName": c.expertName,
+                "analysis": c.analysis,
+                "keyInsights": c.keyInsights,
+                "recommendations": c.recommendations
+            } for c in analysis.contributions])
+            
+            action_plan_json = None
+            if analysis.actionPlan:
+                action_plan_json = json.dumps({
+                    "phases": analysis.actionPlan.phases,
+                    "totalDuration": analysis.actionPlan.totalDuration
+                })
+            
+            await self._execute(
+                query,
+                analysis.id,
+                analysis.userId,
+                analysis.problem,
+                analysis.personaId,
+                contributions_json,
+                analysis.consensus,
+                action_plan_json,
+                analysis.createdAt
+            )
+            
+            return analysis
+            
+        except asyncpg.exceptions.UndefinedTableError:
+            # Create table and retry
+            await self._create_council_analyses_table()
+            await self._execute(
+                query,
+                analysis.id,
+                analysis.userId,
+                analysis.problem,
+                analysis.personaId,
+                contributions_json,
+                analysis.consensus,
+                action_plan_json,
+                analysis.createdAt
+            )
+            return analysis
 
     async def get_council_analysis(self, analysis_id: str) -> Optional[CouncilAnalysis]:
-        raise NotImplementedError
+        """Get council analysis from database"""
+        from python_backend.models import CouncilAnalysis, ExpertContribution, ActionPlan
+        import json
+        
+        query = 'SELECT * FROM council_analyses WHERE id = $1'
+        
+        try:
+            record = await self._fetchrow(query, analysis_id)
+            if not record:
+                return None
+            
+            # Deserialize contributions
+            contributions_data = json.loads(record["contributions"]) if isinstance(record["contributions"], str) else record["contributions"]
+            contributions = [ExpertContribution(**c) for c in contributions_data]
+            
+            # Deserialize action plan if exists
+            action_plan = None
+            action_plan_data = record.get("actionPlan")
+            if action_plan_data:
+                action_plan_dict = json.loads(action_plan_data) if isinstance(action_plan_data, str) else action_plan_data
+                action_plan = ActionPlan(**action_plan_dict)
+            
+            return CouncilAnalysis(
+                id=record["id"],
+                userId=record.get("userId") or record.get("userid"),
+                problem=record["problem"],
+                personaId=record.get("personaId") or record.get("personaid"),
+                contributions=contributions,
+                consensus=record["consensus"],
+                actionPlan=action_plan,
+                createdAt=record.get("createdAt") or record.get("createdat")
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            # Table doesn't exist yet
+            await self._create_council_analyses_table()
+            return None
+        except Exception as e:
+            print(f"[PostgresStorage] Erro ao buscar análise: {e}")
+            return None
 
     async def get_council_analyses(self, user_id: str) -> List[CouncilAnalysis]:
-        raise NotImplementedError
+        """Get all council analyses for a user"""
+        from python_backend.models import CouncilAnalysis, ExpertContribution, ActionPlan
+        import json
+        
+        query = 'SELECT * FROM council_analyses WHERE "userId" = $1 ORDER BY "createdAt" DESC'
+        
+        try:
+            records = await self._fetch(query, user_id)
+            analyses = []
+            
+            for record in records:
+                # Deserialize contributions
+                contributions_data = json.loads(record["contributions"]) if isinstance(record["contributions"], str) else record["contributions"]
+                contributions = [ExpertContribution(**c) for c in contributions_data]
+                
+                # Deserialize action plan if exists
+                action_plan = None
+                action_plan_data = record.get("actionPlan")
+                if action_plan_data:
+                    action_plan_dict = json.loads(action_plan_data) if isinstance(action_plan_data, str) else action_plan_data
+                    action_plan = ActionPlan(**action_plan_dict)
+                
+                analyses.append(CouncilAnalysis(
+                    id=record["id"],
+                    userId=record.get("userId") or record.get("userid"),
+                    problem=record["problem"],
+                    personaId=record.get("personaId") or record.get("personaid"),
+                    contributions=contributions,
+                    consensus=record["consensus"],
+                    actionPlan=action_plan,
+                    createdAt=record.get("createdAt") or record.get("createdat")
+                ))
+            
+            return analyses
+        except asyncpg.exceptions.UndefinedTableError:
+            await self._create_council_analyses_table()
+            return []
+        except Exception as e:
+            print(f"[PostgresStorage] Erro ao listar análises: {e}")
+            return []
         
     async def create_persona(self, user_id: str, persona_data: dict) -> Persona:
         """Creates a persona in the database."""
@@ -854,6 +1095,12 @@ class PostgresStorage:
         
         conversation_id = str(uuid.uuid4())
         
+        # Ensure analysisId column exists (migration)
+        try:
+            await self._execute('ALTER TABLE council_conversations ADD COLUMN IF NOT EXISTS "analysisId" VARCHAR(255)')
+        except:
+            pass  # Column may already exist or table doesn't exist yet
+        
         # Insert into database (create table if needed)
         # For now, we'll use a simple approach: store in JSON format
         # TODO: Create proper table schema for council_conversations
@@ -941,6 +1188,22 @@ class PostgresStorage:
                 "analysisId" VARCHAR(255),
                 "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
                 "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        """
+        await self._execute(query)
+    
+    async def _create_council_analyses_table(self):
+        """Create council_analyses table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS council_analyses (
+                id VARCHAR(255) PRIMARY KEY,
+                "userId" VARCHAR(255) NOT NULL,
+                problem TEXT NOT NULL,
+                "personaId" VARCHAR(255),
+                contributions JSONB NOT NULL,
+                consensus TEXT NOT NULL,
+                "actionPlan" JSONB,
+                "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
             );
         """
         await self._execute(query)
@@ -1209,3 +1472,41 @@ class PostgresStorage:
         persona_dict['social_jobs'] = persona_dict.pop('socialJobs', [])
         
         return PersonaModern(**persona_dict)
+    
+    # =============================================================================
+    # BACKGROUND TASK OPERATIONS
+    # =============================================================================
+    
+    async def create_background_task(self, task: BackgroundTask) -> BackgroundTask:
+        """Create a new background task (fallback to memory if no DB)"""
+        if not self.pool:
+            from python_backend.storage import MemStorage
+            mem_storage = MemStorage()
+            return await mem_storage.create_background_task(task)
+        
+        # Para simplicidade, usar memória sempre (pode adicionar tabela SQL depois)
+        from python_backend.storage import MemStorage
+        mem_storage = MemStorage()
+        return await mem_storage.create_background_task(task)
+    
+    async def get_background_task(self, task_id: str) -> Optional[BackgroundTask]:
+        """Get a background task by ID (fallback to memory)"""
+        from python_backend.storage import MemStorage
+        mem_storage = MemStorage()
+        return await mem_storage.get_background_task(task_id)
+    
+    async def update_background_task(
+        self,
+        task_id: str,
+        status: Optional[TaskStatus] = None,
+        progress: Optional[int] = None,
+        result: Optional[dict] = None,
+        error: Optional[str] = None,
+        completedAt: Optional[datetime] = None
+    ) -> Optional[BackgroundTask]:
+        """Update a background task (fallback to memory)"""
+        from python_backend.storage import MemStorage
+        mem_storage = MemStorage()
+        return await mem_storage.update_background_task(
+            task_id, status, progress, result, error, completedAt
+        )

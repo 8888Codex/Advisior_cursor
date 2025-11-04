@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequestJson } from "@/lib/queryClient";
@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AnimatedPage } from "@/components/AnimatedPage";
-import { Sparkles, Loader2, Brain, Search, Wand2, Check, MessageSquare, Send } from "lucide-react";
+import { Sparkles, Loader2, Brain, Search, Wand2, Check, MessageSquare, Send, Clock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Expert } from "@shared/schema";
 
@@ -36,24 +36,98 @@ export default function Create() {
   const [showTestChat, setShowTestChat] = useState(false);
   const [testMessages, setTestMessages] = useState<TestMessage[]>([]);
   const [testInput, setTestInput] = useState("");
+  
+  // Timer para mostrar tempo decorrido (usa Date.now para funcionar em background)
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [wasInBackground, setWasInBackground] = useState(false);
+  const visibilityRef = useRef(false);
+  
+  // Calcular isProcessing ANTES do useEffect
+  const isProcessing = ["researching", "analyzing", "synthesizing"].includes(cloneStep);
+  
+  // Timer effect - usa Date.now() ao invés de contador para funcionar mesmo em background
+  useEffect(() => {
+    if (isProcessing && !startTime) {
+      setStartTime(Date.now());
+    } else if (!isProcessing) {
+      setStartTime(null);
+      setElapsedTime(0);
+    }
+  }, [isProcessing, startTime]);
+  
+  // Atualizar tempo decorrido baseado em Date.now() (funciona mesmo em background)
+  useEffect(() => {
+    if (!startTime) return;
+    
+    const updateElapsed = () => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+    };
+    
+    // Atualizar imediatamente
+    updateElapsed();
+    
+    // Usar requestAnimationFrame para melhor performance
+    let animationId: number;
+    const animate = () => {
+      updateElapsed();
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
+  }, [startTime]);
+  
+  // 🆕 Detectar quando usuário volta para a aba
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Aba ficou em background
+        visibilityRef.current = true;
+        if (isProcessing) {
+          console.log('[Create] Aba em background - requisição continua rodando');
+        }
+      } else {
+        // Usuário voltou para a aba
+        if (visibilityRef.current && isProcessing) {
+          console.log('[Create] Usuário voltou - sincronizando estado');
+          setWasInBackground(true);
+          
+          // Limpar flag após 3 segundos
+          setTimeout(() => setWasInBackground(false), 3000);
+        }
+        visibilityRef.current = false;
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isProcessing]);
 
   const autoCloneMutation = useMutation({
     mutationFn: async (data: { targetName: string; context?: string }) => {
-      // Simulate step progression
+      // Simulate step progression com tempos mais realistas
       setCloneStep("researching");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));  // 2s
       
       setCloneStep("analyzing");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));  // 2s
       
       setCloneStep("synthesizing");
+      // Não esperar aqui - deixa a API rodar
       
-      // Timeout maior para auto-clone (90 segundos - pode fazer pesquisa Perplexity)
+      // Timeout maior para auto-clone (180 segundos - Claude pode demorar gerando EXTRACT completo)
       return await apiRequestJson<any>("/api/experts/auto-clone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        timeout: 90000, // 90 segundos para auto-clone (inclui pesquisa)
+        timeout: 180000, // 180 segundos (3 minutos) para auto-clone - EXTRACT é complexo
       });
     },
     onSuccess: (expertData) => {
@@ -131,7 +205,7 @@ export default function Create() {
       
       // For testing, we'll use Claude directly with the generated system prompt
       // This avoids persisting temporary conversations
-      // Timeout maior para test-chat (60 segundos)
+      // Timeout maior para test-chat (120 segundos - respostas longas do EXTRACT)
       const response = await apiRequestJson<{ response: string }>("/api/experts/test-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,7 +214,7 @@ export default function Create() {
           message: message,
           history: testMessages
         }),
-        timeout: 60000, // 60 segundos para test-chat
+        timeout: 120000, // 120 segundos (2 minutos) para test-chat
       });
       
       return response.response;
@@ -197,19 +271,17 @@ export default function Create() {
   const getStepText = (step: CloneStep) => {
     switch (step) {
       case "researching":
-        return "Pesquisando biografia, filosofia e métodos...";
+        return "Pesquisando biografia, filosofia e métodos... (30-60s)";
       case "analyzing":
-        return "Analisando padrões cognitivos e expertise...";
+        return "Analisando padrões cognitivos e expertise... (30-60s)";
       case "synthesizing":
-        return "Sintetizando clone de alta fidelidade...";
+        return "Sintetizando clone EXTRACT de alta fidelidade (20 pontos)... Pode demorar 1-3 minutos. Não atualize a página! 🎯";
       case "complete":
         return "Clone cognitivo pronto!";
       default:
         return "";
     }
   };
-
-  const isProcessing = ["researching", "analyzing", "synthesizing"].includes(cloneStep);
 
   return (
     <AnimatedPage>
@@ -219,13 +291,18 @@ export default function Create() {
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-1.5 text-sm mb-4">
               <Sparkles className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Clonagem Cognitiva Automática</span>
+              <span className="text-muted-foreground">Clonagem Cognitiva Automática - Framework EXTRACT</span>
             </div>
             <h1 className="text-4xl font-semibold mb-3 tracking-tight">Criar Seu Especialista</h1>
             <p className="text-muted-foreground max-w-2xl leading-relaxed">
-              Digite o nome de quem você quer clonar. Nosso sistema pesquisa automaticamente 
-              e cria um clone cognitivo de alta fidelidade usando Framework EXTRACT.
+              Digite o nome de quem você quer clonar. Nosso sistema cria um clone cognitivo de 
+              <strong className="text-foreground"> ALTA FIDELIDADE (20/20)</strong> usando Framework EXTRACT de 20 pontos.
             </p>
+            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                ⏱️ <strong>Tempo estimado:</strong> 1-3 minutos para máxima qualidade (Framework EXTRACT completo de 20 pontos)
+              </p>
+            </div>
           </div>
 
           {!generatedExpert && (
@@ -265,25 +342,74 @@ export default function Create() {
                   </p>
                 </div>
 
+                {wasInBackground && isProcessing && (
+                  <Card className="mb-4 p-4 rounded-2xl bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <p className="text-sm text-green-900 dark:text-green-200">
+                        <strong>Bem-vindo de volta!</strong> O processo continuou rodando em segundo plano enquanto você estava em outra aba.
+                      </p>
+                    </div>
+                  </Card>
+                )}
+                
                 {isProcessing && (
-                  <Card className="p-4 rounded-2xl bg-muted/50 border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="text-muted-foreground flex-shrink-0">
-                        {getStepIcon(cloneStep)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium mb-2">{getStepText(cloneStep)}</p>
-                        <div className="w-full bg-background rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className="bg-accent h-1.5 rounded-full transition-all duration-300 ease-out"
-                            style={{
-                              width: cloneStep === "researching" ? "33%" :
-                                     cloneStep === "analyzing" ? "66%" :
-                                     cloneStep === "synthesizing" ? "90%" : "0%"
-                            }}
-                          />
+                  <Card className="p-6 rounded-2xl bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="text-accent flex-shrink-0">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground mb-1">
+                            {cloneStep === "researching" ? "Pesquisando..." :
+                             cloneStep === "analyzing" ? "Analisando..." :
+                             cloneStep === "synthesizing" ? "Gerando Framework EXTRACT..." : "Processando..."}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{getStepText(cloneStep)}</p>
                         </div>
                       </div>
+                      
+                      <div className="w-full bg-background/50 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className="bg-accent h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{
+                            width: cloneStep === "researching" ? "20%" :
+                                   cloneStep === "analyzing" ? "40%" :
+                                   cloneStep === "synthesizing" ? "75%" : "0%"
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Tempo decorrido: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}</span>
+                        <span className="text-accent">Estimado: 1-3 minutos</span>
+                      </div>
+                      
+                      {cloneStep === "synthesizing" && (
+                        <div className="mt-3 space-y-2">
+                          <div className="p-3 bg-background/80 rounded-lg border border-border/50">
+                            <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                              💡 <strong className="text-foreground">Estamos gerando um clone de MÁXIMA QUALIDADE (20/20)</strong> com Framework EXTRACT completo de 20 pontos.
+                            </p>
+                            <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                              <li>✓ Experiências formativas e padrões decisórios</li>
+                              <li>✓ Terminologia própria e axiomas pessoais</li>
+                              <li>✓ Story banks e callbacks icônicos</li>
+                              <li>✓ Limitações e áreas de especialidade</li>
+                              <li className="text-accent">⏳ Sintetizando... {elapsedTime > 60 ? "Quase lá!" : "Isso vale a pena!"}</li>
+                            </ul>
+                          </div>
+                          
+                          {elapsedTime > 90 && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                              <p className="text-xs text-blue-900 dark:text-blue-200">
+                                🔄 <strong>Ainda processando...</strong> Clone complexo pode demorar até 3 minutos. Não atualize a página!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Card>
                 )}
