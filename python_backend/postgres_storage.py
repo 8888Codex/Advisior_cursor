@@ -27,6 +27,8 @@ class PostgresStorage:
             print("Successfully connected to PostgreSQL.")
             # Initialize schema (create tables if they don't exist)
             await self._ensure_user_preferences_table()
+            await self._ensure_conversations_table()
+            await self._ensure_messages_table()
 
     async def _ensure_user_preferences_table(self):
         """Ensure user_preferences table exists, create if not."""
@@ -213,6 +215,7 @@ class PostgresStorage:
         """Creates an expert in the database."""
         from python_backend.models import ExpertType, CategoryType
         import asyncpg
+        import json
         
         if expert_id is None:
             expert_id = str(uuid.uuid4())
@@ -220,37 +223,48 @@ class PostgresStorage:
         # Garantir que a tabela experts existe
         await self._ensure_experts_table()
         
-        # expertise deve ser lista Python (será convertido para text[] automaticamente)
+        # expertise deve ser convertido para JSON (campo é JSONB no PostgreSQL)
         expertise_list = data.expertise if isinstance(data.expertise, list) else []
+        expertise_json = json.dumps(expertise_list)
         
         query = """
             INSERT INTO experts (id, name, title, expertise, bio, "systemPrompt", avatar, "expertType", category)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
             RETURNING *;
         """
         
         try:
             record = await self._fetchrow(
-                query, expert_id, data.name, data.title, expertise_list, data.bio,
+                query, expert_id, data.name, data.title, expertise_json, data.bio,
                 data.systemPrompt, data.avatar, data.expertType.value, data.category.value
             )
         except asyncpg.exceptions.UndefinedTableError:
             # Tabela não existe, criar e tentar novamente
             await self._create_experts_table()
             record = await self._fetchrow(
-                query, expert_id, data.name, data.title, expertise_list, data.bio,
+                query, expert_id, data.name, data.title, expertise_json, data.bio,
                 data.systemPrompt, data.avatar, data.expertType.value, data.category.value
             )
         
         # Convert record to dict and handle field name mapping
         expert_dict = dict(record)
         
+        # Parse expertise from JSON if needed
+        expertise_data = expert_dict.get("expertise", [])
+        if isinstance(expertise_data, str):
+            try:
+                expertise_data = json.loads(expertise_data)
+            except:
+                expertise_data = []
+        elif expertise_data is None:
+            expertise_data = []
+        
         # Map database fields to Expert model fields
         mapped_dict = {
             "id": str(expert_dict.get("id", "")),
             "name": expert_dict.get("name", ""),
             "title": expert_dict.get("title", ""),
-            "expertise": expert_dict.get("expertise", []),
+            "expertise": expertise_data,
             "bio": expert_dict.get("bio", ""),
             "systemPrompt": expert_dict.get("systemPrompt") or expert_dict.get("system_prompt", ""),
             "avatar": expert_dict.get("avatar"),
@@ -349,6 +363,50 @@ class PostgresStorage:
         """
         await self._execute(query)
         print("[PostgresStorage] Created experts table.")
+    
+    async def _create_conversations_table(self):
+        """Create conversations table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS conversations (
+                id VARCHAR(255) PRIMARY KEY,
+                "userId" VARCHAR(255) NOT NULL DEFAULT 'default_user',
+                "expertId" VARCHAR(255) NOT NULL,
+                title VARCHAR(500) NOT NULL,
+                "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+                "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        """
+        await self._execute(query)
+        print("[PostgresStorage] Created conversations table.")
+    
+    async def _create_messages_table(self):
+        """Create messages table if it doesn't exist"""
+        query = """
+            CREATE TABLE IF NOT EXISTS messages (
+                id VARCHAR(255) PRIMARY KEY,
+                "conversationId" VARCHAR(255) NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+                FOREIGN KEY ("conversationId") REFERENCES conversations(id) ON DELETE CASCADE
+            );
+        """
+        await self._execute(query)
+        print("[PostgresStorage] Created messages table.")
+    
+    async def _ensure_conversations_table(self):
+        """Ensure conversations table exists"""
+        try:
+            await self._execute('SELECT 1 FROM conversations LIMIT 1')
+        except:
+            await self._create_conversations_table()
+    
+    async def _ensure_messages_table(self):
+        """Ensure messages table exists"""
+        try:
+            await self._execute('SELECT 1 FROM messages LIMIT 1')
+        except:
+            await self._create_messages_table()
 
     async def get_experts(self) -> List[Expert]:
         """Fetches all experts from the database."""
@@ -540,7 +598,14 @@ class PostgresStorage:
             data.conversationId
         )
         
-        return Message(**dict(record))
+        # Map field names
+        record_dict = dict(record)
+        if "conversationid" in record_dict and "conversationId" not in record_dict:
+            record_dict["conversationId"] = record_dict["conversationid"]
+        if "createdat" in record_dict and "createdAt" not in record_dict:
+            record_dict["createdAt"] = record_dict["createdat"]
+        
+        return Message(**record_dict)
 
     async def get_messages(self, conversation_id: str) -> List[Message]:
         """Fetches all messages for a conversation."""
@@ -548,7 +613,20 @@ class PostgresStorage:
             'SELECT * FROM messages WHERE "conversationId" = $1 ORDER BY "createdAt" ASC',
             conversation_id
         )
-        return [Message(**dict(record)) for record in records]
+        
+        # Map field names for each message
+        messages = []
+        for record in records:
+            record_dict = dict(record)
+            # Map lowercase fields to camelCase
+            if "conversationid" in record_dict and "conversationId" not in record_dict:
+                record_dict["conversationId"] = record_dict["conversationid"]
+            if "createdat" in record_dict and "createdAt" not in record_dict:
+                record_dict["createdAt"] = record_dict["createdat"]
+            
+            messages.append(Message(**record_dict))
+        
+        return messages
 
     # BUSINESS PROFILE OPERATIONS
     async def save_business_profile(self, user_id: str, data: dict) -> dict:
@@ -642,12 +720,17 @@ class PostgresStorage:
 
     async def get_business_profile(self, user_id: str) -> Optional[dict]:
         """Gets a business profile for a user."""
-        record = await self._fetchrow(
-            'SELECT * FROM business_profiles WHERE user_id = $1',
-            user_id
-        )
-        
-        if not record:
+        try:
+            record = await self._fetchrow(
+                'SELECT * FROM business_profiles WHERE user_id = $1',
+                user_id
+            )
+            
+            if not record:
+                return None
+        except Exception as e:
+            # Tabela não existe ou outro erro - retornar None graciosamente
+            print(f"[PostgresStorage] Business profile not available: {e}")
             return None
         
         # Convert to dict with camelCase keys
