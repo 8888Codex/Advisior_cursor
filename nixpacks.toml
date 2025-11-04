@@ -1,0 +1,9 @@
+[phases.setup]
+providers = ["python"]
+
+[phases.install]
+cmds = ["pip install --upgrade pip", "pip install -r python_backend/requirements.txt"]
+
+[start]
+cmd = "python3 -m uvicorn python_backend.main:app --host 0.0.0.0 --port $PORT"
+
