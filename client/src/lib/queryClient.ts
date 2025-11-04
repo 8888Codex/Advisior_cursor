@@ -49,15 +49,23 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Configuração da API - SIMPLES e DIRETO
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://advisior-cursor.onrender.com'
+  : '';
+
+function getFullApiUrl(path: string): string {
+  if (path.startsWith('http')) return path;
+  if (import.meta.env.PROD) return `${API_BASE_URL}${path}`;
+  return path;
+}
+
 export async function apiRequest(
   url: string,
   options?: RequestInit & { timeout?: number },
 ): Promise<Response> {
   const timeout = options?.timeout ?? DEFAULT_TIMEOUT_MS;
-  
-  // Import API config
-  const { getApiUrl } = await import('@/config/api');
-  const fullUrl = getApiUrl(url);
+  const fullUrl = getFullApiUrl(url);
   
   try {
     const controller = new AbortController();
@@ -147,9 +155,7 @@ export const getQueryFn: <T>(options: {
         }
       }
       
-      // Import API config and get full URL
-      const { getApiUrl } = await import('@/config/api');
-      const fullUrl = getApiUrl(url);
+      const fullUrl = getFullApiUrl(url);
       
       const res = await fetch(fullUrl, {
         credentials: "include",
