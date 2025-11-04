@@ -104,11 +104,11 @@ export function useCouncilBackground({ problem, expertIds, personaId, enabled }:
           // Apenas atualizar se status mudou
           const currentStatus = expertStatuses.get(expertId);
           if (!currentStatus || currentStatus.status !== status || Math.abs(currentStatus.progress - expertProgress) > 5) {
-            updateExpertStatus(expertId, expertName, {
-              status,
-              progress: expertProgress,
-            });
-            
+          updateExpertStatus(expertId, expertName, {
+            status,
+            progress: expertProgress,
+          });
+          
             // Adicionar atividade quando especialista começar ou completar
             if (status === "analyzing" && (!currentStatus || currentStatus.status === "waiting")) {
               addActivity(`${expertName} está analisando...`, "info", expertName);
@@ -128,8 +128,8 @@ export function useCouncilBackground({ problem, expertIds, personaId, enabled }:
         if (taskData.result?.contributions) {
           taskData.result.contributions.forEach((contrib: any) => {
             updateExpertStatus(contrib.expertId, contrib.expertName, {
-              status: "completed",
-              progress: 100,
+            status: "completed",
+            progress: 100,
               insightCount: contrib.keyInsights?.length || 0,
               recommendationCount: contrib.recommendations?.length || 0,
             });
