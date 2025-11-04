@@ -1,19 +1,19 @@
-# Dockerfile para Railway - Backend Python apenas
+# Dockerfile para Backend Python - Railway
 FROM python:3.11-slim
 
-# Set working directory
+# Diretório de trabalho
 WORKDIR /app
 
-# Copy all files first
-COPY . /app/
+# Copiar apenas backend Python
+COPY python_backend/ /app/python_backend/
+COPY shared/ /app/shared/
 
-# Install dependencies
+# Instalar dependências
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r python_backend/requirements.txt
 
-# Expose port (Railway seta via $PORT)
+# Porta exposta
 EXPOSE 8000
 
-# Start command
-CMD python3 -m uvicorn python_backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
-
+# Comando de inicialização
+CMD ["python3", "-m", "uvicorn", "python_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
