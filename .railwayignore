@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Frontend (não deploy no Railway)
+client/
+server/
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+*.log
+
+# Environment
+.env
+.env.local
+
+# Misc
+*.bak
+.cursor/
+.vscode/
+.idea/
+
