@@ -3,6 +3,12 @@
   "outputDirectory": "dist/public",
   "installCommand": "npm install --include=dev",
   "framework": null,
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/proxy"
+    }
+  ]
 }
 
