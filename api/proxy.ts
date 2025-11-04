@@ -1,6 +1,11 @@
 // Vercel Serverless Function - Proxy para Render Backend
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Aumentar timeout para 60 segundos (necessário para IA responder)
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // URL do backend (Render)
   const backendUrl = process.env.PY_EXTERNAL || 'https://advisior-cursor.onrender.com';
