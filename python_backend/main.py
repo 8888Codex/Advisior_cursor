@@ -117,8 +117,14 @@ async def startup_event():
     # Initialize PostgresStorage connection if needed
     from python_backend.postgres_storage import PostgresStorage
     if isinstance(storage, PostgresStorage):
-        await storage.connect()
-        print("[Startup] Connected to PostgreSQL database")
+        try:
+            await storage.connect()
+            print("[Startup] ✅ Connected to PostgreSQL database")
+        except Exception as e:
+            print(f"[Startup] ❌ Failed to connect to database: {e}")
+            print("[Startup] ⚠️  Sistema irá iniciar mas sem especialistas!")
+            print("[Startup] ⚠️  Use POST /api/admin/seed-experts após configurar DATABASE_URL")
+            return  # Não falhar completamente
     
     # Force reset MemStorage singleton if needed (only for MemStorage)
     if hasattr(storage, 'experts') and not isinstance(storage, PostgresStorage):
@@ -130,34 +136,131 @@ async def startup_event():
     try:
         await seed_legends(storage)
         experts_count = len(await storage.get_experts())
-        print(f"[Startup] ✓ Seeded {experts_count} marketing legends successfully.")
+        print(f"[Startup] ✅ Seeded {experts_count} marketing legends successfully.")
         
         if experts_count == 0:
             print("[Startup] ⚠️  WARNING: No experts found after seeding!")
-            print("[Startup] Attempting to force seed again...")
-            # Force seed by clearing flag (only for MemStorage)
-            if hasattr(storage, '_legends_seeded'):
-                storage._legends_seeded = False
-            await seed_legends(storage)
-            experts_count = len(await storage.get_experts())
-            print(f"[Startup] After force seed: {experts_count} experts")
-        
-        # Log first few expert names for verification
-        if experts_count > 0:
-            experts = await storage.get_experts()
-            print(f"[Startup] Sample experts: {[e.name for e in experts[:3]]}")
         else:
-            print("[Startup] ⚠️  CRITICAL: No experts available after seeding!")
-            print("[Startup] Check database connection and seed process.")
+            experts = await storage.get_experts()
+            print(f"[Startup] ✅ Sample experts: {[e.name for e in experts[:3]]}")
+    
     except Exception as e:
-        print(f"[Startup] ✗ Error seeding legends: {e}")
+        print(f"[Startup] ❌ Error seeding legends: {e}")
         import traceback
         traceback.print_exc()
+        print("[Startup] ⚠️  Sistema funcionando mas sem especialistas")
+        print("[Startup] ⚠️  Use POST /api/admin/seed-experts para popular o banco")
 
 # Health check
 @app.get("/")
 async def root():
-    return {"message": "AdvisorIA - Marketing Legends API", "status": "running"}
+    """Health check com informações de sistema"""
+    try:
+        experts_count = len(await storage.get_experts())
+        db_status = "ok" if experts_count > 0 else "empty"
+    except Exception as e:
+        experts_count = 0
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "message": "AdvisorIA - Marketing Legends API",
+        "status": "running",
+        "database_status": db_status,
+        "experts_count": experts_count,
+        "expected_experts": 18,
+        "ready": experts_count >= 18
+    }
+
+# =============================================================================
+# ADMIN ENDPOINTS
+# =============================================================================
+
+@app.post("/api/admin/seed-experts")
+async def manual_seed_experts():
+    """
+    Endpoint para popular o banco com especialistas manualmente.
+    Útil para ambiente de produção onde o startup pode falhar.
+    
+    Usage:
+    POST /api/admin/seed-experts
+    """
+    try:
+        # Verificar se banco está acessível
+        experts_before = await storage.get_experts()
+        count_before = len(experts_before)
+        
+        print(f"[Manual Seed] Experts antes: {count_before}")
+        
+        # Executar seeding
+        from python_backend.seed import seed_legends
+        await seed_legends(storage)
+        
+        # Verificar resultado
+        experts_after = await storage.get_experts()
+        count_after = len(experts_after)
+        
+        print(f"[Manual Seed] Experts depois: {count_after}")
+        
+        return {
+            "success": True,
+            "message": f"Seeding completado. {count_after - count_before} especialistas adicionados.",
+            "experts_before": count_before,
+            "experts_after": count_after,
+            "total_experts": count_after,
+            "sample_experts": [e.name for e in experts_after[:5]] if count_after > 0 else []
+        }
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"[Manual Seed] ERRO: {error_detail}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao fazer seeding: {str(e)}"
+        )
+
+@app.get("/api/admin/db-status")
+async def database_status():
+    """
+    Diagnóstico completo do banco de dados.
+    Verifica conexão, tabelas e dados.
+    """
+    status = {
+        "database_url_configured": False,
+        "connection_ok": False,
+        "experts_table_exists": False,
+        "experts_count": 0,
+        "sample_experts": [],
+        "errors": []
+    }
+    
+    try:
+        # Verificar se DATABASE_URL está configurada
+        import os
+        db_url = os.getenv("DATABASE_URL")
+        status["database_url_configured"] = bool(db_url)
+        
+        if not db_url:
+            status["errors"].append("DATABASE_URL não configurada")
+            return status
+        
+        # Tentar conectar
+        try:
+            experts = await storage.get_experts()
+            status["connection_ok"] = True
+            status["experts_table_exists"] = True
+            status["experts_count"] = len(experts)
+            status["sample_experts"] = [e.name for e in experts[:5]]
+        except Exception as e:
+            status["errors"].append(f"Erro ao buscar experts: {str(e)}")
+    
+    except Exception as e:
+        status["errors"].append(f"Erro geral: {str(e)}")
+    
+    return status
+
+# =============================================================================
+# END ADMIN ENDPOINTS
+# =============================================================================
 
 # =============================================================================
 # AUTHENTICATION ENDPOINTS

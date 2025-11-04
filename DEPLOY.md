@@ -31,6 +31,41 @@ PY_EXTERNAL=http://python-backend-url:5501
 
 ---
 
+## Deploy no Vercel (Recomendado)
+
+**Para instruções detalhadas, veja [VERCEL_SETUP.md](./VERCEL_SETUP.md)**
+
+### Quick Start:
+
+1. **Criar PostgreSQL:**
+   - Na Vercel: Storage → Create Database → Postgres
+   - Ou usar Neon/Supabase/Railway
+
+2. **Configurar Variáveis:**
+   ```bash
+   DATABASE_URL=postgresql://...
+   ANTHROPIC_API_KEY=sk-ant-...
+   PERPLEXITY_API_KEY=pplx-...
+   ```
+
+3. **Deploy:**
+   - Push para GitHub → Deploy automático
+
+4. **Popular Especialistas:**
+   ```bash
+   curl -X POST https://seu-app.vercel.app/api/admin/seed-experts
+   ```
+
+5. **Verificar:**
+   ```bash
+   curl https://seu-app.vercel.app/
+   # Deve retornar: "experts_count": 18, "ready": true
+   ```
+
+📖 **Guia completo:** [VERCEL_SETUP.md](./VERCEL_SETUP.md)
+
+---
+
 ## Deploy no Railway
 
 ### 1. Configurar Variáveis de Ambiente
