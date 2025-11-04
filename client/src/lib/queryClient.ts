@@ -49,21 +49,10 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-// Configuração da API - HARD-CODED (sem variáveis de ambiente)
+// Configuração da API - SIMPLES (URLs relativas)
+// Funciona porque frontend e backend estão no mesmo domínio (Render)
 function getFullApiUrl(path: string): string {
-  // Se já é URL completa, retorna direto
-  if (path.startsWith('http')) return path;
-  
-  // HARD-CODE: Em produção, sempre usar Render
-  // Detecta produção por hostname (não usa import.meta.env)
-  const isProduction = typeof window !== 'undefined' && 
-    (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('advisior-cursor'));
-  
-  if (isProduction) {
-    return `https://advisior-cursor.onrender.com${path}`;
-  }
-  
-  // Local: usa caminho relativo (proxy local)
+  // URLs relativas funcionam porque estamos servindo tudo do mesmo lugar
   return path;
 }
 

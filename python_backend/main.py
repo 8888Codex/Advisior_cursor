@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from typing import List, Optional
 from pydantic import BaseModel
 import os
@@ -2820,6 +2821,15 @@ async def system_check():
         "expert_count": expert_count,
         "first_5_experts": first_experts,
     }
+
+# Servir arquivos estáticos do frontend (para deploy completo no Render)
+# Isso deve vir DEPOIS de todas as rotas API
+static_dir = Path(__file__).parent.parent / "dist" / "public"
+if static_dir.exists():
+    print(f"[Static Files] Serving frontend from: {static_dir}")
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
+else:
+    print(f"[Static Files] Directory not found: {static_dir}. Frontend will not be served.")
 
 if __name__ == "__main__":
     import uvicorn
