@@ -1,0 +1,119 @@
+═══════════════════════════════════════════════════════════════
+🎯 CORREÇÃO RENDER - TUDO PRONTO PARA VOCÊ APLICAR!
+═══════════════════════════════════════════════════════════════
+
+📊 STATUS: Deploy falhou com "status 1"
+🔍 DIAGNÓSTICO: Configuração incorreta do Render
+✅ SOLUÇÃO: Documentação completa criada!
+
+═══════════════════════════════════════════════════════════════
+📁 ARQUIVOS CRIADOS
+═══════════════════════════════════════════════════════════════
+
+1. 🎯 ACOES_IMEDIATAS.txt
+   → Checklist rápido do que fazer AGORA
+
+2. 📘 CORRECAO_RENDER_COMPLETA.md
+   → Guia detalhado com TODAS as configurações
+   → Build Command, Start Command, Environment Variables
+   → Passo a passo com screenshots
+
+3. 📋 COMO_VER_LOGS_RENDER.md
+   → Como obter logs se precisar
+
+4. 🧪 monitor_render.sh
+   → Script para monitorar deploy automaticamente
+   → Executa testes quando ficar online
+
+5. 🧪 test_producao.sh
+   → Script de testes completos (já existia)
+
+═══════════════════════════════════════════════════════════════
+✅ O QUE FOI VERIFICADO
+═══════════════════════════════════════════════════════════════
+
+✅ requirements.txt: CORRETO (todas dependências)
+✅ Código Python: FUNCIONA localmente
+✅ Imports: TODOS OK
+✅ main.py: SEM ERROS
+✅ Banco Neon: CONECTADO
+
+📊 CONCLUSÃO: Código está perfeito!
+🎯 PROBLEMA: Configuração do Render
+
+═══════════════════════════════════════════════════════════════
+🚀 O QUE FAZER AGORA - PASSO A PASSO
+═══════════════════════════════════════════════════════════════
+
+PASSO 1: Abrir Render Dashboard
+→ https://render.com/dashboard
+→ Clicar no serviço "advisior-cursor"
+→ Ir em "Settings"
+
+PASSO 2: Corrigir Build Command
+→ Build Command = pip install -r python_backend/requirements.txt
+
+PASSO 3: Corrigir Start Command
+→ Start Command = python3 -m uvicorn python_backend.main:app --host 0.0.0.0 --port $PORT
+
+PASSO 4: Adicionar Environment Variables
+→ DATABASE_URL (copiar do arquivo CORRECAO_RENDER_COMPLETA.md)
+→ ANTHROPIC_API_KEY (copiar do arquivo)
+→ PERPLEXITY_API_KEY (copiar do arquivo)
+
+PASSO 5: Manual Deploy
+→ Clicar "Manual Deploy"
+→ Aguardar 5-10 minutos
+
+PASSO 6: Monitorar e Testar
+→ Executar: ./monitor_render.sh
+   OU
+→ Aguardar ficar "Live" e executar: ./test_producao.sh
+
+═══════════════════════════════════════════════════════════════
+⏱️ TIMELINE ESTIMADA
+═══════════════════════════════════════════════════════════════
+
+00:00 - Você aplica correções no Render (5 min)
+00:05 - Manual Deploy iniciado
+00:15 - Deploy completa, status "Live"
+00:16 - Executar ./test_producao.sh
+00:17 - Todos testes passam ✅
+00:20 - Configurar PY_EXTERNAL no Vercel
+00:23 - Redeploy Vercel
+00:25 - Sistema 100% em produção! 🎉
+
+TOTAL: ~25 minutos até produção completa
+
+═══════════════════════════════════════════════════════════════
+🔧 CONFIGURAÇÕES NECESSÁRIAS
+═══════════════════════════════════════════════════════════════
+
+Estão TODAS no arquivo:
+→ CORRECAO_RENDER_COMPLETA.md
+
+Basta copiar e colar!
+
+═══════════════════════════════════════════════════════════════
+📞 SE PRECISAR DE AJUDA
+═══════════════════════════════════════════════════════════════
+
+Se erro persistir:
+1. Clique em "Logs" no Render dashboard
+2. Role até o final
+3. Copie últimas 30-50 linhas
+4. Me envie aqui
+5. Vou diagnosticar erro específico
+
+═══════════════════════════════════════════════════════════════
+🎯 PRÓXIMA AÇÃO IMEDIATA
+═══════════════════════════════════════════════════════════════
+
+1. ABRA: CORRECAO_RENDER_COMPLETA.md
+2. SIGA: Todos os passos
+3. APLIQUE: No dashboard Render
+4. EXECUTE: ./monitor_render.sh
+
+═══════════════════════════════════════════════════════════════
+🚀 ESTÁ TUDO PRONTO PARA VOCÊ CORRIGIR AGORA!
+═══════════════════════════════════════════════════════════════

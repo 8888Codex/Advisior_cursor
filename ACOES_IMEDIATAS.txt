@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════════════════
+🚨 AÇÕES IMEDIATAS PARA CORRIGIR RENDER - SIGA AGORA!
+═══════════════════════════════════════════════════════════════
+
+📁 ABRA ESTE ARQUIVO PRIMEIRO:
+   CORRECAO_RENDER_COMPLETA.md
+
+Ele contém TODAS as configurações corretas do Render!
+
+═══════════════════════════════════════════════════════════════
+🎯 CHECKLIST RÁPIDO
+═══════════════════════════════════════════════════════════════
+
+NO RENDER DASHBOARD (https://render.com/dashboard):
+
+□ 1. Ir em Settings
+
+□ 2. Build Command = pip install -r python_backend/requirements.txt
+
+□ 3. Start Command = python3 -m uvicorn python_backend.main:app --host 0.0.0.0 --port $PORT
+
+□ 4. Adicionar Environment Variable: DATABASE_URL
+
+□ 5. Adicionar Environment Variable: ANTHROPIC_API_KEY
+
+□ 6. Adicionar Environment Variable: PERPLEXITY_API_KEY
+
+□ 7. Salvar tudo
+
+□ 8. Clicar em "Manual Deploy"
+
+□ 9. Aguardar ficar "Live" (5-10 min)
+
+□ 10. Executar: ./test_producao.sh
+
+═══════════════════════════════════════════════════════════════
+⚡ VALORES DAS VARIÁVEIS
+═══════════════════════════════════════════════════════════════
+
+Estão TODOS no arquivo: CORRECAO_RENDER_COMPLETA.md
+
+Copie e cole EXATAMENTE como está lá!
+
+═══════════════════════════════════════════════════════════════
+📞 APÓS APLICAR AS CORREÇÕES
+═══════════════════════════════════════════════════════════════
+
+1. Aguarde deploy completar (status "Live")
+2. Execute: ./test_producao.sh
+3. Se testes passarem: Configure Vercel (PY_EXTERNAL)
+4. Sistema em produção! 🎉
+
+═══════════════════════════════════════════════════════════════
+🆘 SE CONTINUAR COM ERRO
+═══════════════════════════════════════════════════════════════
+
+1. Clique em "Logs" no Render
+2. Copie últimas 30 linhas
+3. Me envie aqui
+4. Vou diagnosticar o erro específico
+
+═══════════════════════════════════════════════════════════════
+ABRA AGORA: CORRECAO_RENDER_COMPLETA.md
+═══════════════════════════════════════════════════════════════
+

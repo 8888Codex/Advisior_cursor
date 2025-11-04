@@ -55,11 +55,15 @@ export async function apiRequest(
 ): Promise<Response> {
   const timeout = options?.timeout ?? DEFAULT_TIMEOUT_MS;
   
+  // Import API config
+  const { getApiUrl } = await import('@/config/api');
+  const fullUrl = getApiUrl(url);
+  
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const res = await fetch(url, {
+    const res = await fetch(fullUrl, {
       ...options,
       signal: controller.signal,
       credentials: "include",
@@ -143,7 +147,11 @@ export const getQueryFn: <T>(options: {
         }
       }
       
-      const res = await fetch(url, {
+      // Import API config and get full URL
+      const { getApiUrl } = await import('@/config/api');
+      const fullUrl = getApiUrl(url);
+      
+      const res = await fetch(fullUrl, {
         credentials: "include",
         signal: controller.signal,
       });
